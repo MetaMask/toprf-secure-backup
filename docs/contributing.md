@@ -17,7 +17,7 @@
 
 > **Note**
 >
-> `workspaceName` in these commands is the `name` field within a package's `package.json`, e.g., `@metamask/metamask-module-template`, not the directory where it is located, e.g., `packages/metamask-module-template`.
+> `workspaceName` in these commands is the `name` field within a package's `package.json`, e.g., `@metamask/toprf-auth-sdk`, not the directory where it is located, e.g., `packages/toprf-auth-sdk`.
 
 ## Linting
 
@@ -34,8 +34,8 @@ This repository relies on Yarn's [workspaces feature](https://yarnpkg.com/featur
 
 > **Note**
 >
-> - `workspaceName` in the Yarn documentation is the `name` field within a package's `package.json`, e.g., `@metamask/metamask-module-template`, not the directory where it is located, e.g., `packages/metamask-module-template`.
-> - `commandName` in the Yarn documentation is any sub-command that the `yarn` executable would usually take. Pay special attention to the difference between `run` vs `exec`. If you want to run a package script, you would use `run`, e.g., `yarn workspace @metamask/metamask-module-template run changelog:validate`; but if you want to run _any_ shell command, you'd use `exec`, e.g. `yarn workspace @metamask/metamask-module-template exec cat package.json | jq '.version'`.
+> - `workspaceName` in the Yarn documentation is the `name` field within a package's `package.json`, e.g., `@metamask/toprf-auth-sdk`, not the directory where it is located, e.g., `packages/toprf-auth-sdk`.
+> - `commandName` in the Yarn documentation is any sub-command that the `yarn` executable would usually take. Pay special attention to the difference between `run` vs `exec`. If you want to run a package script, you would use `run`, e.g., `yarn workspace @metamask/toprf-auth-sdk run changelog:validate`; but if you want to run _any_ shell command, you'd use `exec`, e.g. `yarn workspace @metamask/toprf-auth-sdk exec cat package.json | jq '.version'`.
 
 ## Creating pull requests
 
@@ -68,15 +68,15 @@ If you're developing your project locally and want to test changes to a package,
    3. Add a line to this section that mirrors the dependency entry on the left-hand side and points to the local path on the right-hand side:
 
       ```
-      "@metamask/<PACKAGE_NAME>@<PUBLISHED_VERSION_RANGE>": "file:<PATH_TO_METAMASK_MONOREPO_TEMPLATE>/packages/<PACKAGE_NAME>"
+      "@metamask/<PACKAGE_NAME>@<PUBLISHED_VERSION_RANGE>": "file:<PATH_TO_TOPRF_AUTH_SDK>/packages/<PACKAGE_NAME>"
       ```
 
       > **Example:**
       >
-      > - If your project uses Yarn, `@metamask/metamask-module-template` is listed in dependencies at `^1.1.4`, and your clone of the `metamask-monorepo-template` repo is at the same level as your project, add the following to `resolutions`:
+      > - If your project uses Yarn, `@metamask/toprf-auth-sdk` is listed in dependencies at `^1.1.4`, and your clone of the `toprf-auth-sdk` repo is at the same level as your project, add the following to `resolutions`:
       >
       >   ```
-      >   "@metamask/metamask-module-template@^1.1.4": "file:../metamask-monorepo-template/packages/metamask-module-template"
+      >   "@metamask/toprf-auth-sdk@^1.1.4": "file:../toprf-auth-sdk/packages/toprf-auth-sdk"
       >   ```
 
    4. Run `yarn install`.
@@ -130,7 +130,7 @@ If you make more changes to a package, follow step 3 again, making sure to updat
 
 To use a preview build for a package within a project, you need to override the resolution logic for your package manager so that the "production" version of that package is replaced with the preview version. Here's how you do that:
 
-1. Open `package.json` in the project and locate the dependency entry for the metamask monorepo template package for which you want to use a preview build.
+1. Open `package.json` in the project and locate the dependency entry for the Toprf Auth Sdk package for which you want to use a preview build.
 2. Locate the section responsible for resolution overrides (or create it if it doesn't exist). If you're using Yarn, this is `resolutions`; if you're using NPM or any other package manager, this is `overrides`.
 3. Add a line to this section that mirrors the dependency entry on the left-hand side and points to the preview version on the right-hand side:
 
@@ -140,10 +140,10 @@ To use a preview build for a package within a project, you need to override the 
 
    > **Example:**
    >
-   > - If your project uses Yarn, `@metamask/metamask-module-template` is listed in dependencies at `^1.1.4`, and you want to use the preview version `1.2.3-preview-e2df9b4`, add the following to `resolutions`:
+   > - If your project uses Yarn, `@metamask/toprf-auth-sdk` is listed in dependencies at `^1.1.4`, and you want to use the preview version `1.2.3-preview-e2df9b4`, add the following to `resolutions`:
    >
    >   ```
-   >   "@metamask/metamask-module-template@^1.1.4": "npm:@metamask-previews/metamask-module-template@1.2.3-preview-e2df9b4"
+   >   "@metamask/toprf-auth-sdk@^1.1.4": "npm:@metamask-previews/toprf-auth-sdk@1.2.3-preview-e2df9b4"
    >   ```
 
 4. Run `yarn install`.

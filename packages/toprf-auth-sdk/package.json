@@ -1,18 +1,18 @@
 {
-  "name": "@metamask/metamask-module-template",
+  "name": "@metamask/toprf-auth-sdk",
   "version": "0.0.0",
   "description": "The MetaMask Node module template",
   "keywords": [
     "MetaMask",
     "Ethereum"
   ],
-  "homepage": "https://github.com/MetaMask/metamask-monorepo-template/tree/main/packages/metamask-module-template#readme",
+  "homepage": "https://github.com/MetaMask/toprf-auth-sdk/tree/main/packages/toprf-auth-sdk#readme",
   "bugs": {
-    "url": "https://github.com/MetaMask/metamask-monorepo-template/issues"
+    "url": "https://github.com/MetaMask/toprf-auth-sdk/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/MetaMask/metamask-monorepo-template.git"
+    "url": "https://github.com/MetaMask/toprf-auth-sdk.git"
   },
   "license": "MIT",
   "sideEffects": false,
@@ -37,8 +37,8 @@
   "scripts": {
     "build": "ts-bridge --project tsconfig.build.json --verbose --clean --no-references",
     "build:docs": "typedoc",
-    "changelog:update": "../../scripts/update-changelog.sh @metamask/metamask-module-template",
-    "changelog:validate": "../../scripts/validate-changelog.sh @metamask/metamask-module-template",
+    "changelog:update": "../../scripts/update-changelog.sh @metamask/toprf-auth-sdk",
+    "changelog:validate": "../../scripts/validate-changelog.sh @metamask/toprf-auth-sdk",
     "publish:preview": "yarn npm publish --tag preview",
     "since-latest-release": "../../scripts/since-latest-release.sh",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --reporters=jest-silent-reporter",

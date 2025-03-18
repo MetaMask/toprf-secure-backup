@@ -1,0 +1,11 @@
+{
+  "scripts/create-package/utils.test.ts": {
+    "@typescript-eslint/no-unsafe-enum-comparison": 3,
+    "import-x/no-named-as-default-member": 2,
+    "jest/no-conditional-in-test": 1
+  },
+  "scripts/create-package/utils.ts": {
+    "@typescript-eslint/no-unsafe-enum-comparison": 5,
+    "prettier/prettier": 1
+  }
+}

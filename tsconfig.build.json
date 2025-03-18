@@ -1,6 +1,6 @@
 {
   "references": [
-    { "path": "./packages/metamask-module-template/tsconfig.build.json" }
+    { "path": "./packages/toprf-auth-sdk/tsconfig.build.json" }
   ],
   "files": [],
   "include": []

@@ -1,12 +1,12 @@
 import execa from 'execa';
 import { existsSync, promises as fs } from 'fs';
 import path from 'path';
-import { format as prettierFormat } from 'prettier';
-import type { Options as PrettierOptions } from 'prettier';
 
 import { MonorepoFiles, Placeholders } from './constants';
 import type { FileMap } from './fs-utils';
 import { readAllFiles, writeFiles } from './fs-utils';
+import type { Options as PrettierOptions } from 'prettier';
+import { format as prettierFormat } from 'prettier';
 
 const PACKAGE_TEMPLATE_DIR = path.join(__dirname, 'package-template');
 const REPO_ROOT = path.join(__dirname, '..', '..');

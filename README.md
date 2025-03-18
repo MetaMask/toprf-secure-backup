@@ -1,17 +1,17 @@
-# MetaMask Monorepo Template
+# Toprf Auth Sdk
 
-MetaMask Monorepo Template
+Toprf Auth Sdk
 
 ## Template Instructions
 
 Follow these instructions when using this template.
 
-Find and replace all instances of "MetaMask Monorepo Template" with the correct casing as follows:
+Find and replace all instances of "Toprf Auth Sdk" with the correct casing as follows:
 
-- `MetaMask Monorepo Template` (Title Case)
-- `metamask monorepo template` (lowercase)
-- `metamask-monorepo-template` (kebab-case)
-- `METAMASK_MONOREPO_TEMPLATE` (SNAKE_CASE)
+- `Toprf Auth Sdk` (Title Case)
+- `Toprf Auth Sdk` (lowercase)
+- `toprf-auth-sdk` (kebab-case)
+- `TOPRF_AUTH_SDK` (SNAKE_CASE)
 
 ## Modules
 
@@ -19,7 +19,7 @@ This repository contains the following packages [^fn1]:
 
 <!-- start package list -->
 
-- [`@metamask/metamask-module-template`](packages/metamask-module-template)
+- [`@metamask/toprf-auth-sdk`](packages/toprf-auth-sdk)
 
 <!-- end package list -->
 
@@ -31,7 +31,7 @@ Or, in graph form [^fn1]:
 %%{ init: { 'flowchart': { 'curve': 'bumpX' } } }%%
 graph LR;
 linkStyle default opacity:0.5
-  metamask_module_template(["@metamask/metamask-module-template"]);
+  metamask_module_template(["@metamask/toprf-auth-sdk"]);
 ```
 
 <!-- end dependency graph -->
