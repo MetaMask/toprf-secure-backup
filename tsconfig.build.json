@@ -1,0 +1,7 @@
+{
+  "references": [
+    { "path": "./packages/metamask-module-template/tsconfig.build.json" }
+  ],
+  "files": [],
+  "include": []
+}

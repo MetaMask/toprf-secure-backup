@@ -1,0 +1,6 @@
+{
+  "compilerOptions": { "esModuleInterop": true, "noEmit": true },
+  "references": [{ "path": "./packages/metamask-module-template" }],
+  "files": [],
+  "include": ["./types"]
+}
