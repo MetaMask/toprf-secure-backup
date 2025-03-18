@@ -1,7 +1,5 @@
 {
-  "references": [
-    { "path": "./packages/toprf-auth-sdk/tsconfig.build.json" }
-  ],
+  "references": [{ "path": "./packages/toprf-auth-sdk/tsconfig.build.json" }],
   "files": [],
   "include": []
 }
