@@ -16,7 +16,7 @@ const config = createConfig([
       '.yarn/**',
       'scripts/create-package/package-template/**',
       'yarn.config.cjs',
-      '.pnp.cjs',
+      '.pnp.*',
     ],
   },
   {
