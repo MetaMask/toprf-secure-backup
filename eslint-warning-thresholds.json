@@ -5,7 +5,6 @@
     "jest/no-conditional-in-test": 1
   },
   "scripts/create-package/utils.ts": {
-    "@typescript-eslint/no-unsafe-enum-comparison": 5,
-    "prettier/prettier": 1
+    "@typescript-eslint/no-unsafe-enum-comparison": 5
   }
 }
