@@ -15,6 +15,10 @@ const RAW_RUNTIME_STATE =
       "reference": "workspace:."\
     },\
     {\
+      "name": "@metamask/auth-network-utils",\
+      "reference": "workspace:packages/auth-network-utils"\
+    },\
+    {\
       "name": "@metamask/toprf-auth-sdk",\
       "reference": "workspace:packages/toprf-auth-sdk"\
     }\
@@ -22,6 +26,7 @@ const RAW_RUNTIME_STATE =
   "enableTopLevelFallback": true,\
   "ignorePatternData": "(^(?:\\\\.yarn\\\\/sdks(?:\\\\/(?!\\\\.{1,2}(?:\\\\/|$))(?:(?:(?!(?:^|\\\\/)\\\\.{1,2}(?:\\\\/|$)).)*?)|$))$)",\
   "fallbackExclusionList": [\
+    ["@metamask/auth-network-utils", ["workspace:packages/auth-network-utils"]],\
     ["@metamask/toprf-auth-sdk", ["workspace:packages/toprf-auth-sdk"]],\
     ["@metamask/toprf-monorepo", ["workspace:."]]\
   ],\
@@ -1766,6 +1771,23 @@ const RAW_RUNTIME_STATE =
         "linkType": "HARD"\
       }]\
     ]],\
+    ["@metamask/auth-network-utils", [\
+      ["workspace:packages/auth-network-utils", {\
+        "packageLocation": "./packages/auth-network-utils/",\
+        "packageDependencies": [\
+          ["@metamask/auth-network-utils", "workspace:packages/auth-network-utils"],\
+          ["@metamask/auto-changelog", "npm:3.4.4"],\
+          ["@types/jest", "npm:27.5.2"],\
+          ["deepmerge", "npm:4.3.1"],\
+          ["jest", "virtual:ed89fd780a4753047ecb3b1ca1801991bef610fddb9d2febfa3e00709a6e9b75f6138e999dd534d322276c29aa72b2efe884a1fdc7a630a3ae396a99330c83f9#npm:27.5.1"],\
+          ["ts-jest", "virtual:e9e06286fc2c27fb932264174ccfc63f976b57d3d24a72f80278e21ac80d0e0fecee99299d64619d9b33a13ff0186dac15256e8cd2e5e0dfd706a4395ec4ecd1#npm:27.1.5"],\
+          ["typedoc", "virtual:e9e06286fc2c27fb932264174ccfc63f976b57d3d24a72f80278e21ac80d0e0fecee99299d64619d9b33a13ff0186dac15256e8cd2e5e0dfd706a4395ec4ecd1#npm:0.24.8"],\
+          ["typedoc-plugin-missing-exports", "virtual:e9e06286fc2c27fb932264174ccfc63f976b57d3d24a72f80278e21ac80d0e0fecee99299d64619d9b33a13ff0186dac15256e8cd2e5e0dfd706a4395ec4ecd1#npm:2.3.0"],\
+          ["typescript", "patch:typescript@npm%3A5.2.2#optional!builtin<compat/typescript>::version=5.2.2&hash=f3b441"]\
+        ],\
+        "linkType": "SOFT"\
+      }]\
+    ]],\
     ["@metamask/auto-changelog", [\
       ["npm:3.4.4", {\
         "packageLocation": "../../.yarn/berry/cache/@metamask-auto-changelog-npm-3.4.4-1d5abe7f37-10c0.zip/node_modules/@metamask/auto-changelog/",\
@@ -2016,9 +2038,9 @@ const RAW_RUNTIME_STATE =
           ["@types/jest", "npm:27.5.2"],\
           ["deepmerge", "npm:4.3.1"],\
           ["jest", "virtual:ed89fd780a4753047ecb3b1ca1801991bef610fddb9d2febfa3e00709a6e9b75f6138e999dd534d322276c29aa72b2efe884a1fdc7a630a3ae396a99330c83f9#npm:27.5.1"],\
-          ["ts-jest", "virtual:f8078fcd96ad034a325de408dce4e01adaae43ed79161cdb637c1dfabd23f8b6cc3a34349eabe362688f5b4b14b3fb471c4728b3db9a2e2d9b2ba12b1a16517e#npm:27.1.5"],\
-          ["typedoc", "virtual:f8078fcd96ad034a325de408dce4e01adaae43ed79161cdb637c1dfabd23f8b6cc3a34349eabe362688f5b4b14b3fb471c4728b3db9a2e2d9b2ba12b1a16517e#npm:0.24.8"],\
-          ["typedoc-plugin-missing-exports", "virtual:f8078fcd96ad034a325de408dce4e01adaae43ed79161cdb637c1dfabd23f8b6cc3a34349eabe362688f5b4b14b3fb471c4728b3db9a2e2d9b2ba12b1a16517e#npm:2.3.0"],\
+          ["ts-jest", "virtual:e9e06286fc2c27fb932264174ccfc63f976b57d3d24a72f80278e21ac80d0e0fecee99299d64619d9b33a13ff0186dac15256e8cd2e5e0dfd706a4395ec4ecd1#npm:27.1.5"],\
+          ["typedoc", "virtual:e9e06286fc2c27fb932264174ccfc63f976b57d3d24a72f80278e21ac80d0e0fecee99299d64619d9b33a13ff0186dac15256e8cd2e5e0dfd706a4395ec4ecd1#npm:0.24.8"],\
+          ["typedoc-plugin-missing-exports", "virtual:e9e06286fc2c27fb932264174ccfc63f976b57d3d24a72f80278e21ac80d0e0fecee99299d64619d9b33a13ff0186dac15256e8cd2e5e0dfd706a4395ec4ecd1#npm:2.3.0"],\
           ["typescript", "patch:typescript@npm%3A5.2.2#optional!builtin<compat/typescript>::version=5.2.2&hash=f3b441"]\
         ],\
         "linkType": "SOFT"\
@@ -10347,10 +10369,10 @@ const RAW_RUNTIME_STATE =
         ],\
         "linkType": "SOFT"\
       }],\
-      ["virtual:f8078fcd96ad034a325de408dce4e01adaae43ed79161cdb637c1dfabd23f8b6cc3a34349eabe362688f5b4b14b3fb471c4728b3db9a2e2d9b2ba12b1a16517e#npm:27.1.5", {\
-        "packageLocation": "./.yarn/__virtual__/ts-jest-virtual-3cf636a988/3/.yarn/berry/cache/ts-jest-npm-27.1.5-6f0b4fcb08-10c0.zip/node_modules/ts-jest/",\
+      ["virtual:e9e06286fc2c27fb932264174ccfc63f976b57d3d24a72f80278e21ac80d0e0fecee99299d64619d9b33a13ff0186dac15256e8cd2e5e0dfd706a4395ec4ecd1#npm:27.1.5", {\
+        "packageLocation": "./.yarn/__virtual__/ts-jest-virtual-92dabd2177/3/.yarn/berry/cache/ts-jest-npm-27.1.5-6f0b4fcb08-10c0.zip/node_modules/ts-jest/",\
         "packageDependencies": [\
-          ["ts-jest", "virtual:f8078fcd96ad034a325de408dce4e01adaae43ed79161cdb637c1dfabd23f8b6cc3a34349eabe362688f5b4b14b3fb471c4728b3db9a2e2d9b2ba12b1a16517e#npm:27.1.5"],\
+          ["ts-jest", "virtual:e9e06286fc2c27fb932264174ccfc63f976b57d3d24a72f80278e21ac80d0e0fecee99299d64619d9b33a13ff0186dac15256e8cd2e5e0dfd706a4395ec4ecd1#npm:27.1.5"],\
           ["@babel/core", null],\
           ["@types/babel-jest", null],\
           ["@types/babel__core", null],\
@@ -10579,10 +10601,10 @@ const RAW_RUNTIME_STATE =
         ],\
         "linkType": "SOFT"\
       }],\
-      ["virtual:f8078fcd96ad034a325de408dce4e01adaae43ed79161cdb637c1dfabd23f8b6cc3a34349eabe362688f5b4b14b3fb471c4728b3db9a2e2d9b2ba12b1a16517e#npm:0.24.8", {\
-        "packageLocation": "./.yarn/__virtual__/typedoc-virtual-23f85cc0ec/3/.yarn/berry/cache/typedoc-npm-0.24.8-7f9229d7f2-10c0.zip/node_modules/typedoc/",\
+      ["virtual:e9e06286fc2c27fb932264174ccfc63f976b57d3d24a72f80278e21ac80d0e0fecee99299d64619d9b33a13ff0186dac15256e8cd2e5e0dfd706a4395ec4ecd1#npm:0.24.8", {\
+        "packageLocation": "./.yarn/__virtual__/typedoc-virtual-e40479685b/3/.yarn/berry/cache/typedoc-npm-0.24.8-7f9229d7f2-10c0.zip/node_modules/typedoc/",\
         "packageDependencies": [\
-          ["typedoc", "virtual:f8078fcd96ad034a325de408dce4e01adaae43ed79161cdb637c1dfabd23f8b6cc3a34349eabe362688f5b4b14b3fb471c4728b3db9a2e2d9b2ba12b1a16517e#npm:0.24.8"],\
+          ["typedoc", "virtual:e9e06286fc2c27fb932264174ccfc63f976b57d3d24a72f80278e21ac80d0e0fecee99299d64619d9b33a13ff0186dac15256e8cd2e5e0dfd706a4395ec4ecd1#npm:0.24.8"],\
           ["@types/typescript", null],\
           ["lunr", "npm:2.3.9"],\
           ["marked", "npm:4.3.0"],\
@@ -10605,12 +10627,12 @@ const RAW_RUNTIME_STATE =
         ],\
         "linkType": "SOFT"\
       }],\
-      ["virtual:f8078fcd96ad034a325de408dce4e01adaae43ed79161cdb637c1dfabd23f8b6cc3a34349eabe362688f5b4b14b3fb471c4728b3db9a2e2d9b2ba12b1a16517e#npm:2.3.0", {\
-        "packageLocation": "./.yarn/__virtual__/typedoc-plugin-missing-exports-virtual-6bfc0fb17d/3/.yarn/berry/cache/typedoc-plugin-missing-exports-npm-2.3.0-484d438ed8-10c0.zip/node_modules/typedoc-plugin-missing-exports/",\
+      ["virtual:e9e06286fc2c27fb932264174ccfc63f976b57d3d24a72f80278e21ac80d0e0fecee99299d64619d9b33a13ff0186dac15256e8cd2e5e0dfd706a4395ec4ecd1#npm:2.3.0", {\
+        "packageLocation": "./.yarn/__virtual__/typedoc-plugin-missing-exports-virtual-9fadb0ddf9/3/.yarn/berry/cache/typedoc-plugin-missing-exports-npm-2.3.0-484d438ed8-10c0.zip/node_modules/typedoc-plugin-missing-exports/",\
         "packageDependencies": [\
-          ["typedoc-plugin-missing-exports", "virtual:f8078fcd96ad034a325de408dce4e01adaae43ed79161cdb637c1dfabd23f8b6cc3a34349eabe362688f5b4b14b3fb471c4728b3db9a2e2d9b2ba12b1a16517e#npm:2.3.0"],\
+          ["typedoc-plugin-missing-exports", "virtual:e9e06286fc2c27fb932264174ccfc63f976b57d3d24a72f80278e21ac80d0e0fecee99299d64619d9b33a13ff0186dac15256e8cd2e5e0dfd706a4395ec4ecd1#npm:2.3.0"],\
           ["@types/typedoc", null],\
-          ["typedoc", "virtual:f8078fcd96ad034a325de408dce4e01adaae43ed79161cdb637c1dfabd23f8b6cc3a34349eabe362688f5b4b14b3fb471c4728b3db9a2e2d9b2ba12b1a16517e#npm:0.24.8"]\
+          ["typedoc", "virtual:e9e06286fc2c27fb932264174ccfc63f976b57d3d24a72f80278e21ac80d0e0fecee99299d64619d9b33a13ff0186dac15256e8cd2e5e0dfd706a4395ec4ecd1#npm:0.24.8"]\
         ],\
         "packagePeers": [\
           "@types/typedoc",\

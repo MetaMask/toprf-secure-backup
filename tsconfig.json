@@ -1,6 +1,9 @@
 {
   "compilerOptions": { "esModuleInterop": true, "noEmit": true },
-  "references": [{ "path": "./packages/toprf-auth-sdk" }],
+  "references": [
+    { "path": "./packages/auth-network-utils" },
+    { "path": "./packages/toprf-auth-sdk" }
+  ],
   "files": [],
   "include": ["./types"]
 }

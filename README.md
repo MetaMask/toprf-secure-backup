@@ -19,6 +19,7 @@ This repository contains the following packages [^fn1]:
 
 <!-- start package list -->
 
+- [`@metamask/auth-network-utils`](packages/auth-network-utils)
 - [`@metamask/toprf-auth-sdk`](packages/toprf-auth-sdk)
 
 <!-- end package list -->
@@ -31,7 +32,8 @@ Or, in graph form [^fn1]:
 %%{ init: { 'flowchart': { 'curve': 'bumpX' } } }%%
 graph LR;
 linkStyle default opacity:0.5
-  metamask_module_template(["@metamask/toprf-auth-sdk"]);
+  auth_network_utils(["@metamask/auth-network-utils"]);
+  toprf_auth_sdk(["@metamask/toprf-auth-sdk"]);
 ```
 
 <!-- end dependency graph -->

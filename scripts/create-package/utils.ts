@@ -1,12 +1,12 @@
 import execa from 'execa';
-import { existsSync, promises as fs } from 'fs';
+import { promises as fs } from 'fs';
 import path from 'path';
 
 import { MonorepoFiles, Placeholders } from './constants';
 import type { FileMap } from './fs-utils';
 import { readAllFiles, writeFiles } from './fs-utils';
-import type { Options as PrettierOptions } from 'prettier';
 import { format as prettierFormat } from 'prettier';
+import type { Options as PrettierOptions } from 'prettier';
 
 const PACKAGE_TEMPLATE_DIR = path.join(__dirname, 'package-template');
 const REPO_ROOT = path.join(__dirname, '..', '..');
@@ -93,8 +93,13 @@ export async function finalizeAndWriteData(
   monorepoFileData: MonorepoFileData,
 ) {
   const packagePath = path.join(PACKAGES_PATH, packageData.directoryName);
-  if (existsSync(packagePath)) {
+  try {
+    await fs.stat(packagePath);
     throw new Error(`The package directory already exists: ${packagePath}`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw error;
+    }
   }
 
   console.log('Writing package and monorepo files...');
@@ -135,7 +140,7 @@ async function writeJsonFile(
 ): Promise<void> {
   await fs.writeFile(
     filePath,
-    prettierFormat(fileContent, { ...prettierRc, parser: 'json' }),
+    await prettierFormat(fileContent, { ...prettierRc, parser: 'json' }),
   );
 }
 
