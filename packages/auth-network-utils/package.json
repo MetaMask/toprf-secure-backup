@@ -48,6 +48,8 @@
   },
   "devDependencies": {
     "@metamask/auto-changelog": "^3.4.4",
+    "@types/bn.js": "^5",
+    "@types/elliptic": "^6",
     "@types/jest": "^27.4.1",
     "deepmerge": "^4.2.2",
     "jest": "^27.5.1",
@@ -62,5 +64,15 @@
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
+  },
+  "dependencies": {
+    "@toruslabs/bs58": "^1.0.0",
+    "@toruslabs/constants": "^15.0.0",
+    "@toruslabs/eccrypto": "^6.0.2",
+    "bn.js": "^5.2.1",
+    "elliptic": "^6.6.1",
+    "ethereum-cryptography": "^3.1.0",
+    "json-stable-stringify": "^1.2.1",
+    "loglevel": "^1.9.2"
   }
 }
