@@ -1,15 +1,24 @@
-import { JRPCResponse } from "@toruslabs/constants";
-import { Ecies } from "@toruslabs/eccrypto";
-import BN from "bn.js";
-import { ec as EC } from "elliptic";
-import { keccak256 } from "ethereum-cryptography/keccak";
-import JsonStringify from "json-stable-stringify";
+import type { JRPCResponse } from '@toruslabs/constants';
+import type { Ecies } from '@toruslabs/eccrypto';
+import BN from 'bn.js';
+import type { ec as EC } from 'elliptic';
+import { keccak256 } from 'ethereum-cryptography/keccak';
+import JsonStringify from 'json-stable-stringify';
 
-import { CommitmentRequestResult, EciesHex, GetORSetKeyResponse, VerifierLookupResponse } from "./interfaces";
-import { SomeError } from "./errors";
-import { capitalizeFirstLetter, waitFor } from "./internal";
+import { SomeError } from './errors';
+import type {
+  CommitmentRequestResult,
+  EciesHex,
+  GetORSetKeyResponse,
+  VerifierLookupResponse,
+} from './interfaces';
+import { capitalizeFirstLetter, waitFor } from './internal';
 
 // generate a 32 bytes private key buffer
+/**
+ *
+ * @param ecCurve
+ */
 export function generate32BytesPrivateKeyBuffer(ecCurve: EC): Buffer {
   const privateKey = ecCurve.genKeyPair().getPrivate();
   const privateKeyBuffer = privateKey.toArrayLike(Buffer, undefined, 32);
@@ -18,29 +27,40 @@ export function generate32BytesPrivateKeyBuffer(ecCurve: EC): Buffer {
 
 /**
  * Hashes a buffer using the keccak256 algorithm and hexify the result
+ *
  * @param buffer - The buffer to hash
  * @returns The hash of the buffer as a hex string
  */
 export function keccak256AndHexify(buffer: Buffer): `0x${string}` {
-  const hash = Buffer.from(keccak256(buffer)).toString("hex");
+  const hash = Buffer.from(keccak256(buffer)).toString('hex');
   return `0x${hash}`;
 }
 
+/**
+ *
+ * @param encParams
+ */
 export function encryptedParamsBufToHex(encParams: Ecies): EciesHex {
   return {
-    iv: Buffer.from(encParams.iv).toString("hex"),
-    ephemPublicKey: Buffer.from(encParams.ephemPublicKey).toString("hex"),
-    ciphertext: Buffer.from(encParams.ciphertext).toString("hex"),
-    mac: Buffer.from(encParams.mac).toString("hex"),
-    mode: "AES256",
+    iv: Buffer.from(encParams.iv).toString('hex'),
+    ephemPublicKey: Buffer.from(encParams.ephemPublicKey).toString('hex'),
+    ciphertext: Buffer.from(encParams.ciphertext).toString('hex'),
+    mac: Buffer.from(encParams.mac).toString('hex'),
+    mode: 'AES256',
   };
 }
 
-export function encParamsHexToBuf(eciesData: Omit<EciesHex, "ciphertext">): Omit<Ecies, "ciphertext"> {
+/**
+ *
+ * @param eciesData
+ */
+export function encParamsHexToBuf(
+  eciesData: Omit<EciesHex, 'ciphertext'>,
+): Omit<Ecies, 'ciphertext'> {
   return {
-    ephemPublicKey: Buffer.from(eciesData.ephemPublicKey, "hex"),
-    iv: Buffer.from(eciesData.iv, "hex"),
-    mac: Buffer.from(eciesData.mac, "hex"),
+    ephemPublicKey: Buffer.from(eciesData.ephemPublicKey, 'hex'),
+    iv: Buffer.from(eciesData.iv, 'hex'),
+    mac: Buffer.from(eciesData.mac, 'hex'),
   };
 }
 
@@ -48,8 +68,12 @@ export function encParamsHexToBuf(eciesData: Omit<EciesHex, "ciphertext">): Omit
 // For ex: some fields returns by nodes might be different from each other
 // like created_at field might vary and nonce_data might not be returned by all nodes because
 // of the metadata implementation in sapphire.
+/**
+ *
+ * @param result
+ */
 export function normalizeKeysResult(result: GetORSetKeyResponse) {
-  const finalResult: Pick<GetORSetKeyResponse, "keys" | "is_new_key"> = {
+  const finalResult: Pick<GetORSetKeyResponse, 'keys' | 'is_new_key'> = {
     keys: [],
     is_new_key: result.is_new_key,
   };
@@ -67,7 +91,7 @@ export function normalizeKeysResult(result: GetORSetKeyResponse) {
 }
 
 export const normalizeLookUpResult = (result: VerifierLookupResponse) => {
-  const finalResult: Pick<VerifierLookupResponse, "keys"> = {
+  const finalResult: Pick<VerifierLookupResponse, 'keys'> = {
     keys: [],
   };
   if (result && result.keys && result.keys.length > 0) {
@@ -83,6 +107,11 @@ export const normalizeLookUpResult = (result: VerifierLookupResponse) => {
   return finalResult;
 };
 
+/**
+ *
+ * @param arr
+ * @param t
+ */
 export function thresholdSame<T>(arr: T[], t: number): T | undefined {
   const hashMap: Record<string, number> = {};
   for (let i = 0; i < arr.length; i += 1) {
@@ -98,9 +127,14 @@ export function thresholdSame<T>(arr: T[], t: number): T | undefined {
   return undefined;
 }
 
+/**
+ *
+ * @param s
+ * @param k
+ */
 export function kCombinations(s: number | number[], k: number): number[][] {
   let set = s;
-  if (typeof set === "number") {
+  if (typeof set === 'number') {
     set = Array.from({ length: set }, (_, i) => i);
   }
   if (k > set.length || k <= 0) {
@@ -128,17 +162,37 @@ export function kCombinations(s: number | number[], k: number): number[][] {
   return combs;
 }
 
-export function getProxyCoordinatorEndpointIndex(endpoints: string[], verifier: string, verifierId: string) {
+/**
+ *
+ * @param endpoints
+ * @param verifier
+ * @param verifierId
+ */
+export function getProxyCoordinatorEndpointIndex(
+  endpoints: string[],
+  verifier: string,
+  verifierId: string,
+) {
   const verifierIdStr = `${verifier}${verifierId}`;
-  const hashedVerifierId = keccak256AndHexify(Buffer.from(verifierIdStr, "utf8")).slice(2);
-  const proxyEndpointNum = new BN(hashedVerifierId, "hex").mod(new BN(endpoints.length)).toNumber();
+  const hashedVerifierId = keccak256AndHexify(
+    Buffer.from(verifierIdStr, 'utf8'),
+  ).slice(2);
+  const proxyEndpointNum = new BN(hashedVerifierId, 'hex')
+    .mod(new BN(endpoints.length))
+    .toNumber();
   return proxyEndpointNum;
 }
 
+/**
+ *
+ * @param arr
+ */
 export function calculateMedian(arr: number[]): number {
   const arrSize = arr.length;
 
-  if (arrSize === 0) return 0;
+  if (arrSize === 0) {
+    return 0;
+  }
   const sortedArr = arr.sort(function (a, b) {
     return a - b;
   });
@@ -155,10 +209,22 @@ export function calculateMedian(arr: number[]): number {
   return (mid1 + mid2) / 2;
 }
 
-export function retryCommitment(executionPromise: () => Promise<JRPCResponse<CommitmentRequestResult>>, maxRetries: number) {
+/**
+ *
+ * @param executionPromise
+ * @param maxRetries
+ */
+export function retryCommitment(
+  executionPromise: () => Promise<JRPCResponse<CommitmentRequestResult>>,
+  maxRetries: number,
+) {
   // Notice that we declare an inner function here
   // so we can encapsulate the retries and don't expose
   // it to the caller. This is also a recursive function
+  /**
+   *
+   * @param retries
+   */
   async function retryWithBackoff(retries: number) {
     try {
       // we don't wait on the first attempt
@@ -177,19 +243,23 @@ export function retryCommitment(executionPromise: () => Promise<JRPCResponse<Com
       const errorMsg = (e as Error).message;
       const acceptedErrorMsgs = [
         // Slow node
-        "Timed out",
-        "Failed to fetch",
-        "fetch failed",
-        "Load failed",
-        "cancelled",
-        "NetworkError when attempting to fetch resource.",
+        'Timed out',
+        'Failed to fetch',
+        'fetch failed',
+        'Load failed',
+        'cancelled',
+        'NetworkError when attempting to fetch resource.',
         // Happens when the node is not reachable (dns issue etc)
-        "TypeError: Failed to fetch", // All except iOS and Firefox
-        "TypeError: cancelled", // iOS
-        "TypeError: NetworkError when attempting to fetch resource.", // Firefox
+        'TypeError: Failed to fetch', // All except iOS and Firefox
+        'TypeError: cancelled', // iOS
+        'TypeError: NetworkError when attempting to fetch resource.', // Firefox
       ];
 
-      if (retries < maxRetries && (acceptedErrorMsgs.includes(errorMsg) || (errorMsg && errorMsg.includes("reason: getaddrinfo EAI_AGAIN")))) {
+      if (
+        retries < maxRetries &&
+        (acceptedErrorMsgs.includes(errorMsg) ||
+          (errorMsg && errorMsg.includes('reason: getaddrinfo EAI_AGAIN')))
+      ) {
         // only retry if we didn't reach the limit
         // otherwise, let the caller handle the error
         return retryWithBackoff(retries + 1);
@@ -209,19 +279,23 @@ export function retryCommitment(executionPromise: () => Promise<JRPCResponse<Com
  * @param resultArr - array of resolved results
  * @param predicateError - error thrown by the callbackFn
  */
-function handleSomeCallBackFnError<K>(errorArr: Error[], resultArr: K[], predicateError?: Error) {
+function handleSomeCallBackFnError<K>(
+  errorArr: Error[],
+  resultArr: K[],
+  predicateError?: Error,
+) {
   // check if there's any rejected promises
   let hasError = errorArr.some((error) => error !== undefined);
   if (hasError) {
     throw new SomeError({
       errors: errorArr,
       responses: resultArr,
-      predicate: (predicateError as Error)?.message || "unknown error",
+      predicate: (predicateError as Error)?.message || 'unknown error',
     });
   }
 
   // check if there're any error inside resolved result array
-  hasError = resultArr.some((result) => !!result);
+  hasError = resultArr.some((result) => Boolean(result));
   if (hasError) {
     const errors = resultArr.map((result) => {
       const { error } = result as { error?: { data?: string } };
@@ -233,7 +307,7 @@ function handleSomeCallBackFnError<K>(errorArr: Error[], resultArr: K[], predica
     throw new SomeError({
       errors,
       responses: resultArr,
-      predicate: (predicateError as Error)?.message || "unknown error",
+      predicate: (predicateError as Error)?.message || 'unknown error',
     });
   }
 
@@ -241,7 +315,7 @@ function handleSomeCallBackFnError<K>(errorArr: Error[], resultArr: K[], predica
   throw new SomeError({
     errors: errorArr,
     responses: resultArr,
-    predicate: (predicateError as Error)?.message || "unknown error",
+    predicate: (predicateError as Error)?.message || 'unknown error',
   });
 }
 
@@ -252,7 +326,10 @@ function handleSomeCallBackFnError<K>(errorArr: Error[], resultArr: K[], predica
  * @param callbackFn - function to execute resolved promises and determine the outcome of the operation conditionally
  * @returns - result of the operation
  */
-export async function Some<K, T>(promises: Promise<K>[], callbackFn: (resultArr: K[], params?: { resolved: boolean }) => Promise<T>): Promise<T | void> {
+export async function Some<K, T>(
+  promises: Promise<K>[],
+  callbackFn: (resultArr: K[], params?: { resolved: boolean }) => Promise<T>,
+): Promise<T | void> {
   let predicateError: Error | undefined; // to keep track of the latest error thrown by the callbackFn
 
   const resultArr: K[] = new Array(promises.length).fill(undefined);
@@ -283,13 +360,20 @@ export async function Some<K, T>(promises: Promise<K>[], callbackFn: (resultArr:
 /**
  * This function executes an array of promises and returns a result of the operation based on the predicate function return value.\
  * This function is the old implementation of `Some` and will be removed once the new implementation is fully tested and verified
+ *
  * @deprecated Use `Some` instead
  *
  * @param promises - array of promises to execute
  * @param predicate - function to execute resolved promises and determine the outcome of the operation conditionally
  * @returns - result of the operation
  */
-export function SomeV1<K, T>(promises: Promise<K>[], predicate: (resultArr: K[], { resolved }: { resolved: boolean }) => Promise<T>): Promise<T> {
+export function SomeV1<K, T>(
+  promises: Promise<K>[],
+  predicate: (
+    resultArr: K[],
+    { resolved }: { resolved: boolean },
+  ) => Promise<T>,
+): Promise<T> {
   return new Promise((resolve, reject) => {
     let finishedCount = 0;
     const sharedState = { resolved: false };
@@ -308,7 +392,9 @@ export function SomeV1<K, T>(promises: Promise<K>[], predicate: (resultArr: K[],
         })
         // eslint-disable-next-line promise/no-return-in-finally
         .finally(() => {
-          if (sharedState.resolved) return;
+          if (sharedState.resolved) {
+            return;
+          }
           return predicate(resultArr.slice(0), sharedState)
             .then((data): unknown => {
               sharedState.resolved = true;
@@ -325,27 +411,42 @@ export function SomeV1<K, T>(promises: Promise<K>[], predicate: (resultArr: K[],
                 const errors = Object.values(
                   resultArr.reduce((acc: Record<string, string>, z) => {
                     if (z) {
-                      const { id, error } = z as { id?: string; error?: { data?: string } };
+                      const { id, error } = z as {
+                        id?: string;
+                        error?: { data?: string };
+                      };
                       if (error?.data && error.data.length > 0 && id) {
-                        if (error.data.startsWith("Error occurred while verifying params")) acc[id] = capitalizeFirstLetter(error.data);
-                        else acc[id] = error.data;
+                        if (
+                          error.data.startsWith(
+                            'Error occurred while verifying params',
+                          )
+                        ) {
+                          acc[id] = capitalizeFirstLetter(error.data);
+                        } else {
+                          acc[id] = error.data;
+                        }
                       }
                     }
                     return acc;
-                  }, {})
+                  }, {}),
                 );
 
                 if (errors.length > 0) {
                   // Format-able errors
-                  const msg = errors.length > 1 ? `\n${errors.map((it) => `• ${it}`).join("\n")}` : errors[0];
+                  const msg =
+                    errors.length > 1
+                      ? `\n${errors.map((it) => `• ${it}`).join('\n')}`
+                      : errors[0];
                   reject(new Error(msg));
                 } else {
                   reject(
                     new SomeError({
                       errors: errorArr,
                       responses: resultArr,
-                      predicate: (predicateError as Error)?.message || (predicateError as string),
-                    })
+                      predicate:
+                        (predicateError as Error)?.message ||
+                        (predicateError as string),
+                    }),
                   );
                 }
               }

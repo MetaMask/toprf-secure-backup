@@ -1,8 +1,8 @@
-import BN from "bn.js";
-import { ec as EC } from "elliptic";
+import BN from 'bn.js';
+import type { ec as EC } from 'elliptic';
 
-import { BNString } from "./interfaces";
-import Share from "./share";
+import type { BNString } from './interfaces';
+import Share from './share';
 
 export type ShareMap = {
   [x: string]: Share;
@@ -23,14 +23,14 @@ class Polynomial {
   }
 
   polyEval(x: BNString): BN {
-    const tmpX = new BN(x, "hex");
+    const tmpX = new BN(x, 'hex');
     let xi = new BN(tmpX);
     let sum = new BN(0);
     sum = sum.add(this.polynomial[0]);
 
     const { n } = this.ecCurve;
     if (!n) {
-      throw new Error("Curve is not set");
+      throw new Error('Curve is not set');
     }
 
     for (let i = 1; i < this.polynomial.length; i += 1) {
@@ -45,21 +45,24 @@ class Polynomial {
 
   generateShares(shareIndexes: BNString[]): ShareMap {
     const newShareIndexes = shareIndexes.map((index) => {
-      if (typeof index === "number") {
+      if (typeof index === 'number') {
         return new BN(index);
       }
       if (index instanceof BN) {
         return index;
       }
-      if (typeof index === "string") {
-        return new BN(index, "hex");
+      if (typeof index === 'string') {
+        return new BN(index, 'hex');
       }
       return index;
     });
 
     const shares: ShareMap = {};
     for (let x = 0; x < newShareIndexes.length; x += 1) {
-      shares[newShareIndexes[x].toString("hex", 64)] = new Share(newShareIndexes[x], this.polyEval(newShareIndexes[x]));
+      shares[newShareIndexes[x].toString('hex', 64)] = new Share(
+        newShareIndexes[x],
+        this.polyEval(newShareIndexes[x]),
+      );
     }
     return shares;
   }

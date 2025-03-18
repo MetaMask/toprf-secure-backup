@@ -1,6 +1,6 @@
-import BN from "bn.js";
+import BN from 'bn.js';
 
-import { BNString, StringifiedType } from "./interfaces";
+import type { BNString, StringifiedType } from './interfaces';
 
 class Share {
   share: BN;
@@ -8,8 +8,8 @@ class Share {
   shareIndex: BN;
 
   constructor(shareIndex: BNString, share: BNString) {
-    this.share = new BN(share, "hex");
-    this.shareIndex = new BN(shareIndex, "hex");
+    this.share = new BN(share, 'hex');
+    this.shareIndex = new BN(shareIndex, 'hex');
   }
 
   static fromJSON(value: StringifiedType): Share {
@@ -19,8 +19,8 @@ class Share {
 
   toJSON(): StringifiedType {
     return {
-      share: this.share.toString("hex", 64),
-      shareIndex: this.shareIndex.toString("hex", 64),
+      share: this.share.toString('hex', 64),
+      shareIndex: this.shareIndex.toString('hex', 64),
     };
   }
 }

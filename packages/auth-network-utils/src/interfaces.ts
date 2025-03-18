@@ -1,7 +1,7 @@
-import { KEY_TYPE } from "@toruslabs/constants";
-import { Ecies } from "@toruslabs/eccrypto";
-import BN from "bn.js";
-import { curve } from "elliptic";
+import type { KEY_TYPE } from '@toruslabs/constants';
+import type { Ecies } from '@toruslabs/eccrypto';
+import type BN from 'bn.js';
+import type { curve } from 'elliptic';
 
 export type BNString = string | BN;
 
@@ -10,7 +10,7 @@ export type StringifiedType = Record<string, unknown>;
 export type KeyType = (typeof KEY_TYPE)[keyof typeof KEY_TYPE];
 
 export type v2NonceResultType = {
-  typeOfUser: "v2";
+  typeOfUser: 'v2';
   nonce?: string;
   seed?: string;
   pubNonce: { x: string; y: string };
@@ -18,7 +18,11 @@ export type v2NonceResultType = {
   upgraded: boolean;
 };
 
-export type v1NonceResultType = { typeOfUser: "v1"; nonce?: string; seed?: string };
+export type v1NonceResultType = {
+  typeOfUser: 'v1';
+  nonce?: string;
+  seed?: string;
+};
 
 export type GetOrSetNonceResult = v2NonceResultType | v1NonceResultType;
 
@@ -26,7 +30,7 @@ export type EciesHex = {
   [key in keyof Ecies]: string;
 } & { mode?: string };
 
-export interface PrivateKeyData {
+export type PrivateKeyData = {
   oAuthKeyScalar: BN;
   oAuthPubX: BN;
   oAuthPubY: BN;
@@ -36,24 +40,24 @@ export interface PrivateKeyData {
   metadataSigningKey: BN;
   finalUserPubKeyPoint: curve.base.BasePoint;
   encryptedSeed?: string;
-}
+};
 
-export interface EncryptedSeed {
+export type EncryptedSeed = {
   enc_text: string;
   public_key?: string;
   metadata: EciesHex;
-}
+};
 
-export interface CommitmentRequestResult {
+export type CommitmentRequestResult = {
   signature: string;
   data: string;
   nodepubx: string;
   nodepuby: string;
   nodeindex: string;
   pub_key_x: string;
-}
+};
 
-export interface ImportedShare {
+export type ImportedShare = {
   oauth_pub_key_x: string;
   oauth_pub_key_y: string;
   final_user_point: curve.base.BasePoint;
@@ -66,16 +70,16 @@ export interface ImportedShare {
   key_type: string;
   nonce_data: string;
   nonce_signature: string;
-}
+};
 
-export interface SetNonceData {
+export type SetNonceData = {
   operation: string;
   data: string;
   seed?: string;
   timestamp: string;
-}
+};
 
-export interface GetORSetKeyResponse {
+export type GetORSetKeyResponse = {
   keys: {
     pub_key_X: string;
     pub_key_Y: string;
@@ -86,9 +90,9 @@ export interface GetORSetKeyResponse {
   is_new_key: boolean;
   node_index: string;
   server_time_offset?: string;
-}
+};
 
-export interface VerifierLookupResponse {
+export type VerifierLookupResponse = {
   keys: {
     pub_key_X: string;
     pub_key_Y: string;
@@ -97,24 +101,23 @@ export interface VerifierLookupResponse {
     address: string;
   }[];
   server_time_offset?: string;
-}
+};
 
+export type MetadataOperation = 'getNonce' | 'getOrSetNonce';
 
-export type MetadataOperation = "getNonce" | "getOrSetNonce";
-
-export interface MetadataParams {
+export type MetadataParams = {
   namespace?: string;
   pub_key_X: string;
   pub_key_Y: string;
   key_type?: KeyType;
   set_data: {
-    data: "getNonce" | "getOrSetNonce" | string;
+    data: 'getNonce' | 'getOrSetNonce' | string;
     timestamp: string;
   };
   signature: string;
-}
+};
 
-export interface NonceMetadataParams {
+export type NonceMetadataParams = {
   namespace?: string;
   pub_key_X: string;
   pub_key_Y: string;
@@ -122,16 +125,16 @@ export interface NonceMetadataParams {
   signature: string;
   key_type?: KeyType;
   seed?: string;
-}
+};
 
-export interface SapphireMetadataParams {
+export type SapphireMetadataParams = {
   namespace?: string;
   pub_key_X: string;
   pub_key_Y: string;
-  key_type: "secp256k1" | "ed25519";
+  key_type: 'secp256k1' | 'ed25519';
   set_data: {
-    operation: "getNonce" | "getOrSetNonce" | string;
+    operation: 'getNonce' | 'getOrSetNonce' | string;
     timestamp?: string;
   };
   signature?: string;
-}
+};

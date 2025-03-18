@@ -1,33 +1,52 @@
-import { bs58 } from "@toruslabs/bs58";
-import { INodePub, KEY_TYPE } from "@toruslabs/constants";
-import { Ecies, encrypt } from "@toruslabs/eccrypto";
-import BN from "bn.js";
-import { curve, ec as EC } from "elliptic";
-import { sha512 } from "ethereum-cryptography/sha512";
-import stringify from "json-stable-stringify";
-import log from "loglevel";
+import { bs58 } from '@toruslabs/bs58';
+import type { INodePub } from '@toruslabs/constants';
+import { KEY_TYPE } from '@toruslabs/constants';
+import type { Ecies } from '@toruslabs/eccrypto';
+import { encrypt } from '@toruslabs/eccrypto';
+import BN from 'bn.js';
+import type { curve } from 'elliptic';
+import { ec as EC } from 'elliptic';
+import { sha512 } from 'ethereum-cryptography/sha512';
+import stringify from 'json-stable-stringify';
+import log from 'loglevel';
 
-import { EncryptedSeed, ImportedShare, KeyType, MetadataOperation, NonceMetadataParams, PrivateKeyData, SetNonceData } from "./interfaces";
-import Share from "./share";
-import { encryptedParamsBufToHex, keccak256AndHexify } from "./common";
-import { getRandomNonce } from "./internal";
-import { generateRandomPolynomial } from "./lagrangeInterpolation";
+import { encryptedParamsBufToHex, keccak256AndHexify } from './common';
+import type {
+  EncryptedSeed,
+  ImportedShare,
+  KeyType,
+  MetadataOperation,
+  NonceMetadataParams,
+  PrivateKeyData,
+  SetNonceData,
+} from './interfaces';
+import { getRandomNonce } from './internal';
+import { generateRandomPolynomial } from './lagrangeInterpolation';
+import type Share from './share';
 
 // cache the curves locally to avoid re-initializing them on every call
 let secp256k1EC: EC;
 let ed25519EC: EC;
 
+/**
+ *
+ * @param str
+ */
 function stripHexPrefix(str: string): string {
-  return str.startsWith("0x") ? str.slice(2) : str;
+  return str.startsWith('0x') ? str.slice(2) : str;
 }
 
+/**
+ *
+ * @param hexAddress
+ */
 export function toChecksumAddress(hexAddress: string): string {
   const address = stripHexPrefix(hexAddress).toLowerCase();
 
-  const buf = Buffer.from(address, "utf8");
+  const buf = Buffer.from(address, 'utf8');
   const hash = keccak256AndHexify(buf).slice(2); // hash and remove 0x prefix
 
-  let ret = "0x";
+  let ret = '0x';
   for (let i = 0; i < address.length; i++) {
     if (parseInt(hash[i], 16) >= 8) {
       ret += address[i].toUpperCase();
@@ -39,10 +58,15 @@ export function toChecksumAddress(hexAddress: string): string {
   return ret;
 }
 
+/**
+ *
+ * @param keyType
+ * @param key
+ */
 function generateAddressFromEcKey(keyType: KeyType, key: EC.KeyPair): string {
   if (keyType === KEY_TYPE.SECP256K1) {
-    const publicKey = key.getPublic().encode("hex", false).slice(2);
-    const evmAddressLower = `0x${keccak256AndHexify(Buffer.from(publicKey, "hex")).slice(64 - 38)}`;
+    const publicKey = key.getPublic().encode('hex', false).slice(2);
+    const evmAddressLower = `0x${keccak256AndHexify(Buffer.from(publicKey, 'hex')).slice(64 - 38)}`;
     return toChecksumAddress(evmAddressLower);
   } else if (keyType === KEY_TYPE.ED25519) {
     const publicKey = encodeEd25519Point(key.getPublic());
@@ -52,6 +76,10 @@ function generateAddressFromEcKey(keyType: KeyType, key: EC.KeyPair): string {
   throw new Error(`Invalid keyType: ${keyType}`);
 }
 
+/**
+ *
+ * @param bytes
+ */
 function adjustScalarBytes(bytes: Buffer): Buffer {
   // Section 5: For X25519, in order to decode 32 random bytes as an integer scalar,
   // set the three least significant bits of the first byte
@@ -64,6 +92,15 @@ function adjustScalarBytes(bytes: Buffer): Buffer {
 }
 
 // format ImportedShareData from share and key data
+/**
+ *
+ * @param params
+ * @param params.keyData
+ * @param params.share
+ * @param params.encryptedShare
+ * @param params.keyType
+ * @param params.nonceParams
+ */
 function parseImportedShare(params: {
   keyData: PrivateKeyData;
   share: Share;
@@ -76,21 +113,23 @@ function parseImportedShare(params: {
   const ecCurve = getKeyCurve(keyType);
   const shareJson = share.toJSON() as Record<string, string>;
   const encParamsMetadata = encryptedParamsBufToHex(encryptedShare);
-  const oAuthPubKey = ecCurve.keyFromPrivate(oAuthKey.toString("hex", 64), "hex").getPublic();
+  const oAuthPubKey = ecCurve
+    .keyFromPrivate(oAuthKey.toString('hex', 64), 'hex')
+    .getPublic();
 
   const stringifiedSetData = stringify(nonceParams.set_data);
   if (!stringifiedSetData) {
-    throw new Error("Set data is not set");
+    throw new Error('Set data is not set');
   }
-  const nonceData = Buffer.from(stringifiedSetData, "utf8").toString("base64");
+  const nonceData = Buffer.from(stringifiedSetData, 'utf8').toString('base64');
 
   const shareData: ImportedShare = {
     encrypted_seed: keyData.encryptedSeed,
     final_user_point: keyData.finalUserPubKeyPoint,
-    oauth_pub_key_x: oAuthPubKey.getX().toString("hex"),
-    oauth_pub_key_y: oAuthPubKey.getY().toString("hex"),
-    signing_pub_key_x: keyData.SigningPubX.toString("hex"),
-    signing_pub_key_y: keyData.SigningPubY.toString("hex"),
+    oauth_pub_key_x: oAuthPubKey.getX().toString('hex'),
+    oauth_pub_key_y: oAuthPubKey.getY().toString('hex'),
+    signing_pub_key_x: keyData.SigningPubX.toString('hex'),
+    signing_pub_key_y: keyData.SigningPubY.toString('hex'),
     encrypted_share: encParamsMetadata.ciphertext,
     encrypted_share_metadata: encParamsMetadata,
     node_index: Number.parseInt(shareJson.shareIndex, 16),
@@ -102,21 +141,25 @@ function parseImportedShare(params: {
   return shareData;
 }
 
+/**
+ *
+ * @param ed25519Scalar
+ */
 export function getSecpKeyFromEd25519(ed25519Scalar: BN): {
   scalar: BN;
   point: curve.base.BasePoint;
 } {
   const secp256k1Curve = getKeyCurve(KEY_TYPE.SECP256K1);
   if (!secp256k1Curve.n) {
-    throw new Error("Curve is not set");
+    throw new Error('Curve is not set');
   }
 
-  const ed25519KeyHex = ed25519Scalar.toString("hex", 64);
-  const keyHash = keccak256AndHexify(Buffer.from(ed25519KeyHex, "hex"));
-  const keyHashBn = new BN(keyHash.slice(2), "hex");
+  const ed25519KeyHex = ed25519Scalar.toString('hex', 64);
+  const keyHash = keccak256AndHexify(Buffer.from(ed25519KeyHex, 'hex'));
+  const keyHashBn = new BN(keyHash.slice(2), 'hex');
 
-  const secpKey = keyHashBn.umod(secp256k1Curve.n).toString("hex", 64);
-  const bufferKey = Buffer.from(secpKey, "hex");
+  const secpKey = keyHashBn.umod(secp256k1Curve.n).toString('hex', 64);
+  const bufferKey = Buffer.from(secpKey, 'hex');
   if (bufferKey.length !== 32) {
     throw new Error(`Key length must be equal to 32. got ${bufferKey.length}`);
   }
@@ -129,47 +172,79 @@ export function getSecpKeyFromEd25519(ed25519Scalar: BN): {
   };
 }
 
-export function generateAddressFromPrivKey(keyType: KeyType, privateKey: BN): string {
+/**
+ *
+ * @param keyType
+ * @param privateKey
+ */
+export function generateAddressFromPrivKey(
+  keyType: KeyType,
+  privateKey: BN,
+): string {
   const ecCurve = getKeyCurve(keyType);
-  const key = ecCurve.keyFromPrivate(privateKey.toString("hex", 64), "hex");
+  const key = ecCurve.keyFromPrivate(privateKey.toString('hex', 64), 'hex');
   return generateAddressFromEcKey(keyType, key);
 }
 
-export function generateAddressFromPubKey(keyType: KeyType, publicKeyX: BN, publicKeyY: BN): string {
+/**
+ *
+ * @param keyType
+ * @param publicKeyX
+ * @param publicKeyY
+ */
+export function generateAddressFromPubKey(
+  keyType: KeyType,
+  publicKeyX: BN,
+  publicKeyY: BN,
+): string {
   const ecCurve = getKeyCurve(keyType);
-  const key = ecCurve.keyFromPublic({ x: publicKeyX.toString("hex", 64), y: publicKeyY.toString("hex", 64) });
+  const key = ecCurve.keyFromPublic({
+    x: publicKeyX.toString('hex', 64),
+    y: publicKeyY.toString('hex', 64),
+  });
   return generateAddressFromEcKey(keyType, key);
 }
 
 /**
  * Generates and derives key data for a given key type and key buffer.
+ *
  * @param keyType - The type of key to use for the shares.
  * @param keyBuffer - Base data to derive the key data from.
  * @returns The key data.
  */
-export async function generateKeyData(keyType: KeyType, keyBuffer: Buffer): Promise<PrivateKeyData> {
+export async function generateKeyData(
+  keyType: KeyType,
+  keyBuffer: Buffer,
+): Promise<PrivateKeyData> {
   const ecCurve = getKeyCurve(keyType);
   if (!ecCurve.n) {
-    throw new Error("Curve is not set");
+    throw new Error('Curve is not set');
   }
 
   const metadataNonce = getRandomNonce(ecCurve);
-  let encryptedSeed: string = "";
+  let encryptedSeed: string = '';
   let scalar: BN = new BN(keyBuffer);
-  let finalUserPubKeyPoint = ecCurve.keyFromPrivate(scalar.toString("hex", 64), "hex").getPublic();
+  let finalUserPubKeyPoint = ecCurve
+    .keyFromPrivate(scalar.toString('hex', 64), 'hex')
+    .getPublic();
 
   if (keyType === KEY_TYPE.ED25519) {
     const finalEd25519Key = getEd25519ExtendedPublicKey(keyBuffer);
     const encryptionKey = getSecpKeyFromEd25519(finalEd25519Key.scalar);
-    const encryptedSeedBuffer = await encrypt(Buffer.from(encryptionKey.point.encodeCompressed("hex"), "hex"), keyBuffer);
+    const encryptedSeedBuffer = await encrypt(
+      Buffer.from(encryptionKey.point.encodeCompressed('hex'), 'hex'),
+      keyBuffer,
+    );
     const encData: EncryptedSeed = {
-      enc_text: encryptedSeedBuffer.ciphertext.toString("hex"),
+      enc_text: encryptedSeedBuffer.ciphertext.toString('hex'),
       metadata: encryptedParamsBufToHex(encryptedSeedBuffer),
-      public_key: encodeEd25519Point(finalEd25519Key.point).toString("hex"),
+      public_key: encodeEd25519Point(finalEd25519Key.point).toString('hex'),
     };
 
     scalar = finalEd25519Key.scalar;
-    encryptedSeed = Buffer.from(JSON.stringify(encData), "utf-8").toString("base64");
+    encryptedSeed = Buffer.from(JSON.stringify(encData), 'utf-8').toString(
+      'base64',
+    );
     finalUserPubKeyPoint = finalEd25519Key.point;
   }
 
@@ -180,7 +255,9 @@ export async function generateKeyData(keyType: KeyType, keyBuffer: Buffer): Prom
   let SigningPubX: BN = oAuthKeyPair.getPublic().getX();
   let SigningPubY: BN = oAuthKeyPair.getPublic().getY();
   if (keyType === KEY_TYPE.ED25519) {
-    const { scalar: secpScalar, point } = getSecpKeyFromEd25519(oAuthKeyPair.getPrivate());
+    const { scalar: secpScalar, point } = getSecpKeyFromEd25519(
+      oAuthKeyPair.getPrivate(),
+    );
     metadataSigningKey = secpScalar;
     SigningPubX = point.getX();
     SigningPubY = point.getY();
@@ -199,37 +276,60 @@ export async function generateKeyData(keyType: KeyType, keyBuffer: Buffer): Prom
   };
 }
 
-export function getPostboxKeyFrom1OutOf1(ecCurve: EC, privKey: string, nonce: string): string {
+/**
+ *
+ * @param ecCurve
+ * @param privKey
+ * @param nonce
+ */
+export function getPostboxKeyFrom1OutOf1(
+  ecCurve: EC,
+  privKey: string,
+  nonce: string,
+): string {
   if (!ecCurve.n) {
-    throw new Error("Curve is not set");
+    throw new Error('Curve is not set');
   }
 
   const privKeyBN = new BN(privKey, 16);
   const nonceBN = new BN(nonce, 16);
-  return privKeyBN.sub(nonceBN).umod(ecCurve.n).toString("hex");
+  return privKeyBN.sub(nonceBN).umod(ecCurve.n).toString('hex');
 }
 
+/**
+ *
+ * @param ecCurve
+ * @param sk
+ */
 export function derivePubKey(ecCurve: EC, sk: BN): curve.base.BasePoint {
   const skHex = sk.toString(16, 64);
-  return ecCurve.keyFromPrivate(skHex, "hex").getPublic();
+  return ecCurve.keyFromPrivate(skHex, 'hex').getPublic();
 }
 
+/**
+ *
+ * @param keyType
+ */
 export function getKeyCurve(keyType: KeyType = KEY_TYPE.SECP256K1) {
   if (keyType === KEY_TYPE.SECP256K1) {
     if (!secp256k1EC) {
-      secp256k1EC = new EC("secp256k1");
+      secp256k1EC = new EC('secp256k1');
     }
     return secp256k1EC;
   } else if (keyType === KEY_TYPE.ED25519) {
     if (!ed25519EC) {
-      ed25519EC = new EC("ed25519");
+      ed25519EC = new EC('ed25519');
     }
     return ed25519EC;
   }
   throw new Error(`Unsupported key type: ${keyType}`);
 }
 
-/** Convenience method that creates public key and other stuff. RFC8032 5.1.5 */
+/**
+ * Convenience method that creates public key and other stuff. RFC8032 5.1.5
+ *
+ * @param keyBuffer
+ */
 export function getEd25519ExtendedPublicKey(keyBuffer: Buffer): {
   scalar: BN;
   point: curve.base.BasePoint;
@@ -239,39 +339,47 @@ export function getEd25519ExtendedPublicKey(keyBuffer: Buffer): {
   const G = ed25519Curve.g;
   const N = ed25519Curve.n;
   if (!N) {
-    throw new Error("`n` is not set in curve");
+    throw new Error('`n` is not set in curve');
   }
 
   if (keyBuffer.length !== len) {
-    log.error("Invalid seed for ed25519 key derivation", keyBuffer.length);
-    throw new Error("Invalid seed for ed25519 key derivation");
+    log.error('Invalid seed for ed25519 key derivation', keyBuffer.length);
+    throw new Error('Invalid seed for ed25519 key derivation');
   }
   // Hash private key with curve's hash function to produce uniformingly random input
   // Check byte lengths: ensure(64, h(ensure(32, key)))
   const hashed = sha512(keyBuffer);
   if (hashed.length !== 64) {
-    throw new Error("Invalid hash length for ed25519 seed");
+    throw new Error('Invalid hash length for ed25519 seed');
   }
-  const head = new BN(adjustScalarBytes(Buffer.from(hashed.slice(0, len))), "le");
-  const scalar = new BN(head.umod(N), "le"); // The actual private scalar
+  const head = new BN(
+    adjustScalarBytes(Buffer.from(hashed.slice(0, len))),
+    'le',
+  );
+  const scalar = new BN(head.umod(N), 'le'); // The actual private scalar
   const point = G.mul(scalar) as curve.base.BasePoint; // Point on Edwards curve aka public key
   return { scalar, point };
 }
 
+/**
+ *
+ * @param point
+ */
 export function encodeEd25519Point(point: curve.base.BasePoint) {
   const ed25519Curve = getKeyCurve(KEY_TYPE.ED25519);
   if (!ed25519Curve.n) {
-    throw new Error("`n` is not set in curve");
+    throw new Error('`n` is not set in curve');
   }
 
   const encodingLength = Math.ceil(ed25519Curve.n.bitLength() / 8);
-  const enc = point.getY().toArrayLike(Buffer, "le", encodingLength);
+  const enc = point.getY().toArrayLike(Buffer, 'le', encodingLength);
   enc[encodingLength - 1] |= point.getX().isOdd() ? 0x80 : 0;
   return enc;
 }
 
 /**
  * Generates nonce metadata parameters for a given server time offset, operation, private key, key type, nonce, and seed.
+ *
  * @param serverTimeOffset - The server time offset.
  * @param operation - The operation to perform.
  * @param privateKey - The private key to generate the metadata signature.
@@ -286,37 +394,47 @@ export function generateNonceMetadataParams(
   privateKey: BN,
   keyType: KeyType,
   nonce?: BN,
-  seed?: string
+  seed?: string,
 ): NonceMetadataParams {
   // metadata only uses secp for sig validation
-  const key = getKeyCurve(KEY_TYPE.SECP256K1).keyFromPrivate(privateKey.toString("hex", 64), "hex");
+  const key = getKeyCurve(KEY_TYPE.SECP256K1).keyFromPrivate(
+    privateKey.toString('hex', 64),
+    'hex',
+  );
   const setData: Partial<SetNonceData> = {
     operation,
     timestamp: new BN(~~(serverTimeOffset + Date.now() / 1000)).toString(16),
   };
 
   if (nonce) {
-    setData.data = nonce.toString("hex", 64);
+    setData.data = nonce.toString('hex', 64);
   }
 
   if (seed) {
     setData.seed = seed;
   } else {
-    setData.seed = ""; // setting it as empty to keep ordering same while serializing the data on backend.
+    setData.seed = ''; // setting it as empty to keep ordering same while serializing the data on backend.
   }
 
   const stringifiedSetData = stringify(setData);
   if (!stringifiedSetData) {
-    throw new Error("Set data is not set");
+    throw new Error('Set data is not set');
   }
 
-  const sig = key.sign(keccak256AndHexify(Buffer.from(stringifiedSetData, "utf8")).slice(2));
+  const sig = key.sign(
+    keccak256AndHexify(Buffer.from(stringifiedSetData, 'utf8')).slice(2),
+  );
   return {
-    pub_key_X: key.getPublic().getX().toString("hex", 64),
-    pub_key_Y: key.getPublic().getY().toString("hex", 64),
+    pub_key_X: key.getPublic().getX().toString('hex', 64),
+    pub_key_Y: key.getPublic().getY().toString('hex', 64),
     set_data: setData,
     key_type: keyType,
-    signature: Buffer.from(sig.r.toString(16, 64) + sig.s.toString(16, 64) + new BN("").toString(16, 2), "hex").toString("base64"),
+    signature: Buffer.from(
+      sig.r.toString(16, 64) +
+        sig.s.toString(16, 64) +
+        new BN('').toString(16, 2),
+      'hex',
+    ).toString('base64'),
   };
 }
 
@@ -329,18 +447,23 @@ export function generateNonceMetadataParams(
  * @param nodeIndexes - The node indexes to generate shares for.
  * @param nodePubkeys - The public keys for the nodes.
  * @param secret - The secret to be splited into shares.
- **/
+ */
 export async function generateShares(
   keyType: KeyType,
   serverTimeOffset: number,
   nodeIndexes: BN[],
   nodePubkeys: INodePub[],
-  secret: Buffer
+  secret: Buffer,
 ): Promise<ImportedShare[]> {
   const ecCurve = getKeyCurve(keyType);
   // generate key data
   const keyData = await generateKeyData(keyType, secret);
-  const { metadataNonce, oAuthKeyScalar: oAuthKey, encryptedSeed, metadataSigningKey } = keyData;
+  const {
+    metadataNonce,
+    oAuthKeyScalar: oAuthKey,
+    encryptedSeed,
+    metadataSigningKey,
+  } = keyData;
   const threshold = ~~(nodePubkeys.length / 2) + 1;
   const degree = threshold - 1;
 
@@ -349,27 +472,50 @@ export async function generateShares(
   // generate shares from polynomial
   const shares = poly.generateShares(nodeIndexes);
   // generate nonce params
-  const nonceParams = generateNonceMetadataParams(serverTimeOffset, "getOrSetNonce", metadataSigningKey, keyType, metadataNonce, encryptedSeed);
+  const nonceParams = generateNonceMetadataParams(
+    serverTimeOffset,
+    'getOrSetNonce',
+    metadataSigningKey,
+    keyType,
+    metadataNonce,
+    encryptedSeed,
+  );
 
   // encrypt shares
   const encryptedShares = await Promise.all(
     nodeIndexes.map((nodeIdxBn, index) => {
-      const shareJson = shares[nodeIdxBn.toString("hex", 64)].toJSON() as Record<string, string>;
+      const shareJson = shares[
+        nodeIdxBn.toString('hex', 64)
+      ].toJSON() as Record<string, string>;
 
       const nodePubKeyPoint = nodePubkeys[index];
       if (!nodePubKeyPoint) {
-        throw new Error(`Missing node pub key for node index: ${nodeIdxBn.toString("hex", 64)}`);
+        throw new Error(
+          `Missing node pub key for node index: ${nodeIdxBn.toString('hex', 64)}`,
+        );
       }
-      const nodePubKey = getKeyCurve().keyFromPublic({ x: nodePubKeyPoint.X, y: nodePubKeyPoint.Y });
-      return encrypt(Buffer.from(nodePubKey.getPublic().encodeCompressed("hex"), "hex"), Buffer.from(shareJson.share.padStart(64, "0"), "hex"));
-    })
+      const nodePubKey = getKeyCurve().keyFromPublic({
+        x: nodePubKeyPoint.X,
+        y: nodePubKeyPoint.Y,
+      });
+      return encrypt(
+        Buffer.from(nodePubKey.getPublic().encodeCompressed('hex'), 'hex'),
+        Buffer.from(shareJson.share.padStart(64, '0'), 'hex'),
+      );
+    }),
   );
 
   // format/parse encrypted shares to ImportedShareData
   const sharesData: ImportedShare[] = nodeIndexes.map((nodeIndexBn, index) => {
     const encryptedShare = encryptedShares[index];
-    const nodeIndexStr = nodeIndexBn.toString("hex", 64);
-    return parseImportedShare({ keyData, share: shares[nodeIndexStr], encryptedShare, keyType, nonceParams });
+    const nodeIndexStr = nodeIndexBn.toString('hex', 64);
+    return parseImportedShare({
+      keyData,
+      share: shares[nodeIndexStr],
+      encryptedShare,
+      keyType,
+      nonceParams,
+    });
   });
 
   return sharesData;
