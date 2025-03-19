@@ -119,7 +119,7 @@ export type UpdateSecretDataParams = {
   newSecretData: string[];
 };
 
-export type MetamaskTOPRFAuth = {
+export type IMetamaskTOPRFAuth = {
   /**
    * Verify the idToken
    *
