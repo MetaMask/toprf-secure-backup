@@ -1,4 +1,3 @@
-import { KEY_TYPE } from '@toruslabs/constants';
 import BN from 'bn.js';
 
 import { getSecp256K1Curve } from './cryptoUtils';
