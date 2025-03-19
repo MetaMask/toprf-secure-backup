@@ -121,6 +121,7 @@ export type UpdateSecretDataParams = {
 
 export type IMetamaskTOPRFAuth = {
   /**
+   *
    * Verify the idToken
    *
    * @param params - The parameters for verifying the idToken

@@ -46,6 +46,10 @@
     "test:verbose": "NODE_OPTIONS=--experimental-vm-modules jest --verbose",
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch"
   },
+  "dependencies": {
+    "@metamask/auth-network-utils": "^0.0.0",
+    "@toruslabs/http-helpers": "^8.1.1"
+  },
   "devDependencies": {
     "@metamask/auto-changelog": "^3.4.4",
     "@types/jest": "^27.4.1",
@@ -55,6 +59,9 @@
     "typedoc": "^0.24.8",
     "typedoc-plugin-missing-exports": "^2.0.0",
     "typescript": "~5.2.2"
+  },
+  "resolutions": {
+    "@metamask/auth-network-utils@0.0.0": "file:../auth-network-utils/packages/auth-network-utils"
   },
   "engines": {
     "node": "^18.18 || >=20"

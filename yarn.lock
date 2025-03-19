@@ -1079,7 +1079,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metamask/auth-network-utils@workspace:packages/auth-network-utils":
+"@metamask/auth-network-utils@npm:^0.0.0, @metamask/auth-network-utils@workspace:packages/auth-network-utils":
   version: 0.0.0-use.local
   resolution: "@metamask/auth-network-utils@workspace:packages/auth-network-utils"
   dependencies:
@@ -1234,7 +1234,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@metamask/toprf-auth-sdk@workspace:packages/toprf-auth-sdk"
   dependencies:
+    "@metamask/auth-network-utils": "npm:^0.0.0"
     "@metamask/auto-changelog": "npm:^3.4.4"
+    "@toruslabs/http-helpers": "npm:^8.1.1"
     "@types/jest": "npm:^27.4.1"
     deepmerge: "npm:^4.2.2"
     jest: "npm:^27.5.1"
@@ -1619,6 +1621,22 @@ __metadata:
   dependencies:
     elliptic: "npm:^6.6.1"
   checksum: 10c0/3c29de5b0f4ed4ba0c9f57937f3d0240620f4573f14f3d7459937dcfae352bbd7760a903d9632eaea2b8d1fab775dd22b05b2b2bb69450e13a682df2e82796e2
+  languageName: node
+  linkType: hard
+
+"@toruslabs/http-helpers@npm:^8.1.1":
+  version: 8.1.1
+  resolution: "@toruslabs/http-helpers@npm:8.1.1"
+  dependencies:
+    deepmerge: "npm:^4.3.1"
+    loglevel: "npm:^1.9.2"
+  peerDependencies:
+    "@babel/runtime": ^7.x
+    "@sentry/core": ^9.x
+  peerDependenciesMeta:
+    "@sentry/core":
+      optional: true
+  checksum: 10c0/f1e32efebd47ef2fd1de7637e242fd7053cac2849e347364ab25ca0039cac888f79dbf4cee4085ec54f1cec39045f603c2056c8ac6ffdde185b0199eb3d3ac02
   languageName: node
   linkType: hard
 
@@ -3311,7 +3329,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"deepmerge@npm:^4.2.2":
+"deepmerge@npm:^4.2.2, deepmerge@npm:^4.3.1":
   version: 4.3.1
   resolution: "deepmerge@npm:4.3.1"
   checksum: 10c0/e53481aaf1aa2c4082b5342be6b6d8ad9dfe387bc92ce197a66dea08bd4265904a087e75e464f14d1347cf2ac8afe1e4c16b266e0561cc5df29382d3c5f80044
