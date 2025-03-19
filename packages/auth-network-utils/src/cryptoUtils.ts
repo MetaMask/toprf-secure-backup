@@ -8,6 +8,11 @@ import type { EciesHex } from './interfaces';
 
 let secp256k1Curve: EC | null = null;
 
+/**
+ * Instantiate the secp256k1 elliptic curve instance if it doesn't exist
+ *
+ * @returns secp256k1 elliptic curve
+ */
 export function getSecp256K1Curve(): EC {
   if (!secp256k1Curve) {
     secp256k1Curve = new EC('secp256k1');
