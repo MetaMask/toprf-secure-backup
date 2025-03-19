@@ -1,6 +1,4 @@
-import {
-  toChecksumAddress,
-} from './cryptoUtils';
+import { toChecksumAddress } from './cryptoUtils';
 
 describe('keys utils', function () {
   it('should be able to convert to EIP-55 `checksum` address', function () {

@@ -1,4 +1,5 @@
 import { keccak256 } from 'ethereum-cryptography/keccak';
+
 import { keccak256AndHexify, Some } from './common';
 import { waitFor } from './helpers';
 
@@ -47,7 +48,6 @@ describe('common utils', function () {
         }
         throw new Error('not enough data');
       };
-
 
     it('`Some` should throw an error when not enough promises are resolved', async function () {
       const threshold = 3;

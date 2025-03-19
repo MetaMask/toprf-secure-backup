@@ -11,4 +11,3 @@ export type KeyType = (typeof KEY_TYPE)[keyof typeof KEY_TYPE];
 export type EciesHex = {
   [key in keyof Ecies]: string;
 } & { mode?: string };
-

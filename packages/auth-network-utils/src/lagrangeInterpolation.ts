@@ -3,14 +3,16 @@ import type { ec as EC } from 'elliptic';
 
 import { generate32BytesPrivateKeyBuffer } from './cryptoUtils';
 import { generateEmptyBNArray } from './helpers';
-import Point from './point';  
+import Point from './point';
 import Polynomial from './polynomial';
 import type Share from './share';
 
 /**
+ * Generates a private key excluding the given indexes
  *
- * @param shareIndexes
- * @param ecCurve
+ * @param shareIndexes - The indexes to exclude
+ * @param ecCurve - The elliptic curve to use
+ * @returns The private key
  */
 function generatePrivateExcludingIndexes(shareIndexes: BN[], ecCurve: EC): BN {
   const key = new BN(generate32BytesPrivateKeyBuffer(ecCurve));
@@ -24,9 +26,10 @@ function generatePrivateExcludingIndexes(shareIndexes: BN[], ecCurve: EC): BN {
  * Multiplies two polynomials (represented as arrays of BN) modulo mod
  * poly1 and poly2 are arrays where index 0 is the constant term
  *
- * @param poly1
- * @param poly2
- * @param mod
+ * @param poly1 - The first polynomial
+ * @param poly2 - The second polynomial
+ * @param mod - The modulus
+ * @returns The product of the two polynomials modulo the modulus
  */
 function multiplyPolynomials(poly1: BN[], poly2: BN[], mod: BN): BN[] {
   const result = generateEmptyBNArray(poly1.length + poly2.length - 1);
@@ -43,8 +46,9 @@ function multiplyPolynomials(poly1: BN[], poly2: BN[], mod: BN): BN[] {
  * Given points (x_i, y_i), it returns the polynomial P(x) = Σ y_i * L_i(x)
  * where L_i(x) = Π_{j≠i} (x - x_j)/(x_i - x_j)
  *
- * @param ecCurve
- * @param points
+ * @param ecCurve - The elliptic curve to use
+ * @param points - The points to use
+ * @returns The interpolating polynomial
  */
 export function lagrangeInterpolatePolynomial(
   ecCurve: EC,
@@ -95,11 +99,13 @@ export function lagrangeInterpolatePolynomial(
 
 // generateRandomPolynomial - deterministicShares are assumed random
 /**
+ * Generates a random polynomial
  *
- * @param ecCurve
- * @param degree
- * @param secret
- * @param deterministicShares
+ * @param ecCurve - The elliptic curve to use
+ * @param degree - The degree of the polynomial
+ * @param secret - The secret to use
+ * @param deterministicShares - The deterministic shares to use
+ * @returns The polynomial
  */
 export function generateRandomPolynomial(
   ecCurve: EC,

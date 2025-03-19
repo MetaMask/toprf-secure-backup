@@ -33,8 +33,8 @@ class Polynomial {
       throw new Error('Curve is not set');
     }
 
-    for (let i = 1; i < this.polynomial.length; i += 1) {
-      const tmp = xi.mul(this.polynomial[i]);
+    for (const coeff of this.polynomial.slice(1)) {
+      const tmp = xi.mul(coeff);
       sum = sum.add(tmp);
       sum = sum.umod(n);
       xi = xi.mul(new BN(tmpX));
@@ -58,10 +58,10 @@ class Polynomial {
     });
 
     const shares: ShareMap = {};
-    for (let x = 0; x < newShareIndexes.length; x += 1) {
-      shares[newShareIndexes[x].toString('hex', 64)] = new Share(
-        newShareIndexes[x],
-        this.polyEval(newShareIndexes[x]),
+    for (const index of newShareIndexes) {
+      shares[index.toString('hex', 64)] = new Share(
+        index,
+        this.polyEval(index),
       );
     }
     return shares;

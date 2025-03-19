@@ -1,16 +1,17 @@
-import BN from 'bn.js';
-import type { curve } from 'elliptic';
-import { ec as EC } from 'elliptic';
 import type { Ecies } from '@toruslabs/eccrypto';
-import type {
-  EciesHex,
-} from './interfaces';
+import type BN from 'bn.js';
+import type { curve } from 'elliptic';
+import type { ec as EC } from 'elliptic';
+
 import { keccak256AndHexify } from './common';
+import type { EciesHex } from './interfaces';
 
 // generate a 32 bytes private key buffer
 /**
+ * Generates a 32 bytes private key buffer
  *
- * @param ecCurve
+ * @param ecCurve - The elliptic curve to use
+ * @returns The 32 bytes private key buffer
  */
 export function generate32BytesPrivateKeyBuffer(ecCurve: EC): Buffer {
   const privateKey = ecCurve.genKeyPair().getPrivate();
@@ -18,10 +19,11 @@ export function generate32BytesPrivateKeyBuffer(ecCurve: EC): Buffer {
   return privateKeyBuffer;
 }
 
-
 /**
+ * Converts an encrypted parameters buffer to a hex string
  *
- * @param encParams
+ * @param encParams - The encrypted parameters with fields as buffers
+ * @returns The encrypted parameters with fields converted to hex strings
  */
 export function encryptedParamsBufToHex(encParams: Ecies): EciesHex {
   return {
@@ -34,8 +36,10 @@ export function encryptedParamsBufToHex(encParams: Ecies): EciesHex {
 }
 
 /**
+ * Converts an encrypted parameters hex string to a buffer
  *
- * @param eciesData
+ * @param eciesData - The encrypted parameters with fields as hex strings
+ * @returns The encrypted parameters with fields converted to buffers
  */
 export function encParamsHexToBuf(
   eciesData: Omit<EciesHex, 'ciphertext'>,
@@ -48,16 +52,20 @@ export function encParamsHexToBuf(
 }
 
 /**
+ * Strips the hex prefix from a string
  *
- * @param str
+ * @param str - The string to strip the hex prefix from
+ * @returns The string without the hex prefix
  */
 function stripHexPrefix(str: string): string {
   return str.startsWith('0x') ? str.slice(2) : str;
 }
 
 /**
+ * Converts an address to a checksum address
  *
- * @param hexAddress
+ * @param hexAddress - The address to convert to a checksum address
+ * @returns The checksum address
  */
 export function toChecksumAddress(hexAddress: string): string {
   const address = stripHexPrefix(hexAddress).toLowerCase();
@@ -78,14 +86,13 @@ export function toChecksumAddress(hexAddress: string): string {
 }
 
 /**
+ * Derives a public key from a private key
  *
- * @param ecCurve
- * @param sk
+ * @param ecCurve - The elliptic curve to use
+ * @param sk - The private key
+ * @returns The public key
  */
 export function derivePubKey(ecCurve: EC, sk: BN): curve.base.BasePoint {
   const skHex = sk.toString(16, 64);
   return ecCurve.keyFromPrivate(skHex, 'hex').getPublic();
 }
-
-
-

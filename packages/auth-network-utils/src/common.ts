@@ -1,10 +1,10 @@
-import BN from 'bn.js';
-import JsonStringify from 'json-stable-stringify';
 import type { JRPCResponse } from '@toruslabs/constants';
+import BN from 'bn.js';
+import { keccak256 } from 'ethereum-cryptography/keccak';
+import JsonStringify from 'json-stable-stringify';
+
 import { SomeError } from './errors';
 import { waitFor } from './helpers';
-import { keccak256 } from 'ethereum-cryptography/keccak';
-
 
 /**
  * Hashes a buffer using the keccak256 algorithm and hexify the result
@@ -18,20 +18,22 @@ export function keccak256AndHexify(buffer: Buffer): `0x${string}` {
 }
 
 /**
+ * Finds the first element that appears t times in the array
  *
- * @param arr
- * @param t
+ * @param arr - The array to search
+ * @param t - The number of times the element should appear
+ * @returns The first element that appears t times in the array
  */
 export function thresholdSame<T>(arr: T[], t: number): T | undefined {
   const hashMap: Record<string, number> = {};
-  for (let i = 0; i < arr.length; i += 1) {
-    const str = JsonStringify(arr[i]);
+  for (const item of arr) {
+    const str = JsonStringify(item);
     if (!str) {
       continue;
     }
     hashMap[str] = hashMap[str] ? hashMap[str] + 1 : 1;
     if (hashMap[str] === t) {
-      return arr[i];
+      return item;
     }
   }
   return undefined;
@@ -39,8 +41,9 @@ export function thresholdSame<T>(arr: T[], t: number): T | undefined {
 
 /**
  *
- * @param s
- * @param k
+ * @param s - The set to generate combinations from
+ * @param k - The number of elements in each combination
+ * @returns All possible combinations of k elements from the set s
  */
 export function kCombinations(s: number | number[], k: number): number[][] {
   let set = s;
@@ -62,10 +65,11 @@ export function kCombinations(s: number | number[], k: number): number[][] {
   const combs: number[][] = [];
   let tailCombs: number[][] = [];
 
-  for (let i = 0; i <= set.length - k + 1; i += 1) {
+  const indices = Array.from({ length: set.length - k + 2 }, (_, i) => i);
+  for (const i of indices) {
     tailCombs = kCombinations(set.slice(i + 1), k - 1);
-    for (let j = 0; j < tailCombs.length; j += 1) {
-      combs.push([set[i], ...tailCombs[j]]);
+    for (const j of tailCombs) {
+      combs.push([set[i], ...j]);
     }
   }
 
@@ -74,9 +78,10 @@ export function kCombinations(s: number | number[], k: number): number[][] {
 
 /**
  *
- * @param endpoints
- * @param verifier
- * @param verifierId
+ * @param endpoints - The endpoints to choose from
+ * @param verifier - The verifier to use to generate the index
+ * @param verifierId - The verifier id to use to generate the index
+ * @returns The index of the proxy coordinator endpoint
  */
 export function getProxyCoordinatorEndpointIndex(
   endpoints: string[],
@@ -95,7 +100,8 @@ export function getProxyCoordinatorEndpointIndex(
 
 /**
  *
- * @param arr
+ * @param arr - The array to calculate the median of
+ * @returns The median of the array
  */
 export function calculateMedian(arr: number[]): number {
   const arrSize = arr.length;
@@ -121,8 +127,9 @@ export function calculateMedian(arr: number[]): number {
 
 /**
  *
- * @param executionPromise
- * @param maxRetries
+ * @param executionPromise - The promise to retry
+ * @param maxRetries - The maximum number of retries
+ * @returns The result of the promise
  */
 export function retryPromiseWithBackoff<T>(
   executionPromise: () => Promise<JRPCResponse<T>>,
@@ -133,7 +140,8 @@ export function retryPromiseWithBackoff<T>(
   // it to the caller. This is also a recursive function
   /**
    *
-   * @param retries
+   * @param retries - The number of retries
+   * @returns The result of the promise
    */
   async function retryWithBackoff(retries: number) {
     try {
@@ -245,9 +253,9 @@ export async function Some<K, T>(
   const resultArr: K[] = new Array(promises.length).fill(undefined);
   const errorArr: Error[] = new Array(promises.length).fill(undefined);
 
-  for (let i = 0; i < promises.length; i += 1) {
+  for (const [i, promise] of promises.entries()) {
     try {
-      resultArr[i] = await promises[i];
+      resultArr[i] = await promise;
     } catch (e: unknown) {
       errorArr[i] = e as Error;
     }
