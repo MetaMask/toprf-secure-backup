@@ -1,9 +1,9 @@
-/**
- * Example function that returns a greeting for the given name.
- *
- * @param name - The name to greet.
- * @returns The greeting.
- */
-export default function greeter(name: string): string {
-  return `Hello, ${name}!`;
-}
+export type * from './interfaces';
+export { default as Point } from './point';
+export { default as Polynomial } from './polynomial';
+export { default as Share } from './share';
+export * from './errors';
+export * from './common';
+export * from './lagrangeInterpolation';
+export * from './cryptoUtils';
+export * from './helpers';
