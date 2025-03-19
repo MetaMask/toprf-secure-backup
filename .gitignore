@@ -24,3 +24,4 @@ scripts/coverage
 
 # typescript
 packages/*/*.tsbuildinfo
+node_modules
