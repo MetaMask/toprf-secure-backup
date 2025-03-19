@@ -1,9 +1,9 @@
 import BN from 'bn.js';
 import type { ec as EC } from 'elliptic';
 
-import { generate32BytesPrivateKeyBuffer } from './common';
-import { generateEmptyBNArray } from './internal';
-import Point from './point';
+import { generate32BytesPrivateKeyBuffer } from './cryptoUtils';
+import { generateEmptyBNArray } from './helpers';
+import Point from './point';  
 import Polynomial from './polynomial';
 import type Share from './share';
 

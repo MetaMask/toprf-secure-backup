@@ -1,29 +1,10 @@
-import type { JRPCResponse } from '@toruslabs/constants';
-import type { Ecies } from '@toruslabs/eccrypto';
 import BN from 'bn.js';
-import type { ec as EC } from 'elliptic';
-import { keccak256 } from 'ethereum-cryptography/keccak';
 import JsonStringify from 'json-stable-stringify';
-
+import type { JRPCResponse } from '@toruslabs/constants';
 import { SomeError } from './errors';
-import type {
-  CommitmentRequestResult,
-  EciesHex,
-  GetORSetKeyResponse,
-  VerifierLookupResponse,
-} from './interfaces';
-import { capitalizeFirstLetter, waitFor } from './internal';
+import { waitFor } from './helpers';
+import { keccak256 } from 'ethereum-cryptography/keccak';
 
-// generate a 32 bytes private key buffer
-/**
- *
- * @param ecCurve
- */
-export function generate32BytesPrivateKeyBuffer(ecCurve: EC): Buffer {
-  const privateKey = ecCurve.genKeyPair().getPrivate();
-  const privateKeyBuffer = privateKey.toArrayLike(Buffer, undefined, 32);
-  return privateKeyBuffer;
-}
 
 /**
  * Hashes a buffer using the keccak256 algorithm and hexify the result
@@ -35,77 +16,6 @@ export function keccak256AndHexify(buffer: Buffer): `0x${string}` {
   const hash = Buffer.from(keccak256(buffer)).toString('hex');
   return `0x${hash}`;
 }
-
-/**
- *
- * @param encParams
- */
-export function encryptedParamsBufToHex(encParams: Ecies): EciesHex {
-  return {
-    iv: Buffer.from(encParams.iv).toString('hex'),
-    ephemPublicKey: Buffer.from(encParams.ephemPublicKey).toString('hex'),
-    ciphertext: Buffer.from(encParams.ciphertext).toString('hex'),
-    mac: Buffer.from(encParams.mac).toString('hex'),
-    mode: 'AES256',
-  };
-}
-
-/**
- *
- * @param eciesData
- */
-export function encParamsHexToBuf(
-  eciesData: Omit<EciesHex, 'ciphertext'>,
-): Omit<Ecies, 'ciphertext'> {
-  return {
-    ephemPublicKey: Buffer.from(eciesData.ephemPublicKey, 'hex'),
-    iv: Buffer.from(eciesData.iv, 'hex'),
-    mac: Buffer.from(eciesData.mac, 'hex'),
-  };
-}
-
-// this function normalizes the result from nodes before passing the result to threshold check function
-// For ex: some fields returns by nodes might be different from each other
-// like created_at field might vary and nonce_data might not be returned by all nodes because
-// of the metadata implementation in sapphire.
-/**
- *
- * @param result
- */
-export function normalizeKeysResult(result: GetORSetKeyResponse) {
-  const finalResult: Pick<GetORSetKeyResponse, 'keys' | 'is_new_key'> = {
-    keys: [],
-    is_new_key: result.is_new_key,
-  };
-  if (result && result.keys && result.keys.length > 0) {
-    const finalKey = result.keys[0];
-    finalResult.keys = [
-      {
-        pub_key_X: finalKey.pub_key_X,
-        pub_key_Y: finalKey.pub_key_Y,
-        address: finalKey.address,
-      },
-    ];
-  }
-  return finalResult;
-}
-
-export const normalizeLookUpResult = (result: VerifierLookupResponse) => {
-  const finalResult: Pick<VerifierLookupResponse, 'keys'> = {
-    keys: [],
-  };
-  if (result && result.keys && result.keys.length > 0) {
-    const finalKey = result.keys[0];
-    finalResult.keys = [
-      {
-        pub_key_X: finalKey.pub_key_X,
-        pub_key_Y: finalKey.pub_key_Y,
-        address: finalKey.address,
-      },
-    ];
-  }
-  return finalResult;
-};
 
 /**
  *
@@ -214,8 +124,8 @@ export function calculateMedian(arr: number[]): number {
  * @param executionPromise
  * @param maxRetries
  */
-export function retryCommitment(
-  executionPromise: () => Promise<JRPCResponse<CommitmentRequestResult>>,
+export function retryPromiseWithBackoff<T>(
+  executionPromise: () => Promise<JRPCResponse<T>>,
   maxRetries: number,
 ) {
   // Notice that we declare an inner function here
@@ -355,103 +265,4 @@ export async function Some<K, T>(
   // handle error if the output of the callbackFn cannot be determined
   // after all promises are settled
   handleSomeCallBackFnError(errorArr, resultArr, predicateError);
-}
-
-/**
- * This function executes an array of promises and returns a result of the operation based on the predicate function return value.\
- * This function is the old implementation of `Some` and will be removed once the new implementation is fully tested and verified
- *
- * @deprecated Use `Some` instead
- *
- * @param promises - array of promises to execute
- * @param predicate - function to execute resolved promises and determine the outcome of the operation conditionally
- * @returns - result of the operation
- */
-export function SomeV1<K, T>(
-  promises: Promise<K>[],
-  predicate: (
-    resultArr: K[],
-    { resolved }: { resolved: boolean },
-  ) => Promise<T>,
-): Promise<T> {
-  return new Promise((resolve, reject) => {
-    let finishedCount = 0;
-    const sharedState = { resolved: false };
-    const errorArr: Error[] = new Array(promises.length).fill(undefined);
-    const resultArr: K[] = new Array(promises.length).fill(undefined);
-    let predicateError: Error | string;
-
-    promises.forEach((x, index) => {
-      // eslint-disable-next-line promise/catch-or-return
-      x.then((resp: K): unknown => {
-        resultArr[index] = resp;
-        return undefined;
-      })
-        .catch((error: Error) => {
-          errorArr[index] = error;
-        })
-        // eslint-disable-next-line promise/no-return-in-finally
-        .finally(() => {
-          if (sharedState.resolved) {
-            return;
-          }
-          return predicate(resultArr.slice(0), sharedState)
-            .then((data): unknown => {
-              sharedState.resolved = true;
-              resolve(data);
-              return undefined;
-            })
-            .catch((error) => {
-              // log only the last predicate error
-              predicateError = error;
-            })
-            .finally(() => {
-              finishedCount += 1;
-              if (finishedCount === promises.length) {
-                const errors = Object.values(
-                  resultArr.reduce((acc: Record<string, string>, z) => {
-                    if (z) {
-                      const { id, error } = z as {
-                        id?: string;
-                        error?: { data?: string };
-                      };
-                      if (error?.data && error.data.length > 0 && id) {
-                        if (
-                          error.data.startsWith(
-                            'Error occurred while verifying params',
-                          )
-                        ) {
-                          acc[id] = capitalizeFirstLetter(error.data);
-                        } else {
-                          acc[id] = error.data;
-                        }
-                      }
-                    }
-                    return acc;
-                  }, {}),
-                );
-
-                if (errors.length > 0) {
-                  // Format-able errors
-                  const msg =
-                    errors.length > 1
-                      ? `\n${errors.map((it) => `• ${it}`).join('\n')}`
-                      : errors[0];
-                  reject(new Error(msg));
-                } else {
-                  reject(
-                    new SomeError({
-                      errors: errorArr,
-                      responses: resultArr,
-                      predicate:
-                        (predicateError as Error)?.message ||
-                        (predicateError as string),
-                    }),
-                  );
-                }
-              }
-            });
-        });
-    });
-  });
 }

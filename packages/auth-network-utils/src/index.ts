@@ -5,4 +5,5 @@ export { default as Share } from './share';
 export * from './errors';
 export * from './common';
 export * from './lagrangeInterpolation';
-export * from './keys';
+export * from './cryptoUtils';
+export * from './helpers';

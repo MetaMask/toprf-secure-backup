@@ -1,7 +1,7 @@
 import { KEY_TYPE } from '@toruslabs/constants';
 import BN from 'bn.js';
 
-import { getKeyCurve } from './keys';
+import { getKeyCurve } from './cryptoUtils';
 import {
   generateRandomPolynomial,
   lagrangeInterpolatePolynomial,

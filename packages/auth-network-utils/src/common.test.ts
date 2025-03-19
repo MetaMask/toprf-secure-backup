@@ -1,8 +1,6 @@
 import { keccak256 } from 'ethereum-cryptography/keccak';
-import log from 'loglevel';
-
-import { keccak256AndHexify, Some, SomeV1 } from './common';
-import { waitFor } from './internal';
+import { keccak256AndHexify, Some } from './common';
+import { waitFor } from './helpers';
 
 describe('common utils', function () {
   it('should be able to hash a buffer and hexify the result with `keccak256AndHexify', function () {
@@ -50,20 +48,6 @@ describe('common utils', function () {
         throw new Error('not enough data');
       };
 
-    it('`Some` and `SomeV1` should return the same result', async function () {
-      const threshold = 2;
-      const callbackFn = callbackFnFactory(threshold);
-
-      let start = Date.now();
-      const result = await SomeV1(promises, callbackFn);
-      log.info('`SomeV1` execution time', Date.now() - start);
-
-      start = Date.now();
-      const genericResult = await Some(promises, callbackFn);
-      log.info('`Some` execution time', Date.now() - start);
-
-      expect(result).toStrictEqual(genericResult);
-    });
 
     it('`Some` should throw an error when not enough promises are resolved', async function () {
       const threshold = 3;
