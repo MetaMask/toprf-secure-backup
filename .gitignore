@@ -1,6 +1,10 @@
 # tarball from `yarn pack`
 *.tgz
 
+# vs code settings
+.vscode
+.vscode/**/*
+
 # eslint cache
 .eslintcache
 
