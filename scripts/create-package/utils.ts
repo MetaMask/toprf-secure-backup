@@ -1,12 +1,12 @@
 import execa from 'execa';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { format as prettierFormat } from 'prettier';
+import type { Options as PrettierOptions } from 'prettier';
 
 import { MonorepoFiles, Placeholders } from './constants';
 import type { FileMap } from './fs-utils';
 import { readAllFiles, writeFiles } from './fs-utils';
-import { format as prettierFormat } from 'prettier';
-import type { Options as PrettierOptions } from 'prettier';
 
 const PACKAGE_TEMPLATE_DIR = path.join(__dirname, 'package-template');
 const REPO_ROOT = path.join(__dirname, '..', '..');
@@ -91,7 +91,7 @@ export async function readMonorepoFiles(): Promise<MonorepoFileData> {
 export async function finalizeAndWriteData(
   packageData: PackageData,
   monorepoFileData: MonorepoFileData,
-) {
+): Promise<void> {
   const packagePath = path.join(PACKAGES_PATH, packageData.directoryName);
   try {
     await fs.stat(packagePath);
