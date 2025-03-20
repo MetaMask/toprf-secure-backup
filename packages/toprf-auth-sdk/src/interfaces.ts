@@ -173,6 +173,8 @@ export type IMetamaskTOPRFAuth = {
    * @param {string} params.verifierID - The verifierID/userID assigned to the user by the verifier.
    *
    * @returns {AuthenticateResult} A promise that resolves with the authentication result.
+   * @throws {Error} If idToken is older than 6 minutes.
+   * 
    */
   authenticate: (params: AuthenticateParams) => Promise<AuthenticateResult>;
 
@@ -199,11 +201,12 @@ export type IMetamaskTOPRFAuth = {
   recoverEncKey: (params: RecoverEncKeyParams) => Promise<RecoverEncKeyResult>;
 
   /**
-   * Update the encryption key
+   * This function updates the encryption key and copies the secret data of existing encryption key to the new one.
    *
    * @param params - The parameters for updating the encryption key.
    * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
    * @param params.newPassword - The new password of the user.
+   * @param params.encKey - The current encryption key of the user.
    *
    * @returns {UpdateEncKeyResult} A promise that resolves with the new encryption key.
    */
@@ -232,16 +235,4 @@ export type IMetamaskTOPRFAuth = {
   fetchSecretData: (
     params: FetchSecretDataParams,
   ) => Promise<FetchSecretDataResult>;
-
-  /**
-   * This function fetches the encrypted secret data from the nodes metadata store without decrypting it.
-   *
-   * @param params - The parameters for fetching the encrypted secret data.
-   * @param params.encPubKey - The encryption public key of the user.
-   *
-   * @returns {FetchEncryptedSecretDataResult} A promise that resolves with the encrypted secret data.
-   */
-  fetchEncryptedSecretData: (
-    params: FetchEncryptedSecretDataParams,
-  ) => Promise<FetchEncryptedSecretDataResult>;
 };
