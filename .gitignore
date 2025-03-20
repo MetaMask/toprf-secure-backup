@@ -1,6 +1,10 @@
 # tarball from `yarn pack`
 *.tgz
 
+# vs code settings
+.vscode
+.vscode/**/*
+
 # eslint cache
 .eslintcache
 
@@ -24,3 +28,4 @@ scripts/coverage
 
 # typescript
 packages/*/*.tsbuildinfo
+node_modules
