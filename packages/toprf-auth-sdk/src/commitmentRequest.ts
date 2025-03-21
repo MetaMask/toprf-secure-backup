@@ -122,7 +122,7 @@ export const commitmentRequest = async (params: {
   sessionPubKeyY: string;
   endpoints: string[];
   indexes: number[];
-}): Promise<void | CommitmentRequestResult[]> => {
+}): Promise<CommitmentRequestResult[]> => {
   const { idToken, endpoints, verifier, sessionPubKeyX, sessionPubKeyY } =
     params;
   const threeFourthsThreshold = Math.floor((endpoints.length * 3) / 4) + 1;
@@ -138,13 +138,19 @@ export const commitmentRequest = async (params: {
     createCommitmentRequest(endpoint, requestParams),
   );
 
-  return new Promise<void | CommitmentRequestResult[]>((resolve, reject) => {
+  return new Promise<CommitmentRequestResult[]>((resolve, reject) => {
     Some<CommitmentJRPCResponse, CommitmentRequestResult[]>(
       promiseArr,
       (resultArr) =>
         validateThresholdCommitmentResponses(resultArr, threeFourthsThreshold),
     )
-      .then(resolve)
+      .then((resultArr) => {
+        if (!resultArr || resultArr.length === 0) {
+          throw new Error('No commitment request results');
+        } else {
+          resolve(resultArr);
+        }
+      })
       .catch(reject);
   });
 };
