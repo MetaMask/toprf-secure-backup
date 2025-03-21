@@ -1,7 +1,6 @@
-import { KEY_TYPE } from '@toruslabs/constants';
 import BN from 'bn.js';
 
-import { getKeyCurve } from './cryptoUtils';
+import { getSecp256K1Curve } from './cryptoUtils';
 import {
   generateRandomPolynomial,
   lagrangeInterpolatePolynomial,
@@ -12,7 +11,7 @@ import Point from './point';
 describe('lagrange interpolation', function () {
   it('should generate random polynomial', function () {
     const degree = 5;
-    const curve = getKeyCurve(KEY_TYPE.SECP256K1);
+    const curve = getSecp256K1Curve();
 
     const result = generateRandomPolynomial(curve, degree);
     // number of polynomials should be equal to the degree + 1 (inital secret)
@@ -21,7 +20,7 @@ describe('lagrange interpolation', function () {
 
   it('should generate random polynomial with secret', function () {
     const degree = 5;
-    const curve = getKeyCurve(KEY_TYPE.SECP256K1);
+    const curve = getSecp256K1Curve();
     const secret = new BN(100);
 
     const result = generateRandomPolynomial(curve, degree, secret);
@@ -34,7 +33,7 @@ describe('lagrange interpolation', function () {
   it('should reconstruct secret from shares using lagrangeInterpolation', function () {
     const degree = 5;
     const sharesRequired = degree + 1;
-    const curve = getKeyCurve(KEY_TYPE.SECP256K1);
+    const curve = getSecp256K1Curve();
     const secret = new BN(1234567890);
 
     const polynomial = generateRandomPolynomial(curve, degree, secret);
@@ -58,7 +57,7 @@ describe('lagrange interpolation', function () {
   it('should reconstruct secret from shares using lagrangeInterpolatePolynomial', function () {
     const degree = 5;
     const sharesRequired = degree + 1;
-    const curve = getKeyCurve(KEY_TYPE.SECP256K1);
+    const curve = getSecp256K1Curve();
     const secret = new BN(1234567890);
 
     const polynomial = generateRandomPolynomial(curve, degree, secret);
@@ -82,7 +81,7 @@ describe('lagrange interpolation', function () {
   });
 
   it('should correctly interpolate polynomial through all points', function () {
-    const curve = getKeyCurve(KEY_TYPE.SECP256K1);
+    const curve = getSecp256K1Curve();
 
     // Points representing y = x^3 - x^2 + 2x + 1
     const x0 = new BN(0);
@@ -112,7 +111,7 @@ describe('lagrange interpolation', function () {
   });
 
   it('should handle points in any order', function () {
-    const curve = getKeyCurve(KEY_TYPE.SECP256K1);
+    const curve = getSecp256K1Curve();
 
     // Points representing y = 2x + 1
     const x0 = new BN(0);
@@ -148,7 +147,7 @@ describe('lagrange interpolation', function () {
   });
 
   it('should interpolate constant polynomial when given single point', function () {
-    const curve = getKeyCurve(KEY_TYPE.SECP256K1);
+    const curve = getSecp256K1Curve();
     const x = new BN(1);
     const y = new BN(2);
     const point = new Point(x, y, curve);
@@ -161,7 +160,7 @@ describe('lagrange interpolation', function () {
   });
 
   it('should interpolate linear polynomial when given two points', function () {
-    const curve = getKeyCurve(KEY_TYPE.SECP256K1);
+    const curve = getSecp256K1Curve();
 
     // Points representing y = x + 1
     const x0 = new BN(0);
