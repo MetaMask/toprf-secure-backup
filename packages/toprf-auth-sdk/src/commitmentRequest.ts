@@ -144,7 +144,7 @@ export const commitmentRequest = async (params: {
       (resultArr) =>
         validateThresholdCommitmentResponses(resultArr, threeFourthsThreshold),
     )
-      .then((resultArr: CommitmentRequestResult[]) => {
+      .then((resultArr: CommitmentRequestResult[] | void) => {
         if (!resultArr || resultArr.length === 0) {
           throw new Error('No commitment request results');
         } else {
