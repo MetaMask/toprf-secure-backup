@@ -1,25 +1,20 @@
 /**
- * EncKeyPublic - The encryption public key.
- *
- * encPubKeyX - The encrypted public key X coordinate in hex format.
- *
- * encPubKeyY - The encrypted public key Y coordinate in hex format.
+ * SEC1 encoded public key
+ * Format: 0x04 || x || y
+ * Where x and y are 32-byte coordinates in big-endian format
  */
-export type EncKeyPublic = {
-  encPubKeyX: string;
-  encPubKeyY: string;
-};
+export type SEC1EncodedPublicKey = string;
 
 /**
  * EncKey - The encryption/decryption private and public key pair.
  *
- * encPrivKey - The encrypted private key in hex format.
+ * encPrivKey - The decryption private key in Uint8Array format.
  *
- * encPubKey - The encrypted public key.
+ * encPubKey - The encryption public key in SEC1 encoded format.
  */
 export type EncKey = {
-  encPrivKey: `0x${string}`;
-  encPubKey: EncKeyPublic;
+  encPrivKey: Uint8Array;
+  encPubKey: SEC1EncodedPublicKey;
 };
 
 export type AuthenticateParams = {
@@ -45,23 +40,10 @@ export type NodeAuthTokens = {
 /**
  * nodeAuthTokens - An array of authentication tokens issued by the nodes.
  *
- * [existingEncKeyPublicData] -  Existing encryption key public data.
- *
- * existingEncKeyPublicData.pubKeyX - The X coordinate of the encryption public key.
- *
- * existingEncKeyPublicData.pubKeyY - The Y coordinate of the encryption public key.
- *
- * existingEncKeyPublicData.keyIndex - The index of the encryption key.
- *
  * hasValidEncKey - Indicates whether a valid encryption key exists.
  */
 export type AuthenticateResult = {
   nodeAuthTokens: NodeAuthTokens;
-  existingEncKeyPublicData: {
-    pubKeyX: string;
-    pubKeyY: string;
-    keyIndex: number;
-  };
   hasValidEncKey: boolean;
 };
 
@@ -146,20 +128,6 @@ export type FetchSecretDataResult = {
   secretData: string;
 };
 
-/**
- * encPubKey - The encryption public key of the user.
- */
-export type FetchEncryptedSecretDataParams = {
-  encPubKey: EncKeyPublic;
-};
-
-/**
- * encryptedSecretData - The encrypted secret data array in hex format.
- */
-export type FetchEncryptedSecretDataResult = {
-  encryptedSecretData: string[];
-};
-
 export type IMetamaskTOPRFAuth = {
   /**
    * This function is used to authenticate the user by sending the oauth idToken to the nodes and
@@ -174,7 +142,6 @@ export type IMetamaskTOPRFAuth = {
    *
    * @returns {AuthenticateResult} A promise that resolves with the authentication result.
    * @throws {Error} If idToken is older than 6 minutes.
-   * 
    */
   authenticate: (params: AuthenticateParams) => Promise<AuthenticateResult>;
 

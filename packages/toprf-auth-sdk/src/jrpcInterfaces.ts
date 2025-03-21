@@ -25,7 +25,6 @@ export type CommitmentRequestResult = {
 
 export type CommitmentJRPCResponse = JRPCResponse<CommitmentRequestResult>;
 
-
 export type AuthJRPCRequestParams = {
   auth_data: {
     authentication_context: {
@@ -34,7 +33,7 @@ export type AuthJRPCRequestParams = {
       verifier_id: string;
     };
     verifier_oauth_params: Record<string, unknown>;
-  },
+  };
   commitment_signatures: CommitmentRequestResult[];
   client_time: string;
 };
@@ -47,10 +46,10 @@ export type AuthJRPCRequest = {
 };
 
 export type AuthRequestResult = {
-    auth_token: string;
-    node_index: number;
-    enc_pub_key: string;
-    enc_key_index: number;
+  auth_token: string;
+  node_index: number;
+  enc_pub_key: string;
+  enc_key_index: number;
 };
 
 export type AuthJRPCResponse = JRPCResponse<AuthRequestResult>;
