@@ -1,10 +1,24 @@
 import type { Ecies } from '@toruslabs/eccrypto';
 import type BN from 'bn.js';
 import type { curve } from 'elliptic';
-import type { ec as EC } from 'elliptic';
+import { ec as EC } from 'elliptic';
 
 import { keccak256AndHexify } from './common';
 import type { EciesHex } from './interfaces';
+
+let secp256k1Curve: EC | null = null;
+
+/**
+ * Instantiate the secp256k1 elliptic curve instance if it doesn't exist
+ *
+ * @returns secp256k1 elliptic curve
+ */
+export function getSecp256K1Curve(): EC {
+  if (!secp256k1Curve) {
+    secp256k1Curve = new EC('secp256k1');
+  }
+  return secp256k1Curve;
+}
 
 // generate a 32 bytes private key buffer
 /**
