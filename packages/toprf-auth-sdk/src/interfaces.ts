@@ -3,7 +3,7 @@
  * Format: 0x04 || x || y
  * Where x and y are 32-byte coordinates in big-endian format
  */
-export type SEC1EncodedPublicKey = string;
+export type SEC1EncodedPublicKey = Uint8Array;
 
 /**
  * EncKey - The encryption/decryption private and public key pair.
