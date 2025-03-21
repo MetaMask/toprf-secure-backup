@@ -141,11 +141,11 @@ export const authenticateRequest = async (params: {
     Some<AuthJRPCResponse, AuthRequestResult[]>(promiseArr, (resultArr) =>
       validateThresholdAuthenticateResponses(resultArr, halfThreshold),
     )
-      .then((resultArr) => {
+      .then((resultArr: AuthRequestResult[]) => {
         if (!resultArr || resultArr.length === 0) {
-          reject(new Error('Invalid authenticate request results'));
+          throw new Error('Invalid authenticate request results');
         } else {
-          resolve(resultArr);
+          return resolve(resultArr);
         }
       })
       .catch(reject);

@@ -1,12 +1,12 @@
 import execa from 'execa';
 import fs from 'fs';
 import path from 'path';
+import prettier from 'prettier';
 
 import { MonorepoFiles } from './constants';
 import * as fsUtils from './fs-utils';
 import type { PackageData } from './utils';
 import { finalizeAndWriteData, readMonorepoFiles } from './utils';
-import prettier from 'prettier';
 
 jest.mock('fs', () => ({
   existsSync: jest.fn(),

@@ -1636,7 +1636,7 @@ __metadata:
   peerDependenciesMeta:
     "@sentry/core":
       optional: true
-  checksum: 10c0/f1e32efebd47ef2fd1de7637e242fd7053cac2849e347364ab25ca0039cac888f79dbf4cee4085ec54f1cec39045f603c2056c8ac6ffdde185b0199eb3d3ac02
+  checksum: 10/bae7821b8a30a40dff4752bb41bb93d0fa6d41e766e3cdb998462bb59338e3fa8b2a491ccc97cbe371b25d155b2bea8e69ecbd4b177cb42af6aba9b34af7aba8
   languageName: node
   linkType: hard
 
