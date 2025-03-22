@@ -1,4 +1,4 @@
-import type { JRPCResponse } from '@metamask/auth-network-utils';
+import type { JRPCResponse, JRPCRequest } from '@metamask/auth-network-utils';
 
 export type CommitmentJRPCRequestParams = {
   message_prefix: string;
@@ -8,12 +8,7 @@ export type CommitmentJRPCRequestParams = {
   temp_pub_key_y: string;
 };
 
-export type CommitmentJRPCRequest = {
-  jsonrpc: string;
-  method: string;
-  id: number;
-  params: CommitmentJRPCRequestParams;
-};
+export type CommitmentJRPCRequest = JRPCRequest<CommitmentJRPCRequestParams>;
 
 export type CommitmentRequestResult = {
   signature: string;
@@ -38,12 +33,7 @@ export type AuthJRPCRequestParams = {
   client_time: string;
 };
 
-export type AuthJRPCRequest = {
-  jsonrpc: string;
-  method: string;
-  id: number;
-  params: AuthJRPCRequestParams;
-};
+export type AuthJRPCRequest = JRPCRequest<AuthJRPCRequestParams>;
 
 export type AuthRequestResult = {
   auth_token: string;

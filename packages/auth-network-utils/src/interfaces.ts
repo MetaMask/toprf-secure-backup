@@ -19,3 +19,10 @@ export type JRPCResponse<T> = {
     data?: unknown;
   };
 };
+
+export type JRPCRequest<T> = {
+  jsonrpc: '2.0';
+  method: string;
+  id: number;
+  params: T;
+};
