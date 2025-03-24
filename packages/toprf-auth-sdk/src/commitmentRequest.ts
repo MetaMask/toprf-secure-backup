@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import {
   Some,
   keccak256AndHexify,
@@ -44,7 +45,7 @@ export const createCommitmentRequestParams = (
  * @param params - The parameters for the commitment request
  * @returns Array of commitment request promises
  */
-export const createCommitmentRequest = (
+export const createCommitmentRequest = async (
   endpoint: string,
   params: CommitmentJRPCRequestParams,
 ): Promise<CommitmentJRPCResponse> => {
@@ -52,14 +53,14 @@ export const createCommitmentRequest = (
     JRPC_METHODS.COMMITMENT_REQUEST,
     params,
   ) as CommitmentJRPCRequest;
-  const p = () =>
+  const commitmentResponse = async (): Promise<CommitmentJRPCResponse> =>
     post<CommitmentJRPCResponse>(
       endpoint,
       commitmentJRPCRequest,
       {},
       { logTracingHeader: false },
     );
-  return retryPromiseWithBackoff(p, 4);
+  return retryPromiseWithBackoff(commitmentResponse, 4);
 };
 
 /**
