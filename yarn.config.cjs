@@ -1,4 +1,9 @@
-// @ts-check
+/* @ts-check */
+// The ESLint JSDoc plugin usually disables this rule for TypeScript files,
+// but for JavaScript files we are typechecking, we need to disable it manually.
+// See: <https://github.com/gajus/eslint-plugin-jsdoc/issues/888#issuecomment-1544914446>
+/* eslint-disable jsdoc/no-undefined-types */
+
 // This file is used to define, among other configuration, rules that Yarn will
 // execute when you run `yarn constraints`. These rules primarily check the
 // manifests of each package in the monorepo to ensure they follow a standard
@@ -11,6 +16,15 @@ const { get } = require('lodash');
 const { basename, resolve } = require('path');
 const semver = require('semver');
 const { inspect } = require('util');
+
+/**
+ * These packages and ranges are allowed to mismatch expected consistency checks
+ * Only intended as temporary measures to faciliate upgrades and releases.
+ * This should trend towards empty.
+ */
+const ALLOWED_INCONSISTENT_DEPENDENCIES = {
+  // '@metamask/json-rpc-engine': ['^9.0.3'],
+};
 
 /**
  * Aliases for the Yarn type definitions, to make the code more readable.
@@ -86,6 +100,9 @@ module.exports = defineConfig({
 
         // All non-root packages must have a license, defaulting to MIT.
         await expectWorkspaceLicense(workspace);
+
+        // All non-root packages must not have side effects.
+        expectWorkspaceField(workspace, 'sideEffects', false);
 
         // All non-root packages must set up ESM- and CommonJS-compatible
         // exports correctly.
@@ -173,7 +190,10 @@ module.exports = defineConfig({
       // If one workspace package lists another workspace package within
       // `dependencies` or `devDependencies`, the version used within the
       // dependency range must match the current version of the dependency.
-      expectUpToDateWorkspaceDependenciesAndDevDependencies(Yarn, workspace);
+      expectUpToDateWorkspaceDependenciesAndDevDependencies(
+        Yarn,
+        dependenciesByIdentAndType,
+      );
 
       // If one workspace package lists another workspace package within
       // `peerDependencies`, the dependency range must satisfy the current
@@ -181,29 +201,19 @@ module.exports = defineConfig({
       expectUpToDateWorkspacePeerDependencies(Yarn, workspace);
 
       // No dependency may be listed under both `dependencies` and
-      // `devDependencies`.
-      expectDependenciesNotInBothProdAndDev(
+      // `devDependencies`, or under both `dependencies` and `peerDependencies`.
+      expectDependenciesNotInBothProdAndDevOrPeer(
         workspace,
         dependenciesByIdentAndType,
       );
 
-      // If one workspace package (A) lists another workspace package (B) in its
-      // `dependencies`, and B is a critical dependency package, then we need to ensure
-      // that B is also listed in A's `peerDependencies` and that the version
-      // range satisfies the current version of B.
-      const criticalDependencyPatterns = [
-        // Examples of patterns you might want to use:
-        // /-controller$/u, // for projects that use controllers
-        // /-plugin$/u,     // for projects that use plugins
-        // /-adapter$/u,    // for projects that use adapters
-        // Add any patterns specific to your project architecture
-      ];
-
-      expectCriticalDependenciesListedAsPeerDependencies(
+      // If one package A lists another package B in its `peerDependencies`,
+      // then B must also be listed in A's `devDependencies`, and if B is a
+      // workspace package, the dev dependency must match B's version.
+      expectPeerDependenciesAlsoListedAsDevDependencies(
         Yarn,
         workspace,
         dependenciesByIdentAndType,
-        criticalDependencyPatterns,
       );
 
       // The root workspace (and only the root workspace) must specify the Yarn
@@ -237,15 +247,14 @@ module.exports = defineConfig({
     }
 
     // All version ranges in `dependencies` and `devDependencies` for the same
-    // dependency across the monorepo must be the same.
+    // non-workspace dependency across the monorepo must be the same.
     expectConsistentDependenciesAndDevDependencies(Yarn);
   },
 });
 
 /**
- * Construct a nested map of dependencies. The inner layer categorizes
- * instances of the same dependency by its location in the manifest; the outer
- * layer categorizes the inner layer by the name of the dependency.
+ * Organizes the given dependencies by name and type (`dependencies`,
+ * `devDependencies`, or `peerDependencies`).
  *
  * @param {Dependency[]} dependencies - The list of dependencies to transform.
  * @returns {Map<string, Map<DependencyType, Dependency>>} The resulting map.
@@ -368,12 +377,15 @@ async function workspaceFileExists(workspace, path) {
 }
 
 /**
- * Expect that the workspace has the given field, and that it is a non-null
- * value. If the field is not present, or is null, this will log an error, and
- * cause the constraint to fail.
+ * This function does one of three things depending on the arguments given:
  *
- * If a value is provided, this will also verify that the field is equal to the
- * given value.
+ * - With no value provided, this will expect that the workspace has the given
+ * field and that it is a non-null value; if the field is not present or is
+ * null, this will log an error and cause the constraint to fail.
+ * - With a value is provided, and the value is non-null, this will verify that
+ * the field is equal to the given value.
+ * - With a value is provided, and the value is null, this will verify that the
+ * field is not present.
  *
  * @param {Workspace} workspace - The workspace to check.
  * @param {string} fieldName - The field to check.
@@ -570,24 +582,41 @@ function expectCorrectWorkspaceChangelogScripts(workspace) {
 
 /**
  * Expect that if the workspace package lists another workspace package within
- * `dependencies` or `devDependencies`, the version used within the dependency
- * range is exactly equal to the current version of the dependency (and the
- * range uses the `^` modifier).
+ * `devDependencies`, or lists another workspace package within `dependencies`
+ * (and does not already list it in `peerDependencies`), the version used within
+ * the dependency range is exactly equal to the current version of the
+ * dependency (and the range uses the `^` modifier).
  *
  * @param {Yarn} Yarn - The Yarn "global".
- * @param {Workspace} workspace - The workspace to check.
+ * @param {Map<string, Map<DependencyType, Dependency>>} dependenciesByIdentAndType -
+ * Map of dependency ident to dependency type and dependency.
  */
 function expectUpToDateWorkspaceDependenciesAndDevDependencies(
   Yarn,
-  workspace,
+  dependenciesByIdentAndType,
 ) {
-  for (const dependency of Yarn.dependencies({ workspace })) {
-    const dependencyWorkspace = Yarn.workspace({ ident: dependency.ident });
+  for (const [
+    dependencyIdent,
+    dependencyInstancesByType,
+  ] of dependenciesByIdentAndType.entries()) {
+    const dependencyWorkspace = Yarn.workspace({ ident: dependencyIdent });
 
-    if (
-      dependencyWorkspace !== null &&
-      dependency.type !== 'peerDependencies'
-    ) {
+    if (!dependencyWorkspace) {
+      continue;
+    }
+
+    const devDependency = dependencyInstancesByType.get('devDependencies');
+    const prodDependency = dependencyInstancesByType.get('dependencies');
+    const peerDependency = dependencyInstancesByType.get('peerDependencies');
+
+    if (devDependency || (prodDependency && !peerDependency)) {
+      const dependency = devDependency ?? prodDependency;
+
+      const ignoredRanges = ALLOWED_INCONSISTENT_DEPENDENCIES[dependencyIdent];
+      if (ignoredRanges?.includes(dependency.range)) {
+        continue;
+      }
+
       dependency.update(`^${dependencyWorkspace.manifest.version}`);
     }
   }
@@ -618,11 +647,7 @@ function expectUpToDateWorkspacePeerDependencies(Yarn, workspace) {
           dependency.range,
         )
       ) {
-        expectWorkspaceField(
-          workspace,
-          `peerDependencies["${dependency.ident}"]`,
-          `^${dependencyWorkspaceVersion.major}.0.0`,
-        );
+        dependency.update(`^${dependencyWorkspaceVersion.major}.0.0`);
       }
     }
   }
@@ -630,13 +655,14 @@ function expectUpToDateWorkspacePeerDependencies(Yarn, workspace) {
 
 /**
  * Expect that a workspace package does not list a dependency in both
- * `dependencies` and `devDependencies`.
+ * `dependencies` and `devDependencies`, or in both `dependencies` and
+ * `peerDependencies`.
  *
  * @param {Workspace} workspace - The workspace to check.
- * @param {Map<string, Map<DependencyType, Dependency>>} dependenciesByIdentAndType - Map of
- * dependency ident to dependency type and dependency.
+ * @param {Map<string, Map<DependencyType, Dependency>>} dependenciesByIdentAndType -
+ * Map of dependency ident to dependency type and dependency.
  */
-function expectDependenciesNotInBothProdAndDev(
+function expectDependenciesNotInBothProdAndDevOrPeer(
   workspace,
   dependenciesByIdentAndType,
 ) {
@@ -644,78 +670,94 @@ function expectDependenciesNotInBothProdAndDev(
     dependencyIdent,
     dependencyInstancesByType,
   ] of dependenciesByIdentAndType.entries()) {
-    if (
-      dependencyInstancesByType.size > 1 &&
-      !dependencyInstancesByType.has('peerDependencies')
-    ) {
+    const dependency = dependencyInstancesByType.get('dependencies');
+    if (dependency === undefined) {
+      continue;
+    }
+    if (dependencyInstancesByType.has('devDependencies')) {
       workspace.error(
         `\`${dependencyIdent}\` cannot be listed in both \`dependencies\` and \`devDependencies\``,
+      );
+    } else if (dependencyInstancesByType.has('peerDependencies')) {
+      expectWorkspaceField(
+        workspace,
+        `devDependencies["${dependencyIdent}"]`,
+        dependency.range,
+      );
+      expectWorkspaceField(
+        workspace,
+        `dependencies["${dependencyIdent}"]`,
+        null,
       );
     }
   }
 }
 
 /**
- * Expect that if the workspace package lists another workspace package in its
- * dependencies, and it is a controller package, that the controller package is
- * listed in the workspace's `peerDependencies` and the version range satisfies
- * the current version of the controller package.
- *
- * The expectation in this case is that the client will instantiate B in order
- * to pass it into A. Therefore, it needs to list not only A as a dependency,
- * but also B. Additionally, the version of B that the client is using with A
- * needs to match the version that A itself is expecting internally.
- *
- * Note that this constraint does not apply for packages that seem to represent
- * instantiable controllers but actually represent abstract classes.
+ * Expect that if the workspace package lists another package in its
+ * `peerDependencies`, the package is also listed in the workspace's
+ * `devDependencies`. If the other package is a workspace package, also expect
+ * that the dev dependency matches the current version of the package.
  *
  * @param {Yarn} Yarn - The Yarn "global".
  * @param {Workspace} workspace - The workspace to check.
  * @param {Map<string, Map<DependencyType, Dependency>>} dependenciesByIdentAndType - Map of
  * dependency ident to dependency type and dependency.
- * @param {RegExp[]} criticalDependencyPatterns - Array of patterns to match against dependency ident.
  */
-function expectCriticalDependenciesListedAsPeerDependencies(
+function expectPeerDependenciesAlsoListedAsDevDependencies(
   Yarn,
   workspace,
   dependenciesByIdentAndType,
-  criticalDependencyPatterns = [],
 ) {
   for (const [
     dependencyIdent,
     dependencyInstancesByType,
   ] of dependenciesByIdentAndType.entries()) {
-    if (!dependencyInstancesByType.has('dependencies')) {
+    if (!dependencyInstancesByType.has('peerDependencies')) {
       continue;
     }
 
     const dependencyWorkspace = Yarn.workspace({ ident: dependencyIdent });
 
-    if (
-      dependencyWorkspace !== null &&
-      criticalDependencyPatterns.some((pattern) =>
-        dependencyIdent.match(pattern),
-      ) &&
-      !dependencyInstancesByType.has('peerDependencies')
-    ) {
-      const dependencyWorkspaceVersion = new semver.SemVer(
-        dependencyWorkspace.manifest.version,
-      );
+    if (dependencyWorkspace) {
       expectWorkspaceField(
         workspace,
-        `peerDependencies["${dependencyIdent}"]`,
-        `^${dependencyWorkspaceVersion.major}.0.0`,
+        `devDependencies["${dependencyIdent}"]`,
+        `^${dependencyWorkspace.manifest.version}`,
       );
+    } else {
+      expectWorkspaceField(workspace, `devDependencies["${dependencyIdent}"]`);
     }
   }
 }
 
 /**
- * Expect that all version ranges in `dependencies` and `devDependencies` for
- * the same dependency across the entire monorepo are the same. As it is
- * impossible to compare NPM version ranges, let the user decide if there are
- * conflicts. (`peerDependencies` is a special case, and we handle that
- * particularly for workspace packages elsewhere.)
+ * Filter out dependency ranges which are not to be considered in `expectConsistentDependenciesAndDevDependencies`.
+ *
+ * @param {string} dependencyIdent - The dependency being filtered for
+ * @param {Map<string, Dependency>} dependenciesByRange - Dependencies by range
+ * @returns {Map<string, Dependency>} The resulting map.
+ */
+function getInconsistentDependenciesAndDevDependencies(
+  dependencyIdent,
+  dependenciesByRange,
+) {
+  const ignoredRanges = ALLOWED_INCONSISTENT_DEPENDENCIES[dependencyIdent];
+  if (!ignoredRanges) {
+    return dependenciesByRange;
+  }
+  return new Map(
+    Object.entries(dependenciesByRange).filter(
+      ([range]) => !ignoredRanges.includes(range),
+    ),
+  );
+}
+
+/**
+ * Expect that across the entire monorepo all version ranges in `dependencies`
+ * and `devDependencies` for the same dependency are the same (as long as it is
+ * not a dependency on a workspace package). As it is impossible to compare NPM
+ * version ranges, let the user decide if there are conflicts.
  *
  * @param {Yarn} Yarn - The Yarn "global".
  */
@@ -728,18 +770,28 @@ function expectConsistentDependenciesAndDevDependencies(Yarn) {
     dependencyIdent,
     dependenciesByRange,
   ] of nonPeerDependenciesByIdent.entries()) {
-    const dependencyRanges = [...dependenciesByRange.keys()].sort();
-    if (dependenciesByRange.size > 1) {
-      for (const dependencies of dependenciesByRange.values()) {
-        for (const dependency of dependencies) {
-          dependency.error(
-            `Expected version range for ${dependencyIdent} (in ${
-              dependency.type
-            }) to be consistent across monorepo. Pick one: ${inspect(
-              dependencyRanges,
-            )}`,
-          );
-        }
+    const dependencyWorkspace = Yarn.workspace({ ident: dependencyIdent });
+
+    if (dependenciesByRange.size <= 1 || dependencyWorkspace) {
+      continue;
+    }
+
+    const dependenciesToConsider =
+      getInconsistentDependenciesAndDevDependencies(
+        dependencyIdent,
+        dependenciesByRange,
+      );
+    const dependencyRanges = [...dependenciesToConsider.keys()].sort();
+
+    for (const dependencies of dependenciesToConsider.values()) {
+      for (const dependency of dependencies) {
+        dependency.error(
+          `Expected version range for ${dependencyIdent} (in ${
+            dependency.type
+          }) to be consistent across monorepo. Pick one: ${inspect(
+            dependencyRanges,
+          )}`,
+        );
       }
     }
   }
@@ -761,7 +813,7 @@ async function expectReadme(workspace, workspaceBasename) {
   const readme = await getWorkspaceFile(workspace, 'README.md');
 
   if (
-    workspaceBasename !== 'toprf-auth-sdk' &&
+    workspaceBasename !== 'metamask-module-template' &&
     readme.includes('## Template Instructions')
   ) {
     workspace.error(

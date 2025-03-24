@@ -19,11 +19,11 @@
     "build:types": "tsc --build tsconfig.build.json --verbose",
     "changelog:update": "yarn workspaces foreach --all --no-private --parallel --interlaced --verbose run changelog:update",
     "changelog:validate": "yarn workspaces foreach --all --no-private --parallel --interlaced --verbose run changelog:validate",
-    "create-package": "ts-node scripts/create-package",
+    "create-package": "tsx scripts/create-package",
     "lint": "yarn lint:eslint && echo && yarn lint:misc --check && yarn constraints && yarn lint:dependencies",
     "lint:dependencies": "depcheck && yarn dedupe --check",
     "lint:dependencies:fix": "depcheck && yarn dedupe",
-    "lint:eslint": "yarn build:only-clean && yarn ts-node ./scripts/run-eslint.ts --cache",
+    "lint:eslint": "yarn build:only-clean && yarn tsx ./scripts/run-eslint.ts --cache",
     "lint:fix": "yarn lint:eslint --fix && echo && yarn lint:misc --write && yarn constraints --fix && yarn lint:dependencies:fix",
     "lint:misc": "prettier --no-error-on-unmatched-pattern '**/*.json' '**/*.md' '**/*.yml' '!.yarnrc.yml' '!merged-packages/**' --ignore-path .gitignore",
     "prepack": "./scripts/prepack.sh",
@@ -33,7 +33,7 @@
     "test": "yarn test:scripts --silent --collectCoverage=false --reporters=jest-silent-reporter && yarn test:packages",
     "test:clean": "yarn workspaces foreach --all --parallel --verbose run test:clean && yarn test",
     "test:packages": "yarn test:verbose --silent --collectCoverage=false --reporters=jest-silent-reporter",
-    "test:scripts": "yarn jest --config ./jest.config.scripts.js --silent",
+    "test:scripts": "NODE_OPTIONS=--experimental-vm-modules yarn jest --config ./jest.config.scripts.js --silent",
     "test:verbose": "yarn workspaces foreach --all --parallel --verbose run test:verbose",
     "update-readme-content": "ts-node scripts/update-readme-content.ts",
     "workspaces:list-versions": "./scripts/list-workspace-versions.sh"
@@ -51,7 +51,7 @@
     "@babel/plugin-transform-modules-commonjs": "^7.23.3",
     "@babel/preset-typescript": "^7.23.3",
     "@lavamoat/allow-scripts": "^3.0.4",
-    "@metamask/create-release-branch": "^4.1.0",
+    "@metamask/create-release-branch": "^4.1.1",
     "@metamask/eslint-config": "^14.0.0",
     "@metamask/eslint-config-jest": "^14.0.0",
     "@metamask/eslint-config-nodejs": "^14.0.0",
@@ -89,7 +89,7 @@
     "rimraf": "^5.0.5",
     "semver": "^7.6.3",
     "simple-git-hooks": "^2.8.0",
-    "ts-node": "^10.9.1",
+    "tsx": "^4.19.3",
     "typescript": "~5.2.2",
     "typescript-eslint": "^8.7.0",
     "yargs": "^17.7.2"
@@ -101,9 +101,9 @@
   "lavamoat": {
     "allowScripts": {
       "@lavamoat/preinstall-always-fail": false,
-      "@keystonehq/bc-ur-registry-eth>hdkey>secp256k1": true,
       "babel-runtime>core-js": false,
-      "simple-git-hooks": false
+      "simple-git-hooks": false,
+      "tsx>esbuild": true
     }
   }
 }
