@@ -162,6 +162,18 @@ const config = createConfig([
       '@typescript-eslint/prefer-optional-chain': 'warn',
       '@typescript-eslint/prefer-reduce-type-parameter': 'warn',
       '@typescript-eslint/promise-function-async': 'warn',
+      'jsdoc/require-jsdoc': [
+        'error',
+        {
+          require: {
+            FunctionDeclaration: true,
+            MethodDefinition: true,
+            ClassDeclaration: true,
+            ArrowFunctionExpression: true,
+            FunctionExpression: true,
+          },
+        },
+      ],
     },
   },
   {
