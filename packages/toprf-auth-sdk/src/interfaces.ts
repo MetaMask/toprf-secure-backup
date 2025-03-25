@@ -6,15 +6,15 @@
 export type SEC1EncodedPublicKey = Uint8Array;
 
 /**
- * EncKey - The encryption/decryption private and public key pair.
+ * KeyPair - The encryption/decryption private and public key pair.
  *
- * encPrivKey - The decryption private key in Uint8Array format.
+ * privKey - The decryption private key in Uint8Array format.
  *
- * encPubKey - The encryption public key in SEC1 encoded format.
+ * pubKey - The encryption public key in SEC1 encoded format.
  */
-export type EncKey = {
-  encPrivKey: Uint8Array;
-  encPubKey: SEC1EncodedPublicKey;
+export type KeyPair = {
+  privKey: Uint8Array;
+  pubKey: SEC1EncodedPublicKey;
 };
 
 export type AuthenticateParams = {
@@ -52,28 +52,28 @@ export type AuthenticateResult = {
  *
  * password - The password of the user.
  */
-export type CreateEncKeyParams = {
+export type CreateEncryptionKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
   password: string;
 };
 
 /**
- * encKey - The encryption key which is used to encrypt/decrypt the secret data.
+ * keyPair - The encryption/decryption key pair which is used to encrypt/decrypt the secret data.
  */
-export type CreateEncKeyResult = {
-  encKey: EncKey;
+export type CreateEncryptionKeyResult = {
+  keyPair: KeyPair;
 };
 
 /**
  * nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
  *
- * encKey - The encryption key which is used to encrypt the secret data before storing it.
+ * keyPair - The encryption/decryption key pair which is used to encrypt the secret data before storing it.
  *
  * secretData - The secret data to be registered.
  */
 export type StoreSecretDataParams = {
   nodeAuthTokens: NodeAuthTokens;
-  encKey: EncKey;
+  keyPair: KeyPair;
   secretData: string;
 };
 
@@ -82,16 +82,16 @@ export type StoreSecretDataParams = {
  *
  * password - The password of the user.
  */
-export type RecoverEncKeyParams = {
+export type RecoverEncryptionKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
   password: string;
 };
 
 /**
- * encKey - The encryption key which is used to decrypt the secret data.
+ * keyPair - The encryption/decryption key pair which is used to decrypt the secret data.
  */
-export type RecoverEncKeyResult = {
-  encKey: EncKey;
+export type RecoverEncryptionKeyResult = {
+  keyPair: KeyPair;
 };
 
 /**
@@ -99,26 +99,26 @@ export type RecoverEncKeyResult = {
  *
  * newPassword - The new password of the user.
  *
- * encKey - The current encryption key of the user.
+ * keyPair - The current encryption key of the user.
  */
-export type UpdateEncKeyParams = {
+export type ChangeEncryptionKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
   newPassword: string;
-  encKey: EncKey;
+  keyPair: KeyPair;
 };
 
 /**
- * encKey - The new encryption key which is used to decrypt the secret data.
+ * keyPair - The new encryption/decryption key pair which is used to decrypt the secret data.
  */
-export type UpdateEncKeyResult = {
-  encKey: EncKey;
+export type ChangeEncryptionKeyResult = {
+  keyPair: KeyPair;
 };
 
 /**
- * encKey - The encryption key which is used to decrypt the secret data.
+ * keyPair - The encryption/decryption key pair which is used to decrypt the secret data.
  */
 export type FetchSecretDataParams = {
-  encKey: EncKey;
+  keyPair: KeyPair;
 };
 
 /**
@@ -152,9 +152,11 @@ export type IMetamaskTOPRFAuth = {
    * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
    * @param params.password - New password of the user.
    *
-   * @returns {CreateEncKeyResult} A promise that resolves with the encryption key.
+   * @returns {CreateEncryptionKeyResult} A promise that resolves with the encryption key.
    */
-  createEncKey: (params: CreateEncKeyParams) => Promise<CreateEncKeyResult>;
+  createEncKey: (
+    params: CreateEncryptionKeyParams,
+  ) => Promise<CreateEncryptionKeyResult>;
 
   /**
    * This function recovers the encryption key which is used to decrypt the secret data.
@@ -163,28 +165,32 @@ export type IMetamaskTOPRFAuth = {
    * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
    * @param params.password - The password of the user.
    *
-   * @returns {RecoverEncKeyResult} A promise that resolves with the encryption key.
+   * @returns {RecoverEncryptionKeyResult} A promise that resolves with the encryption key.
    */
-  recoverEncKey: (params: RecoverEncKeyParams) => Promise<RecoverEncKeyResult>;
+  recoverEncKey: (
+    params: RecoverEncryptionKeyParams,
+  ) => Promise<RecoverEncryptionKeyResult>;
 
   /**
-   * This function updates the encryption key and copies the secret data of existing encryption key to the new one.
+   * This function replaces the existing encryption key with a new one and copies the secret data of existing encryption key to the new one.
    *
-   * @param params - The parameters for updating the encryption key.
+   * @param params - The parameters for changing the encryption key.
    * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
    * @param params.newPassword - The new password of the user.
-   * @param params.encKey - The current encryption key of the user.
+   * @param params.keyPair - The current encryption key of the user.
    *
-   * @returns {UpdateEncKeyResult} A promise that resolves with the new encryption key.
+   * @returns {ChangeEncryptionKeyResult} A promise that resolves with the new encryption key.
    */
-  updateEncKey: (params: UpdateEncKeyParams) => Promise<UpdateEncKeyResult>;
+  changeEncKey: (
+    params: ChangeEncryptionKeyParams,
+  ) => Promise<ChangeEncryptionKeyResult>;
 
   /**
    * This function encrypts the secret data using the encryption key and stores it nodes metadata store in encrypted form.
    *
    * @param params - The parameters for registering new secret data.
    * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
-   * @param params.encKey - The encryption private and public key pair which is used to encrypt the secret data before storing it.
+   * @param params.keyPair - The encryption/decryption key pair which is used to encrypt the secret data before storing it.
    * @param params.secretData - The array of secret data to be registered.
    *
    * @returns {void}
@@ -195,7 +201,7 @@ export type IMetamaskTOPRFAuth = {
    * This function decrypts the secret data using the encryption key and returns the decrypted secret data.
    *
    * @param params - The parameters for fetching the secret data.
-   * @param params.encKey - The encryption private and public key pair which is used to decrypt the secret data.
+   * @param params.keyPair - The encryption/decryption key pair which is used to decrypt the secret data.
    *
    * @returns {FetchSecretDataResult} A promise that resolves with the decrypted secret data.
    */

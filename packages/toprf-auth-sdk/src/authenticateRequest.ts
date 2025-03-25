@@ -47,7 +47,7 @@ export const createAuthenticateRequestParams = (
  * @param params - The parameters for the authenticate request
  * @returns The authenticate request promise.
  */
-export const createAuthenticateRequest = (
+export const createAuthenticateRequest = async (
   endpoint: string,
   params: AuthJRPCRequestParams,
 ): Promise<AuthJRPCResponse> => {
@@ -55,7 +55,7 @@ export const createAuthenticateRequest = (
     JRPC_METHODS.AUTHENTICATE_REQUEST,
     params,
   ) as AuthJRPCRequest;
-  const p = () =>
+  const p = async () =>
     post<AuthJRPCResponse>(
       endpoint,
       authJRPCRequest,
@@ -72,7 +72,7 @@ export const createAuthenticateRequest = (
  * @param threshold - The threshold for the number authenticate responses to be valid
  * @returns The authenticate request result
  */
-export const validateThresholdAuthenticateResponses = (
+export const validateThresholdAuthenticateResponses = async (
   resultArr: AuthJRPCResponse[],
   threshold: number,
 ): Promise<AuthRequestResult[]> => {
@@ -87,7 +87,7 @@ export const validateThresholdAuthenticateResponses = (
   });
   if (completedRequests.length >= threshold) {
     const pubkeys = completedRequests.map((x) => {
-      if (x && x.result && x.result.enc_pub_key) {
+      if (x?.result?.enc_pub_key) {
         return x.result.enc_pub_key;
       }
       return undefined;
@@ -133,12 +133,12 @@ export const authenticateRequest = async (params: {
     verifierID,
     commitmentSignatures,
   );
-  const promiseArr = endpoints.map((endpoint) =>
+  const promiseArr = endpoints.map(async (endpoint) =>
     createAuthenticateRequest(endpoint, requestParams),
   );
 
   return new Promise<AuthRequestResult[]>((resolve, reject) => {
-    Some<AuthJRPCResponse, AuthRequestResult[]>(promiseArr, (resultArr) =>
+    Some<AuthJRPCResponse, AuthRequestResult[]>(promiseArr, async (resultArr) =>
       validateThresholdAuthenticateResponses(resultArr, halfThreshold),
     )
       .then((resultArr: AuthRequestResult[] | void) => {

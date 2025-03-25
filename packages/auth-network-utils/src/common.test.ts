@@ -53,7 +53,7 @@ describe('common utils', function () {
       const threshold = 3;
       const callbackFn = callbackFnFactory(threshold);
 
-      await expect(() => Some(promises, callbackFn)).rejects.toThrow(
+      await expect(async () => Some(promises, callbackFn)).rejects.toThrow(
         'not enough data',
       );
     });

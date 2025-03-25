@@ -59,7 +59,7 @@ export function kCombinations(s: number | number[], k: number): number[][] {
   }
 
   if (k === 1) {
-    return set.reduce((acc, cur) => [...acc, [cur]], [] as number[][]);
+    return set.reduce<number[][]>((acc, cur) => [...acc, [cur]], []);
   }
 
   const combs: number[][] = [];
@@ -131,7 +131,7 @@ export function calculateMedian(arr: number[]): number {
  * @param maxRetries - The maximum number of retries
  * @returns The result of the promise
  */
-export function retryPromiseWithBackoff<T>(
+export async function retryPromiseWithBackoff<T>(
   executionPromise: () => Promise<JRPCResponse<T>>,
   maxRetries: number,
 ) {

@@ -1,7 +1,7 @@
 import type { Ecies } from '@toruslabs/eccrypto';
 import type BN from 'bn.js';
 
-export type BNString = string | BN;
+export type BnString = string | BN;
 
 export type StringifiedType = Record<string, unknown>;
 
@@ -9,7 +9,7 @@ export type EciesHex = {
   [key in keyof Ecies]: string;
 } & { mode?: string };
 
-export type JRPCResponse<T> = {
+export type JsonRpcResponse<T> = {
   id: number;
   jsonrpc: '2.0';
   result?: T;
@@ -18,4 +18,11 @@ export type JRPCResponse<T> = {
     message: string;
     data?: unknown;
   };
+};
+
+export type JsonRpcRequest<T> = {
+  jsonrpc: '2.0';
+  method: string;
+  id: number;
+  params: T;
 };

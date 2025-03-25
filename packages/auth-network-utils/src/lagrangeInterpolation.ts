@@ -101,9 +101,9 @@ export function lagrangeInterpolatePolynomial(
 /**
  * Generates a random polynomial
  *
- * @param ecCurve - The elliptic curve to use
- * @param degree - The degree of the polynomial
- * @param secret - The secret to use
+ * @param ecCurve - The elliptic curve to use.
+ * @param degree - The degree of the polynomial.
+ * @param secret - The secret to use.
  * @param deterministicShares - The deterministic shares to use
  * @returns The polynomial
  */

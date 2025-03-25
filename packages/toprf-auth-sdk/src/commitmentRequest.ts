@@ -70,7 +70,7 @@ export const createCommitmentRequest = async (
  * @param threeFourthsThreshold - The threshold for the number commitment responses to be valid
  * @returns The commitment request result
  */
-export const validateThresholdCommitmentResponses = (
+export const validateThresholdCommitmentResponses = async (
   resultArr: CommitmentJRPCResponse[],
   threeFourthsThreshold: number,
 ): Promise<CommitmentRequestResult[]> => {
@@ -135,14 +135,14 @@ export const commitmentRequest = async (params: {
     sessionPubKeyX,
     sessionPubKeyY,
   );
-  const promiseArr = endpoints.map((endpoint) =>
+  const promiseArr = endpoints.map(async (endpoint) =>
     createCommitmentRequest(endpoint, requestParams),
   );
 
   return new Promise<CommitmentRequestResult[]>((resolve, reject) => {
     Some<CommitmentJRPCResponse, CommitmentRequestResult[]>(
       promiseArr,
-      (resultArr) =>
+      async (resultArr) =>
         validateThresholdCommitmentResponses(resultArr, threeFourthsThreshold),
     )
       .then((resultArr: CommitmentRequestResult[] | void) => {
