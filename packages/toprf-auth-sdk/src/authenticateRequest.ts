@@ -1,10 +1,5 @@
-import {
-  Some,
-  thresholdSame,
-  toCamelCaseKeys,
-  toSnakeCaseKeys,
-} from '@metamask/auth-network-utils';
-import { generateJsonRPCObject, post } from '@toruslabs/http-helpers';
+import { Some, thresholdSame } from '@metamask/auth-network-utils';
+import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
 import { JRPC_METHODS } from './constants';
 import type {
@@ -14,6 +9,7 @@ import type {
   CommitmentRequestResult,
   AuthRequestResult,
 } from './jrpcInterfaces';
+import { postJRPCRequest } from './utils';
 
 /**
  * Creates the parameters for the authenticate request
@@ -58,15 +54,10 @@ export const createAuthenticateRequest = async (
 ): Promise<AuthJRPCResponse> => {
   const authJRPCRequest = generateJsonRPCObject(
     JRPC_METHODS.AUTHENTICATE_REQUEST,
-    toSnakeCaseKeys(params),
+    params,
   ) as AuthJRPCRequest;
   const authRequestPromise = async (): Promise<AuthJRPCResponse> =>
-    post<AuthJRPCResponse>(
-      endpoint,
-      authJRPCRequest,
-      {},
-      { logTracingHeader: false },
-    );
+    postJRPCRequest<AuthJRPCResponse>(endpoint, authJRPCRequest);
   return authRequestPromise();
 };
 
@@ -100,9 +91,7 @@ export const validateThresholdAuthenticateResponses = async (
     const existingPubKey = thresholdSame(pubkeys, threshold);
     if (existingPubKey) {
       return Promise.resolve(
-        completedRequests.map(
-          (res) => toCamelCaseKeys(res.result) as AuthRequestResult,
-        ),
+        completedRequests.map((res) => res.result as AuthRequestResult),
       );
     }
   }

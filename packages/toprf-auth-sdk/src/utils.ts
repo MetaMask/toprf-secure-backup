@@ -1,12 +1,19 @@
-import type { ShareMap } from '@metamask/auth-network-utils';
+import type {
+  JRPCRequest,
+  JSONValue,
+  ShareMap,
+} from '@metamask/auth-network-utils';
 import {
   encryptedParamsBufToHex,
   generateRandomPolynomial,
   getSecp256K1Curve,
+  toCamelCaseKeys,
+  toSnakeCaseKeys,
 } from '@metamask/auth-network-utils';
 import type { INodePub } from '@toruslabs/constants';
 import type { Ecies } from '@toruslabs/eccrypto';
 import { encrypt } from '@toruslabs/eccrypto';
+import { post } from '@toruslabs/http-helpers';
 import BN from 'bn.js';
 import type * as ec from 'elliptic';
 
@@ -138,5 +145,36 @@ export const generateShareImportItems = async (
   // Create share import items
   return nodeIndexes.map((nodeIndex, i) =>
     createShareImportItem(encryptedShares[i], keyIndex, nodeIndex),
+  );
+};
+
+/**
+ * Common post function that handles snake_case conversion of request params
+ * and camelCase conversion of response result.
+ *
+ * @param endpoint - The endpoint to make the request to
+ * @param request - The request object to send. The params are converted to snake_case.
+ *
+ * @returns The response with camelCase converted result
+ */
+export const postJRPCRequest = async <
+  Response extends {
+    result?: JSONValue;
+  },
+>(
+  endpoint: string,
+  request: JRPCRequest<JSONValue>,
+): Promise<Response> => {
+  const req = { ...request };
+  const params = toSnakeCaseKeys(request.params);
+  req.params = params;
+
+  return post<Response>(endpoint, req, {}, { logTracingHeader: false }).then(
+    (res) => {
+      if (res.result) {
+        res.result = toCamelCaseKeys(res.result);
+      }
+      return res;
+    },
   );
 };

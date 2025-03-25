@@ -275,10 +275,10 @@ export async function Some<K, T>(
   handleSomeCallBackFnError(errorArr, resultArr, predicateError);
 }
 
-type Primitive = string | number | boolean | null | undefined;
-type JSONObject = { [key: string]: JSONValue };
-type JSONArray = JSONValue[];
-type JSONValue = Primitive | JSONObject | JSONArray;
+export type Primitive = string | number | boolean | null;
+export type JSONObject = { [key: string]: JSONValue };
+export type JSONArray = JSONValue[];
+export type JSONValue = Primitive | JSONObject | JSONArray;
 
 // Convert snake_case to camelCase
 /**

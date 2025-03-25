@@ -1,25 +1,33 @@
-import { getSecp256K1Curve } from '@metamask/auth-network-utils';
-import { randomBytes } from 'crypto';
+import {
+  getSecp256K1Curve,
+  keccak256AndHexify,
+} from '@metamask/auth-network-utils';
 import { keccak256 } from 'ethereum-cryptography/keccak';
 
+import {
+  createAuthenticateRequest,
+  createAuthenticateRequestParams,
+} from './authenticateRequest';
 import {
   createCommitmentRequestParams,
   createCommitmentRequest,
 } from './commitmentRequest';
 import type { CommitmentRequestResult } from './jrpcInterfaces';
+import { generateIdToken } from './testHelpers';
 import { getRandomNode } from './utils';
 
-describe('commitment request', function () {
-  it('should create a commitment request', async function () {
+describe('authenticate request', function () {
+  it('should create a authenticate request', async function () {
     const curve = getSecp256K1Curve();
     const keyPair = curve.genKeyPair();
     const pubPoint = keyPair.getPublic();
 
     const { url, index } = getRandomNode();
     const endpoint = `${url}/sss/jrpc`;
-
-    const tokenCommitment = randomBytes(16).toString('hex');
-    const verifier = 'google';
+    const verifier = 'torus-test-health';
+    const verifierID = 'test-verifier-id';
+    const idToken = generateIdToken(verifierID, 'ES256');
+    const tokenCommitment = keccak256AndHexify(Buffer.from(idToken, 'utf-8'));
     const sessionPubKeyX = pubPoint.getX().toString('hex');
     const sessionPubKeyY = pubPoint.getY().toString('hex');
 
@@ -62,5 +70,22 @@ describe('commitment request', function () {
 
     // Verify the signature against the Keccak‑256 hash
     expect(nodePubKey.verify(msgHashBuffer, signature)).toBe(true);
+
+    const authParams = createAuthenticateRequestParams(
+      idToken,
+      verifier,
+      verifierID,
+      [result],
+    );
+
+    const authJRPCRequest = await createAuthenticateRequest(
+      endpoint,
+      authParams,
+    );
+    console.log(authJRPCRequest);
+    expect(authJRPCRequest).toBeDefined();
+    expect(authJRPCRequest.jsonrpc).toBe('2.0');
+    expect(authJRPCRequest.id).toBeDefined();
+    expect(authJRPCRequest.result).toBeDefined();
   });
 });

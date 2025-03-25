@@ -3,15 +3,16 @@ import {
   toSnakeCaseKeys,
 } from '@metamask/auth-network-utils';
 import type { INodePub } from '@toruslabs/constants';
-import { generateJsonRPCObject, post } from '@toruslabs/http-helpers';
+import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 import type BN from 'bn.js';
 
 import { JRPC_METHODS } from './constants';
 import type {
   StoreKeySharesJRPCRequestParams,
   StoreKeySharesJRPCRequest,
+  StoreKeySharesJRPCResponse,
 } from './jrpcInterfaces';
-import { generateShareImportItems } from './utils';
+import { generateShareImportItems, postJRPCRequest } from './utils';
 
 /**
  * Creates the parameters for the store key shares request
@@ -74,13 +75,14 @@ export const createStoreKeySharesRequestParams = async (params: {
 export const createStoreKeySharesRequest = async (
   endpoint: string,
   params: StoreKeySharesJRPCRequestParams,
-): Promise<void> => {
+): Promise<StoreKeySharesJRPCResponse> => {
   const authJRPCRequest = generateJsonRPCObject(
     JRPC_METHODS.STORE_KEY_SHARES_REQUEST,
     toSnakeCaseKeys(params),
   ) as StoreKeySharesJRPCRequest;
-  const storeKeySharesRequestPromise = async (): Promise<void> =>
-    post<void>(endpoint, authJRPCRequest, {}, { logTracingHeader: false });
+  const storeKeySharesRequestPromise =
+    async (): Promise<StoreKeySharesJRPCResponse> =>
+      postJRPCRequest<StoreKeySharesJRPCResponse>(endpoint, authJRPCRequest);
   return storeKeySharesRequestPromise();
 };
 
@@ -110,7 +112,7 @@ export const storeKeySharesRequest = async (params: {
   keyIndex: number;
   oprfKey: BN;
   encryptionPubKey: string;
-}): Promise<void> => {
+}): Promise<StoreKeySharesJRPCResponse> => {
   const {
     nodeEndpoints,
     nodeIndexes,

@@ -8,8 +8,8 @@ export type CommitmentJRPCRequestParams = {
   messagePrefix: string;
   tokenCommitment: string;
   verifier: string;
-  tempPubkeyX: string;
-  tempPubkeyY: string;
+  tempPubKeyX: string;
+  tempPubKeyY: string;
 };
 
 export type CommitmentJRPCRequest = JRPCRequest<CommitmentJRPCRequestParams>;
@@ -67,4 +67,4 @@ export type StoreKeySharesJRPCRequestParams = {
 export type StoreKeySharesJRPCRequest =
   JRPCRequest<StoreKeySharesJRPCRequestParams>;
 
-export type StoreKeySharesJRPCResponse = JRPCResponse<void>;
+export type StoreKeySharesJRPCResponse = JRPCResponse<null>;

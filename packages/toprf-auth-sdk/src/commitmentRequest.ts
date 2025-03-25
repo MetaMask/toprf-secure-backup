@@ -2,10 +2,8 @@ import {
   Some,
   keccak256AndHexify,
   retryPromiseWithBackoff,
-  toCamelCaseKeys,
-  toSnakeCaseKeys,
 } from '@metamask/auth-network-utils';
-import { generateJsonRPCObject, post } from '@toruslabs/http-helpers';
+import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
 import { JRPC_METHODS } from './constants';
 import type {
@@ -14,6 +12,7 @@ import type {
   CommitmentJRPCResponse,
   CommitmentRequestResult,
 } from './jrpcInterfaces';
+import { postJRPCRequest } from './utils';
 
 /**
  * Creates the parameters for the commitment request
@@ -34,8 +33,8 @@ export const createCommitmentRequestParams = (
     messagePrefix: 'mug00',
     tokenCommitment: tokenCommitment.slice(2),
     verifier,
-    tempPubkeyX: sessionPubKeyX,
-    tempPubkeyY: sessionPubKeyY,
+    tempPubKeyX: sessionPubKeyX,
+    tempPubKeyY: sessionPubKeyY,
   };
 };
 
@@ -52,15 +51,10 @@ export const createCommitmentRequest = async (
 ): Promise<CommitmentJRPCResponse> => {
   const commitmentJRPCRequest = generateJsonRPCObject(
     JRPC_METHODS.COMMITMENT_REQUEST,
-    toSnakeCaseKeys(params),
+    params,
   ) as CommitmentJRPCRequest;
   const commitmentResponse = async (): Promise<CommitmentJRPCResponse> =>
-    post<CommitmentJRPCResponse>(
-      endpoint,
-      commitmentJRPCRequest,
-      {},
-      { logTracingHeader: false },
-    );
+    postJRPCRequest<CommitmentJRPCResponse>(endpoint, commitmentJRPCRequest);
   return retryPromiseWithBackoff(commitmentResponse, 4);
 };
 
@@ -94,9 +88,7 @@ export const validateThresholdCommitmentResponses = async (
     if (requiredNodeResult) {
       const validResultArr = completedRequests.filter((res) => res.result);
       return Promise.resolve(
-        validResultArr.map(
-          (res) => toCamelCaseKeys(res.result) as CommitmentRequestResult,
-        ),
+        validResultArr.map((res) => res.result as CommitmentRequestResult),
       );
     }
   }
@@ -152,6 +144,7 @@ export const commitmentRequest = async (params: {
         if (!resultArr || resultArr.length === 0) {
           throw new Error('No commitment request results');
         } else {
+          console.log('result array', resultArr);
           return resolve(resultArr);
         }
       })
