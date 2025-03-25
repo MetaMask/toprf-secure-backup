@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import { createSandbox, writeFile, readFile } from '@metamask/utils/node';
 import { promises as fs } from 'fs';
 import path from 'path';

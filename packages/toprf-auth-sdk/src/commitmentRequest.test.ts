@@ -40,13 +40,13 @@ describe('commitment request', function () {
 
     expect(response.signature).toBeDefined();
     expect(response.data).toBeDefined();
-    expect(response.node_pub_x).toBeDefined();
-    expect(response.node_pub_y).toBeDefined();
-    expect(response.node_index).toBe(index);
+    expect(response.nodePubX).toBeDefined();
+    expect(response.nodePubY).toBeDefined();
+    expect(response.nodeIndex).toBe(index);
 
     // Rebuild the public key from the node's pub key coordinates
     const nodePubKey = curve.keyFromPublic(
-      { x: response.node_pub_x, y: response.node_pub_y },
+      { x: response.nodePubX, y: response.nodePubY },
       'hex',
     );
 

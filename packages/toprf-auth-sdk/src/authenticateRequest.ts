@@ -1,4 +1,9 @@
-import { Some, thresholdSame } from '@metamask/auth-network-utils';
+import {
+  Some,
+  thresholdSame,
+  toCamelCaseKeys,
+  toSnakeCaseKeys,
+} from '@metamask/auth-network-utils';
 import { generateJsonRPCObject, post } from '@toruslabs/http-helpers';
 
 import { JRPC_METHODS } from './constants';
@@ -18,7 +23,7 @@ import type {
  * @param verifierID - The verifierID to be used for the authenticate request
  * @param commitmentSignatures - The idToken commitment signatures to be used for the authenticate request.
  *
- * @returns The parameters for the authenticate jrpc request
+ * @returns The parameters for the authenticate jrpc request.
  */
 export const createAuthenticateRequestParams = (
   idToken: string,
@@ -27,16 +32,16 @@ export const createAuthenticateRequestParams = (
   commitmentSignatures: CommitmentRequestResult[],
 ): AuthJRPCRequestParams => {
   return {
-    auth_data: {
-      authentication_context: {
-        id_token: idToken,
+    authData: {
+      authenticationContext: {
+        idToken,
         verifier,
-        verifier_id: verifierID,
+        verifierId: verifierID,
       },
-      verifier_oauth_params: {},
+      verifierOauthParams: {},
     },
-    commitment_signatures: commitmentSignatures,
-    client_time: Math.floor(Date.now() / 1000).toString(),
+    commitmentSignatures,
+    clientTime: Math.floor(Date.now() / 1000).toString(),
   };
 };
 
@@ -53,16 +58,16 @@ export const createAuthenticateRequest = async (
 ): Promise<AuthJRPCResponse> => {
   const authJRPCRequest = generateJsonRPCObject(
     JRPC_METHODS.AUTHENTICATE_REQUEST,
-    params,
+    toSnakeCaseKeys(params),
   ) as AuthJRPCRequest;
-  const p = async () =>
+  const authRequestPromise = async (): Promise<AuthJRPCResponse> =>
     post<AuthJRPCResponse>(
       endpoint,
       authJRPCRequest,
       {},
       { logTracingHeader: false },
     );
-  return p();
+  return authRequestPromise();
 };
 
 /**
@@ -76,26 +81,28 @@ export const validateThresholdAuthenticateResponses = async (
   resultArr: AuthJRPCResponse[],
   threshold: number,
 ): Promise<AuthRequestResult[]> => {
-  const completedRequests = resultArr.filter((x): x is AuthJRPCResponse => {
-    if (!x || typeof x !== 'object') {
+  const completedRequests = resultArr.filter((res): res is AuthJRPCResponse => {
+    if (!res || typeof res !== 'object') {
       return false;
     }
-    if ('error' in x && x.error) {
+    if ('error' in res && res.error) {
       return false;
     }
     return true;
   });
   if (completedRequests.length >= threshold) {
-    const pubkeys = completedRequests.map((x) => {
-      if (x?.result?.enc_pub_key) {
-        return x.result.enc_pub_key;
+    const pubkeys = completedRequests.map((res) => {
+      if (res?.result?.pubKey) {
+        return res.result.pubKey;
       }
       return undefined;
     });
     const existingPubKey = thresholdSame(pubkeys, threshold);
     if (existingPubKey) {
       return Promise.resolve(
-        completedRequests.map((x) => x.result as AuthRequestResult),
+        completedRequests.map(
+          (res) => toCamelCaseKeys(res.result) as AuthRequestResult,
+        ),
       );
     }
   }

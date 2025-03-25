@@ -1,8 +1,9 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import {
   Some,
   keccak256AndHexify,
   retryPromiseWithBackoff,
+  toCamelCaseKeys,
+  toSnakeCaseKeys,
 } from '@metamask/auth-network-utils';
 import { generateJsonRPCObject, post } from '@toruslabs/http-helpers';
 
@@ -30,11 +31,11 @@ export const createCommitmentRequestParams = (
   sessionPubKeyY: string,
 ): CommitmentJRPCRequestParams => {
   return {
-    message_prefix: 'mug00',
-    token_commitment: tokenCommitment.slice(2),
+    messagePrefix: 'mug00',
+    tokenCommitment: tokenCommitment.slice(2),
     verifier,
-    temp_pub_key_x: sessionPubKeyX,
-    temp_pub_key_y: sessionPubKeyY,
+    tempPubkeyX: sessionPubKeyX,
+    tempPubkeyY: sessionPubKeyY,
   };
 };
 
@@ -51,7 +52,7 @@ export const createCommitmentRequest = async (
 ): Promise<CommitmentJRPCResponse> => {
   const commitmentJRPCRequest = generateJsonRPCObject(
     JRPC_METHODS.COMMITMENT_REQUEST,
-    params,
+    toSnakeCaseKeys(params),
   ) as CommitmentJRPCRequest;
   const commitmentResponse = async (): Promise<CommitmentJRPCResponse> =>
     post<CommitmentJRPCResponse>(
@@ -75,11 +76,11 @@ export const validateThresholdCommitmentResponses = async (
   threeFourthsThreshold: number,
 ): Promise<CommitmentRequestResult[]> => {
   const completedRequests = resultArr.filter(
-    (x): x is CommitmentJRPCResponse => {
-      if (!x || typeof x !== 'object') {
+    (res): res is CommitmentJRPCResponse => {
+      if (!res || typeof res !== 'object') {
         return false;
       }
-      if ('error' in x && x.error) {
+      if ('error' in res && res.error) {
         return false;
       }
       return true;
@@ -91,9 +92,11 @@ export const validateThresholdCommitmentResponses = async (
       (resp) => resp !== undefined && 'result' in resp,
     );
     if (requiredNodeResult) {
-      const validResultArr = completedRequests.filter((x) => x.result);
+      const validResultArr = completedRequests.filter((res) => res.result);
       return Promise.resolve(
-        validResultArr.map((x) => x.result as CommitmentRequestResult),
+        validResultArr.map(
+          (res) => toCamelCaseKeys(res.result) as CommitmentRequestResult,
+        ),
       );
     }
   }
@@ -127,7 +130,7 @@ export const commitmentRequest = async (params: {
   const { idToken, endpoints, verifier, sessionPubKeyX, sessionPubKeyY } =
     params;
   const threeFourthsThreshold = Math.floor((endpoints.length * 3) / 4) + 1;
-  const tokenCommitment = keccak256AndHexify(Buffer.from(idToken, 'utf8'));
+  const tokenCommitment = keccak256AndHexify(new TextEncoder().encode(idToken));
 
   const requestParams = createCommitmentRequestParams(
     tokenCommitment,

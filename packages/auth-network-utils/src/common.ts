@@ -9,10 +9,10 @@ import { waitFor } from './helpers';
 /**
  * Hashes a buffer using the keccak256 algorithm and hexify the result
  *
- * @param buffer - The buffer to hash
+ * @param buffer - The uint8array to hash
  * @returns The hash of the buffer as a hex string
  */
-export function keccak256AndHexify(buffer: Buffer): `0x${string}` {
+export function keccak256AndHexify(buffer: Uint8Array): `0x${string}` {
   const hash = Buffer.from(keccak256(buffer)).toString('hex');
   return `0x${hash}`;
 }
@@ -274,3 +274,69 @@ export async function Some<K, T>(
   // after all promises are settled
   handleSomeCallBackFnError(errorArr, resultArr, predicateError);
 }
+
+type Primitive = string | number | boolean | null | undefined;
+type JSONObject = { [key: string]: JSONValue };
+type JSONArray = JSONValue[];
+type JSONValue = Primitive | JSONObject | JSONArray;
+
+// Convert snake_case to camelCase
+/**
+ *
+ * @param str - The string to convert to camelCase.
+ * @returns The camelCase string.
+ */
+export function toCamel(str: string): string {
+  return str.replace(/_([a-z])/gu, (_, letter) => letter.toUpperCase());
+}
+
+// Convert camelCase to snake_case
+/**
+ *
+ * @param str - The string to convert to snake_case.
+ * @returns The snake_case string.
+ */
+export function toSnake(str: string): string {
+  return str.replace(/([A-Z])/gu, '_$1').toLowerCase();
+}
+
+// Recursive key converter
+/**
+ *
+ * @param obj - The object to convert the keys of.
+ * @param convertFunc - The function to convert the keys of the object.
+ * @returns The object with the converted keys.
+ */
+export function convertKeys(
+  obj: JSONValue,
+  convertFunc: (key: string) => string,
+): JSONValue {
+  if (Array.isArray(obj)) {
+    return obj.map((item) => convertKeys(item, convertFunc));
+  } else if (obj !== null && typeof obj === 'object') {
+    const newObj: JSONObject = {};
+    for (const [key, value] of Object.entries(obj)) {
+      newObj[convertFunc(key)] = convertKeys(value, convertFunc);
+    }
+    return newObj;
+  }
+  return obj;
+}
+
+/**
+ * Converts the keys of an object from snake_case to camelCase.
+ *
+ * @param obj - The object to convert the keys of.
+ * @returns The object with the converted keys.
+ */
+export const toCamelCaseKeys = (obj: JSONValue): JSONValue =>
+  convertKeys(obj, toCamel);
+
+/**
+ * Converts the keys of an object from camelCase to snake_case.
+ *
+ * @param obj - The object to convert the keys of.
+ * @returns The object with the converted keys.
+ */
+export const toSnakeCaseKeys = (obj: JSONValue): JSONValue =>
+  convertKeys(obj, toSnake);

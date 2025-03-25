@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import type { Ecies } from '@toruslabs/eccrypto';
 import type BN from 'bn.js';
 
-export type BnString = string | BN;
+export type BNString = string | BN;
 
 export type StringifiedType = Record<string, unknown>;
 
@@ -9,7 +10,7 @@ export type EciesHex = {
   [key in keyof Ecies]: string;
 } & { mode?: string };
 
-export type JsonRpcResponse<T> = {
+export type JRPCResponse<T> = {
   id: number;
   jsonrpc: '2.0';
   result?: T;
@@ -20,9 +21,8 @@ export type JsonRpcResponse<T> = {
   };
 };
 
-export type JsonRpcRequest<T> = {
+export type JRPCRequest<T> = {
   jsonrpc: '2.0';
   method: string;
-  id: number;
   params: T;
 };

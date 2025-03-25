@@ -1,3 +1,4 @@
+import type { ShareMap } from '@metamask/auth-network-utils';
 import {
   encryptedParamsBufToHex,
   generateRandomPolynomial,
@@ -42,7 +43,7 @@ const generateShares = (
   nodeIndexes: number[],
   privKey: BN,
   threshold: number,
-) => {
+): ShareMap => {
   const nodeIndexesBn = nodeIndexes.map((index) => new BN(index));
   const degree = threshold - 1;
   const poly = generateRandomPolynomial(ecCurve, degree, privKey);
@@ -90,11 +91,11 @@ const createShareImportItem = (
   const encParamsMetadata = encryptedParamsBufToHex(encryptedShare);
 
   return {
-    encrypted_share: encParamsMetadata.ciphertext,
-    encrypted_share_metadata: encParamsMetadata,
-    share_key_index: keyIndex,
-    node_index: nodeIndex,
-    sss_endpoint: NODE_URLS[nodeIndex - 1],
+    encryptedShare: encParamsMetadata.ciphertext,
+    encryptedShareMetadata: encParamsMetadata,
+    shareKeyIndex: keyIndex,
+    nodeIndex,
+    sssEndpoint: NODE_URLS[nodeIndex - 1],
   };
 };
 
