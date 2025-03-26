@@ -31,7 +31,7 @@ export type AuthJRPCRequestParams = {
       verifier: string;
       verifierId: string;
     };
-    verifierOauthParams: Record<string, string | number | boolean>;
+    extraOauthParams?: Record<string, string | number | boolean>;
   };
   commitmentSignatures: CommitmentRequestResult[];
   clientTime: string;

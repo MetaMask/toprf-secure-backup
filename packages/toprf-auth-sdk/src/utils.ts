@@ -168,7 +168,6 @@ export const postJRPCRequest = async <
   const req = { ...request };
   const params = toSnakeCaseKeys(request.params);
   req.params = params;
-
   return post<Response>(endpoint, req, {}, { logTracingHeader: false }).then(
     (res) => {
       if (res.result) {

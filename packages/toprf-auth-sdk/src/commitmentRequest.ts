@@ -144,7 +144,6 @@ export const commitmentRequest = async (params: {
         if (!resultArr || resultArr.length === 0) {
           throw new Error('No commitment request results');
         } else {
-          console.log('result array', resultArr);
           return resolve(resultArr);
         }
       })

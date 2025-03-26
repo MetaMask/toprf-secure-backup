@@ -34,7 +34,6 @@ export const createAuthenticateRequestParams = (
         verifier,
         verifierId: verifierID,
       },
-      verifierOauthParams: {},
     },
     commitmentSignatures,
     clientTime: Math.floor(Date.now() / 1000).toString(),
