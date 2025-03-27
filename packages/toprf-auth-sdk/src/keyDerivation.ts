@@ -7,7 +7,7 @@ const HKDF_AUTHENTICATION_KEY_INFO = 'authentication-key';
 const HKDF_ENCRYPTION_KEY_INFO = 'encryption-key';
 
 /**
- * Deterministcally derives an secp256k1 keypair intended for authentication.
+ * Deterministically derives an secp256k1 keypair intended for authentication.
  *
  * @param seed The input seed from which the output key is derived from.
  * @returns The derived keypair.
@@ -27,7 +27,7 @@ export function deriveAuthenticationKeyPair(seed: Uint8Array): {
 }
 
 /**
- * Deterministcally derives an AES-256 key intended for data encryption.
+ * Deterministically derives an AES-256 key intended for data encryption.
  *
  * @param seed The input seed from which the output key is derived from.
  * @returns The derived key.
