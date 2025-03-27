@@ -15,7 +15,7 @@ import { secp256k1, hashToCurve } from '@noble/curves/secp256k1';
  *
  * @returns A random scalar value as a bigint.
  */
-function generateRandomScalar(): bigint {
+export function generateRandomScalar(): bigint {
   return bytesToNumberBE(secp256k1.utils.randomPrivateKey());
 }
 
