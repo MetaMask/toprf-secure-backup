@@ -50,6 +50,7 @@
     "@metamask/auth-network-utils": "^0.0.0",
     "@toruslabs/constants": "^15.0.0",
     "@toruslabs/eccrypto": "^6.0.2",
+    "@toruslabs/fetch-node-details": "^15.0.0",
     "@toruslabs/http-helpers": "^8.1.1",
     "bn.js": "^5.2.1",
     "ethereum-cryptography": "^3.1.0"

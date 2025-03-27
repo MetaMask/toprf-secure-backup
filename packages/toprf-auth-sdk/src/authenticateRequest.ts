@@ -81,14 +81,15 @@ export const validateThresholdAuthenticateResponses = async (
     return true;
   });
   if (completedRequests.length >= threshold) {
-    const pubkeys = completedRequests.map((res) => {
-      if (res?.result?.pubKey) {
-        return res.result.pubKey;
-      }
-      return undefined;
+    const pubData = completedRequests.map((res: AuthJRPCResponse) => {
+      const result = res.result as AuthRequestResult;
+      return {
+        pubKey: result.pubKey,
+        keyIndex: result.keyIndex,
+      };
     });
-    const existingPubKey = thresholdSame(pubkeys, threshold);
-    if (existingPubKey) {
+    const thresholdPubData = thresholdSame(pubData, threshold);
+    if (thresholdPubData) {
       return Promise.resolve(
         completedRequests.map((res) => res.result as AuthRequestResult),
       );

@@ -1404,6 +1404,7 @@ __metadata:
     "@metamask/auto-changelog": "npm:^3.4.4"
     "@toruslabs/constants": "npm:^15.0.0"
     "@toruslabs/eccrypto": "npm:^6.0.2"
+    "@toruslabs/fetch-node-details": "npm:^15.0.0"
     "@toruslabs/http-helpers": "npm:^8.1.1"
     "@types/jest": "npm:^27.4.1"
     "@types/jsonwebtoken": "npm:^9.0.9"
@@ -1795,6 +1796,31 @@ __metadata:
   dependencies:
     elliptic: "npm:^6.6.1"
   checksum: 10/a9444da5a65186b3b361095df2fbfd66aa09ffe5723610c71636165e2798942cfc74d89a5bf63507aacf2518baee453bcf04ff353c5e2978a32c29db276a2c41
+  languageName: node
+  linkType: hard
+
+"@toruslabs/fetch-node-details@npm:^15.0.0":
+  version: 15.0.0
+  resolution: "@toruslabs/fetch-node-details@npm:15.0.0"
+  dependencies:
+    "@toruslabs/constants": "npm:^15.0.0"
+    "@toruslabs/fnd-base": "npm:^15.0.0"
+    "@toruslabs/http-helpers": "npm:^8.1.1"
+    loglevel: "npm:^1.9.2"
+  peerDependencies:
+    "@babel/runtime": 7.x
+  checksum: 10/16411ff7dc3be045784deb9c69e316bda03355c9ca3db4912677c051a1d4ebcb1e8b6116f5cfe0793dce3bd80281cc7ca2c5b02479f86621e628b4c3ca4f2d7b
+  languageName: node
+  linkType: hard
+
+"@toruslabs/fnd-base@npm:^15.0.0":
+  version: 15.0.0
+  resolution: "@toruslabs/fnd-base@npm:15.0.0"
+  dependencies:
+    "@toruslabs/constants": "npm:^15.0.0"
+  peerDependencies:
+    "@babel/runtime": 7.x
+  checksum: 10/1f4998b8b8a1311978551dc21c761b9baa3d928254be6a3fc350400c48fccc15b9cc787cf2660594e8662fffe1385aaf3b6fa7580eea525782ab27b87c94733c
   languageName: node
   linkType: hard
 
