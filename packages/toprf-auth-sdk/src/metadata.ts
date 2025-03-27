@@ -4,14 +4,51 @@ import { bytesToHex, concatBytes, randomBytes, utf8ToBytes } from "@noble/hashes
 import { gcm } from "@noble/ciphers/aes";
 import { bytesToUtf8 } from "@noble/ciphers/utils";
 import { sha256 } from "@noble/hashes/sha256";
+import { DEFAULT_METADATA_SERVER_URL } from "./constants";
+
+export enum MetadataStorageLocation {
+  METADATA_SERVER = 'metadata-server',
+  PROFILE_SYNC = 'profile-sync',
+}
+
+type MetadataStoreOptions = {
+  storageLocation?: MetadataStorageLocation;
+  metadataServerUrl?: string;
+}
+
+export class MetadataStoreError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'MetadataStoreError';
+  }
+}
 
 export class MetadataStore {
   readonly #feature = 'srp_backup';
 
+  #storageLocation: MetadataStorageLocation;
+
   // Nonce size for AES-256-GCM
   readonly #nonceSize = 24;
   
-  readonly #metadataStoreUrl = 'http://localhost:5051/metadata';
+  readonly #metadataServerUrl: string = '';
+
+  constructor({
+    storageLocation = MetadataStorageLocation.METADATA_SERVER,
+    metadataServerUrl = DEFAULT_METADATA_SERVER_URL,
+  }: MetadataStoreOptions = {}) {
+    this.#storageLocation = storageLocation;
+
+    if (storageLocation === MetadataStorageLocation.METADATA_SERVER) {
+      this.#metadataServerUrl = metadataServerUrl;
+    } else {
+      // Otherwise, the Profile-Sync SDK will handle the storage url
+    }
+  }
+
+  get metadataStorageLocation(): MetadataStorageLocation {
+    return this.#storageLocation;
+  }
 
   /**
    * Encrypts the secret data and stores it in the metadata store.
@@ -29,7 +66,7 @@ export class MetadataStore {
    * @param {FetchSecretDataParams} params - The parameters for fetching the secret data.
    * @returns {Promise<FetchSecretDataResult>} A promise that resolves with the decrypted secret data.
    */
-  async fetchSecretData(params: FetchSecretDataParams): Promise<FetchSecretDataResult> {
+  async fetchSecretData(params: FetchSecretDataParams): Promise<FetchSecretDataResult | null> {
     const data = await this.#getDataByKey(params);
     return data;
   }
@@ -41,21 +78,33 @@ export class MetadataStore {
    * @returns {Promise<void>} A promise that resolves when the secret data is stored.
    */
   async #upsertData(params: StoreSecretDataParams): Promise<void> {
-    const data = this.#encryptData(params.secretData, params.keyPair.privKey);
-    const key = this.#getMetadataKey(params.keyPair);
+    try {
+      const data = this.#encryptData(params.secretData, params.keyPair.privKey);
+      const key = this.#getMetadataKey(params.keyPair);
 
-    const response = await fetch(`${this.#metadataStoreUrl}/${key}`, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      method: 'PUT',
-      body: JSON.stringify({
-        data,
-      }),
-    });
+      const url = this.#computeMetadataServerUrl('write');
 
-    if (!response.ok) {
-      throw new Error('Failed to upsert metadata');
+      const response = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+        body: JSON.stringify({
+          key,
+          data,
+        }),
+      });
+
+      if (!response.ok) {
+        const responseBody = await response.json();
+        throw new Error(
+          `HTTP error message: ${responseBody.error}`
+        )
+      }
+    } catch (error) {
+      throw new MetadataStoreError(
+        `failed to upsert metadata: ${error}`
+      );
     }
   }
 
@@ -65,24 +114,39 @@ export class MetadataStore {
    * @param {FetchSecretDataParams} params - The parameters for fetching the secret data.
    * @returns {Promise<FetchSecretDataResult>} A promise that resolves with the decrypted secret data.
    */
-  async #getDataByKey({ keyPair }: FetchSecretDataParams): Promise<FetchSecretDataResult> {
-    const key = this.#getMetadataKey(keyPair);
+  async #getDataByKey({ keyPair }: FetchSecretDataParams): Promise<FetchSecretDataResult | null> {
+    try {
+      const key = this.#getMetadataKey(keyPair);
+      const url = this.#computeMetadataServerUrl('read');
+
+      const response = await fetch(url, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        body: JSON.stringify({ key }),
+      });
     
-    const response = await fetch(`${this.#metadataStoreUrl}/${key}`, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      method: 'GET',
-    });
+      if (!response.ok) {
+        const responseBody = await response.json();
+        throw new Error(
+          `HTTP error message: ${responseBody.error}`
+        )
+      }
+      
+      const { message: encryptedData } = await response.json();
+      if (!encryptedData) {
+        return null;
+      }
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch metadata');
-    }
-
-    const encryptedData = await response.json();
-    const secretData = this.#decryptData(encryptedData, keyPair.privKey);
-    return {
-      secretData,
+      const secretData = this.#decryptData(encryptedData, keyPair.privKey);
+      return {
+        secretData,
+      }
+    } catch (error) {
+      throw new MetadataStoreError(
+        `failed to fetch metadata: ${error}`
+      );
     }
   }
 
@@ -92,6 +156,20 @@ export class MetadataStore {
     const rawHashedKey = sha256(this.#feature + pubKeyHex);
 
     return bytesToHex(rawHashedKey);
+  }
+
+  #computeMetadataServerUrl(operation: 'read' | 'write'): string {
+    this.#assertIsUsingMetadataServer();
+
+    const baseUrl = this.#metadataServerUrl;
+    return `${baseUrl}/option-2-${operation}`;
+  }
+
+  #assertIsUsingMetadataServer(): void {
+    if (this.#storageLocation !== MetadataStorageLocation.METADATA_SERVER) {
+      // TODO: use error constants 
+      throw new Error('Metadata store is not using metadata server');
+    }
   }
 
   /**
