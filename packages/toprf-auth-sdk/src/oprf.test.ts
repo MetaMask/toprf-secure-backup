@@ -2,12 +2,20 @@
 // of PRFs.
 /* eslint-disable id-length */
 
+import BN from 'bn.js';
+import { ec as EC } from 'elliptic';
 import { secp256k1 } from 'ethereum-cryptography/secp256k1';
+
+import { deriveAuthenticationKeyPair } from './keyDerivation';
+import { lagrangeInterpolationForPoints } from './lagrangeInterpolation';
 import { generateRandomScalar, OPRF } from './oprf';
+import { generateRandomPolynomial } from '../../auth-network-utils/src/lagrangeInterpolation';
 
 describe('OPRF', () => {
   const testInput = new Uint8Array([1, 2, 3, 4]);
   const testKey = generateRandomScalar();
+
+  const ec = new EC('secp256k1');
 
   it('should blind input correctly', () => {
     const { a, r } = OPRF.blind(testInput);
@@ -73,5 +81,57 @@ describe('OPRF', () => {
     const k = (k1 + k2) % secp256k1.CURVE.n;
     const yLocal = OPRF.localEval(k, testInput);
     expect(yRemote).toStrictEqual(yLocal);
+  });
+
+  it('should recover correct result using threshold OPRF with Lagrange interpolation', () => {
+    const threshold = 3;
+    const degree = threshold - 1;
+    const totalShares = 5;
+
+    // Create a polynomial with testKey as the constant term
+    const testKeyBN = new BN(testKey.toString());
+    const polynomial = generateRandomPolynomial(ec, degree, testKeyBN);
+
+    // Generate shares from the polynomial
+    const shares: { x: bigint; y: bigint }[] = [];
+    for (let i = 1; i <= totalShares; i++) {
+      const x = BigInt(i);
+      const y = BigInt(polynomial.polyEval(new BN(i)).toString());
+      shares.push({ x, y });
+    }
+
+    // Client blinds input
+    const { a: blindedInput, r } = OPRF.blind(testInput);
+
+    // Each server evaluates the blinded input with its key share
+    const evaluatedPoints = shares.map((share) => ({
+      x: share.x,
+      point: OPRF.blindEval(share.y, blindedInput),
+    }));
+
+    // Randomly select threshold number of points
+    const selectedPoints = evaluatedPoints
+      .sort(() => Math.random() - 0.5)
+      .slice(0, threshold);
+    const nodeIndex = selectedPoints.map((point) => point.x);
+    const curvePoints = selectedPoints.map((point) => point.point);
+
+    // Interpolate the curve points directly using Lagrange interpolation
+    const reconstructedPoint = lagrangeInterpolationForPoints(
+      ec,
+      curvePoints,
+      nodeIndex,
+    );
+
+    // Unblind and hash the result
+    const remoteY = OPRF.unblindAndHash(testInput, reconstructedPoint, r);
+
+    // Compare with evaluation using the original key
+    const localY = OPRF.localEval(testKey, testInput);
+    expect(remoteY).toStrictEqual(localY);
+
+    const keyPair1 = deriveAuthenticationKeyPair(remoteY);
+    const keyPair2 = deriveAuthenticationKeyPair(localY);
+    expect(keyPair1.pk).toStrictEqual(keyPair2.pk);
   });
 });
