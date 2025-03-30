@@ -12,5 +12,5 @@ export const NODE_URLS = [
   'https://node-5.dev-node.web3auth.io',
 ];
 
-// export const DEFAULT_METADATA_SERVER_URL = 'https://node-2.dev-node.web3auth.io/metadata';
-export const DEFAULT_METADATA_SERVER_URL = 'http://localhost:5051/eval';
+export const DEFAULT_METADATA_SERVER_URL =
+  'https://node-2.dev-node.web3auth.io/metadata';

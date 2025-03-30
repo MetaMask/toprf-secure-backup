@@ -1,10 +1,11 @@
-import { randomBytes } from "@noble/hashes/utils";
-import { MetadataStorageLocation, MetadataStore } from "./metadata";
+import { randomBytes } from '@noble/hashes/utils';
+
+import { MetadataStorageLocation, MetadataStore } from './metadata';
 
 const MOCK_KEY_PAIR = {
   pubKey: randomBytes(32),
   privKey: randomBytes(32),
-}
+};
 
 describe('MetadatStore', () => {
   it('should be able to initialize with default storage locations', () => {
@@ -31,14 +32,14 @@ describe('MetadatStore', () => {
         secretData: 'SECRET_DATA',
         keyPair: MOCK_KEY_PAIR,
         nodeAuthTokens: [],
-      })
-    ).rejects.toThrow();
+      }),
+    ).rejects.toThrow('Metadata store is not using metadata server');
 
     await expect(
       metadataStore.fetchSecretData({
         keyPair: MOCK_KEY_PAIR,
-      })
-    ).rejects.toThrow();
+      }),
+    ).rejects.toThrow('Metadata store is not using metadata server');
   });
 
   it('should be able to store/fetch data', async () => {
@@ -92,31 +93,37 @@ describe('MetadatStore', () => {
   });
 
   it('should handle network errors', async () => {
-    const fetchSpy = jest.spyOn(global, 'fetch').mockImplementation(() => {
-      return Promise.resolve({
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
-        json: () => Promise.resolve({ error: 'Something went wrong!' }),
-      } as Response);
-    });
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(async () => {
+        return Promise.resolve({
+          ok: false,
+          status: 500,
+          statusText: 'Internal Server Error',
+          /**
+           * @returns json object
+           */
+          json: async () => Promise.resolve({ error: 'Something went wrong!' }),
+          // eslint-disable-next-line no-restricted-globals
+        } as Response);
+      });
 
     const metadataStore = new MetadataStore();
-    
+
     await expect(
       metadataStore.storeSecretData({
         secretData: 'SECRET_DATA',
         keyPair: MOCK_KEY_PAIR,
         nodeAuthTokens: [],
-      })
+      }),
     ).rejects.toThrow('Something went wrong!');
-    
+
     expect(fetchSpy).toHaveBeenCalled();
 
     await expect(
       metadataStore.fetchSecretData({
         keyPair: MOCK_KEY_PAIR,
-      })
+      }),
     ).rejects.toThrow('Something went wrong!');
 
     jest.restoreAllMocks();
@@ -126,19 +133,19 @@ describe('MetadatStore', () => {
     const metadataStore = new MetadataStore({
       storageLocation: MetadataStorageLocation.PROFILE_SYNC,
     });
-    
+
     await expect(
       metadataStore.storeSecretData({
         secretData: 'SECRET_DATA',
         keyPair: MOCK_KEY_PAIR,
         nodeAuthTokens: [],
-      })
+      }),
     ).rejects.toThrow('Metadata store is not using metadata server');
 
     await expect(
       metadataStore.fetchSecretData({
         keyPair: MOCK_KEY_PAIR,
-      })
+      }),
     ).rejects.toThrow('Metadata store is not using metadata server');
   });
 });
