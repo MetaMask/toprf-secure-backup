@@ -192,14 +192,7 @@ export type IToprfSecureBackup = {
   ) => Promise<FetchSecretDataResult>;
 };
 
-/**
- * Payload structure for storing secret data
- */
-export type ISetSecretDataRequestBody = {
-  /**
-   * The secret data to be stored
-   */
-  data: string;
+export type IBaseMetadataRequestBody = {
   /**
    * The feature name related to the secret data
    */
@@ -217,6 +210,32 @@ export type ISetSecretDataRequestBody = {
    *
    */
   timestamp: string;
+};
+
+/**
+ * Payload structure for storing secret data
+ */
+export type ISetSecretDataRequestBody = IBaseMetadataRequestBody & {
+  /**
+   * The secret data to be stored
+   */
+  data: string;
+  /**
+   * The signature produced by signing the payload (without pubKey field) using the user's private key.
+   *
+   * Sample signature: sign(keccak256(data, feature, authToken, timestamp))
+   */
+  signature: string;
+};
+
+export type IBatchSetSecretDataRequestBody = IBaseMetadataRequestBody & {
+  /**
+   * The array of secret data to be stored
+   */
+  data: {
+    data: string;
+    version?: string;
+  }[];
   /**
    * The signature produced by signing the payload (without pubKey field) using the user's private key.
    *
@@ -228,24 +247,7 @@ export type ISetSecretDataRequestBody = {
 /**
  * Payload structure for fetching secret data
  */
-export type IGetSecretDataRequestBody = {
-  /**
-   * The feature name related to the secret data
-   */
-  feature: string;
-  /**
-   * The authentication token of the user issued by the SSS services
-   */
-  authToken: string;
-  /**
-   * The public key of the user
-   */
-  pubKey: string;
-  /**
-   * The Unix timestamp when the request payload is created along with the signature.
-   *
-   */
-  timestamp: string;
+export type IGetSecretDataRequestBody = IBaseMetadataRequestBody & {
   /**
    * The signature produced by signing the payload (without pubKey field) using the user's private key.
    *

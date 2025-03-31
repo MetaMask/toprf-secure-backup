@@ -13,6 +13,7 @@ import {
 import { DEFAULT_METADATA_SERVER_URL } from './constants';
 import type {
   FetchSecretDataResult,
+  IBatchSetSecretDataRequestBody,
   IGetSecretDataRequestBody,
   ISetSecretDataRequestBody,
 } from './interfaces';
@@ -105,6 +106,20 @@ export class MetadataStore {
   }
 
   /**
+   * Encrypts the secret data and stores it in the metadata store.
+   *
+   * @param secretData - The array of secret data to be stored.
+   * @param seed - The seed to derive the encryption/authentication key from.
+   * @returns A promise that resolves when the secret data is stored.
+   */
+  async storeSecretDataBatch(
+    secretData: string[],
+    seed: Uint8Array,
+  ): Promise<void> {
+    await this.#batchSetData(secretData, seed);
+  }
+
+  /**
    * Fetches the secret data from the metadata store and decrypts it.
    *
    * @param seed - The seed to derive the encryption/authentication key from.
@@ -126,10 +141,12 @@ export class MetadataStore {
   async #setData(secretData: string, seed: Uint8Array): Promise<void> {
     try {
       const url = this.#computeMetadataServerUrl('set');
-      const payload = this.#generatePayloadForSetSecretDataRequest(
-        secretData,
-        seed,
-      );
+      const encryptedData = this.#encryptData(secretData, seed);
+      const payload =
+        this.#generatePayloadForSetOrBatchSetSecretDataRequest<string>(
+          encryptedData,
+          seed,
+        );
 
       const response = await fetch(url, {
         headers: {
@@ -145,7 +162,45 @@ export class MetadataStore {
         throw new Error(`HTTP error message: ${responseBody.error}`);
       }
     } catch (error: unknown) {
-      console.log('error', error);
+      const errorMessage = (error as Error).message || 'Unknown error';
+      throw new MetadataStoreError(
+        `failed to upsert metadata: ${errorMessage}`,
+      );
+    }
+  }
+
+  /**
+   * Encrypts the array of secret data and inserts them in the metadata store.
+   *
+   * @param secretData - The array of secret data to be stored.
+   * @param seed - The seed to derive the encryption/authentication key from.
+   * @returns A promise that resolves when the secret data is stored.
+   */
+  async #batchSetData(secretData: string[], seed: Uint8Array): Promise<void> {
+    try {
+      const url = this.#computeMetadataServerUrl('batch_set');
+      const encryptedDataArray = secretData.map((secret) => ({
+        data: this.#encryptData(secret, seed),
+      }));
+
+      const payload = this.#generatePayloadForSetOrBatchSetSecretDataRequest<
+        { data: string }[]
+      >(encryptedDataArray, seed);
+
+      const response = await fetch(url, {
+        headers: {
+          // eslint-disable-next-line @typescript-eslint/naming-convention
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const responseBody = await response.json();
+        throw new Error(`HTTP error message: ${responseBody.error}`);
+      }
+    } catch (error: unknown) {
       const errorMessage = (error as Error).message || 'Unknown error';
       throw new MetadataStoreError(
         `failed to upsert metadata: ${errorMessage}`,
@@ -201,7 +256,7 @@ export class MetadataStore {
    * @param operation - The operation to be performed on the metadata server.
    * @returns The metadata server URL.
    */
-  #computeMetadataServerUrl(operation: 'set' | 'get' | 'batch_write'): string {
+  #computeMetadataServerUrl(operation: 'set' | 'get' | 'batch_set'): string {
     this.#assertIsUsingMetadataServer();
 
     const baseUrl = this.#metadataServerUrl;
@@ -219,20 +274,24 @@ export class MetadataStore {
   }
 
   /**
-   * Generate the payload for the set secret data request and get payload signature.
+   * Generate the payload for the set or batch set secret data request and get payload signature.
    *
-   * @param secretData - The secret data to be stored.
+   * @param data - The encrypted secret data to be stored.
    * @param seed - The seed to derive the encryption/authentication key from.
-   * @returns The payload for the set secret data request.
+   * @returns The payload for the batch set secret data request.
    */
-  #generatePayloadForSetSecretDataRequest(
-    secretData: string,
+  #generatePayloadForSetOrBatchSetSecretDataRequest<
+    T extends string | { data: string }[],
+  >(
+    data: T,
     seed: Uint8Array,
-  ): ISetSecretDataRequestBody {
-    const data = this.#encryptData(secretData, seed);
+  ): T extends string
+    ? ISetSecretDataRequestBody
+    : IBatchSetSecretDataRequestBody {
     const timestamp = Date.now().toString();
     const feature = this.#feature;
     const authToken = this.#authToken;
+
     const { pk: pubKeyRaw, sk: privKey } = deriveAuthenticationKeyPair(seed);
     const pubKey = bytesToHex(pubKeyRaw);
     const signature = this.#generatePayloadSignature(
@@ -247,7 +306,9 @@ export class MetadataStore {
       timestamp,
       authToken,
       pubKey,
-    };
+    } as T extends string
+      ? ISetSecretDataRequestBody
+      : IBatchSetSecretDataRequestBody;
   }
 
   /**

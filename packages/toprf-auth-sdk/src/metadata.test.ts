@@ -9,8 +9,6 @@ import { generateMockAuthTokenForMetadataRequests } from '../tests/metadata-util
 
 const MOCK_SEED = randomBytes(32);
 const METADATA_SERVER_URL = 'http://localhost:5051/enc_account_data';
-// const MOCK_AUTH_TOKEN =
-//   'eyJ2ZXJpZmllciI6Im1vY2stdmVyaWZpZXIiLCJ2ZXJpZmllcl9pZCI6Im1vY2stdmVyaWZpZXItaWQiLCJhdWQiOiIxMGQyODAzOGU4NDA4MjllODdkOWFlMDA0OWM3MzgyZmRjYzE0Yzc0OWYyYWJiN2IwZjAxMTQxOTY2ZDZjNDIxIiwic2NvcGUiOiJtb2NrLXNjb3BlIiwidGVtcF9rZXlfeCI6Im1vY2stdGVtcC1rZXkteCIsInRlbXBfa2V5X3kiOiJtb2NrLXRlbXAta2V5LXkiLCJleHAiOjE4MDAwMDAwMDAsInNpZ25hdHVyZSI6IjEyYzMwYjEyMjIyOWQwYjhiZmY4YjcyODRiYmVmYzRlNjAyZDNiYTA3MTE1ODdmZGQxYThjN2FlOTEwNmE1NDBmZTZhNWE1NDM0MzBkMWMwOWRlN2Q1MWUxZWFhY2Y1ZWQyYmY4YzJiNWY0NjkwODMxMTk1Yzk1MjdjNzIwMjYyMDAifQ==';
 
 describe('MetadatStore', () => {
   let authToken: string;
