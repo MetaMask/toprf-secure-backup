@@ -2,8 +2,11 @@ import base, { createConfig } from '@metamask/eslint-config';
 import jest from '@metamask/eslint-config-jest';
 import nodejs from '@metamask/eslint-config-nodejs';
 import typescript from '@metamask/eslint-config-typescript';
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
 
 const NODE_LTS_VERSION = 22;
+const configDirName = dirname(fileURLToPath(import.meta.url));
 
 const config = createConfig([
   ...base,
@@ -71,9 +74,14 @@ const config = createConfig([
   {
     files: ['**/*.ts'],
     extends: [typescript],
+    settings: {
+      node: {
+        version: `^${NODE_LTS_VERSION}`,
+      },
+    },
     languageOptions: {
       parserOptions: {
-        tsconfigRootDir: import.meta.dirname,
+        tsconfigRootDir: configDirName,
         project: './tsconfig.json',
         projectService: {
           allowDefaultProject: ['./scripts/*.ts'],

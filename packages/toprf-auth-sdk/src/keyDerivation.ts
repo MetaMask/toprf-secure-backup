@@ -22,7 +22,7 @@ export function deriveAuthenticationKeyPair(seed: Uint8Array): {
   // Converting from bytes to scalar like this is OK because statistical
   // distance between U(2^256) % secp256k1.n and U(secp256k1.n) is negligible.
   const sk = bytesToNumberBE(k) % secp256k1.CURVE.n;
-  const pk = secp256k1.getPublicKey(sk);
+  const pk = secp256k1.getPublicKey(sk, false);
   return { sk, pk };
 }
 
