@@ -5,7 +5,7 @@ import type {
 } from '@toruslabs/constants';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
-import { authenticateRequest } from './authenticateRequest';
+import { authenticateUser } from './authenticateRequest';
 import { commitmentRequest } from './commitmentRequest';
 import type {
   AuthenticateParams,
@@ -42,10 +42,11 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       indexes: nodeIndexes,
     });
     // get auth tokens from nodes
-    const authTokens = await authenticateRequest({
+    const authTokens = await authenticateUser({
       idToken: params.idTokens[0],
       verifier: params.verifier,
       verifierID: params.verifierID,
+      sessionPrivateKey: sessionKeyPair.getPrivate().toString('hex'),
       endpoints: nodeEndpoints,
       commitmentSignatures: commitmentResults,
     });
@@ -59,8 +60,9 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     );
     return Promise.resolve({
       nodeAuthTokens: authTokens.map((tokenData) => ({
-        nodeAuthToken: tokenData.authToken,
+        authToken: tokenData.authToken,
         nodeIndex: tokenData.nodeIndex,
+        nodePubKey: tokenData.nodePubKey,
       })),
       hasValidEncKey: Boolean(hasValidEncKey),
     });

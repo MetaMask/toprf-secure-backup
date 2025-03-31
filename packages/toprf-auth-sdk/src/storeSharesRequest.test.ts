@@ -1,11 +1,12 @@
 import { getSecp256K1Curve } from '@metamask/auth-network-utils';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
-import { authenticateRequest } from './authenticateRequest';
+import { authenticateUser } from './authenticateRequest';
 import { commitmentRequest } from './commitmentRequest';
+import { storeKeySharesRequest } from './storeSharesRequest';
 import { generateIdToken } from './testHelpers';
 
-describe('authenticate request', function () {
+describe('store shares request', function () {
   let nodeDetailManager: NodeDetailManager;
   beforeAll(async function () {
     nodeDetailManager = new NodeDetailManager({
@@ -15,12 +16,13 @@ describe('authenticate request', function () {
     });
   });
 
-  it('should create a authenticate request', async function () {
+  it('should be able to store shares', async function () {
     const curve = getSecp256K1Curve();
     const keyPair = curve.genKeyPair();
     const pubPoint = keyPair.getPublic();
     const verifier = 'torus-test-health';
-    const verifierID = 'test-verifier-id';
+    // generate a random verifierID string
+    const verifierID = `test-verifier-id-${Math.random()}`;
     const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
       await nodeDetailManager.getNodeDetails({
         verifier,
@@ -44,15 +46,43 @@ describe('authenticate request', function () {
       indexes: torusIndexes,
     });
 
-    const authTokens = await authenticateRequest({
+    const authTokens = await authenticateUser({
       idToken,
       verifier,
       verifierID,
+      sessionPrivateKey: keyPair.getPrivate().toString('hex'),
       endpoints: torusNodeSSSEndpoints,
       commitmentSignatures: commitmentResults,
     });
 
     console.log('authTokens', authTokens);
     expect(authTokens).toBeDefined();
+
+    const oprfKeyPair = curve.genKeyPair();
+    const oprfPubKey = oprfKeyPair.getPublic();
+    const oprfPubKeyX = oprfPubKey.getX().toString('hex');
+    const oprfPubKeyY = oprfPubKey.getY().toString('hex');
+
+    const storeSharesResponse = await storeKeySharesRequest(
+      torusNodeSSSEndpoints,
+      {
+        nodeIndexes: torusIndexes,
+        nodePubkeys: torusNodePub,
+        verifier,
+        verifierId: verifierID,
+        authTokens: authTokens.map((tokenData) => ({
+          authToken: tokenData.authToken,
+          nodeIndex: tokenData.nodeIndex,
+          nodePubKey: tokenData.nodePubKey,
+        })),
+        keyIndex: 1,
+        oprfKey: oprfKeyPair.getPrivate(),
+        encryptionPubKey: `04${oprfPubKeyX}${oprfPubKeyY}`,
+      },
+    );
+
+    console.log('storeSharesResponse', storeSharesResponse);
+    expect(storeSharesResponse).toBeDefined();
+    expect(storeSharesResponse.error).toBeUndefined();
   });
 });

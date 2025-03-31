@@ -7,6 +7,7 @@ import {
 import { commitmentRequest } from './commitmentRequest';
 import { NODE_URLS } from './constants';
 import { generateIdToken } from './testHelpers';
+import { decryptAuthToken } from './utils';
 
 describe('authenticate request', function () {
   it('should create a authenticate request', async function () {
@@ -47,5 +48,11 @@ describe('authenticate request', function () {
     expect(authJRPCRequest.result?.nodeIndex).toBeDefined();
     expect(authJRPCRequest.result?.pubKey).toBeDefined();
     expect(authJRPCRequest.result?.keyIndex).toBeDefined();
+    const authToken = authJRPCRequest.result?.authToken as string;
+    const decryptedAuthToken = await decryptAuthToken(
+      authToken,
+      keyPair.getPrivate().toString('hex'),
+    );
+    expect(decryptedAuthToken).toBeDefined();
   });
 });

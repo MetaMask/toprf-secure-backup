@@ -25,15 +25,18 @@ export type AuthenticateParams = {
   verifierID: string;
 };
 
+export type NodeAuthToken = {
+  authToken: string;
+  nodeIndex: number;
+  nodePubKey: string;
+};
+
 /**
  * nodeAuthToken - The token issued by the node on verifying the idToken.
  *
  * nodeIndex - The index of the node that issued the token
  */
-export type NodeAuthTokens = {
-  nodeAuthToken: string;
-  nodeIndex: number;
-}[];
+export type NodeAuthTokens = NodeAuthToken[];
 
 /**
  * nodeAuthTokens - An array of authentication tokens issued by the nodes.

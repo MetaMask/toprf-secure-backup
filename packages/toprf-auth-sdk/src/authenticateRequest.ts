@@ -9,7 +9,7 @@ import type {
   CommitmentRequestResult,
   AuthRequestResult,
 } from './jrpcInterfaces';
-import { postJRPCRequest } from './utils';
+import { decryptAuthToken, postJRPCRequest } from './utils';
 
 /**
  * Creates the parameters for the authenticate request
@@ -64,13 +64,16 @@ export const createAuthenticateRequest = async (
  * Validates the authenticate responses
  *
  * @param resultArr - The authenticate request result
- * @param threshold - The threshold for the number authenticate responses to be valid
+ * @param nodesCount - The number of nodes.
  * @returns The authenticate request result
  */
-export const validateThresholdAuthenticateResponses = async (
+const validateThresholdAuthenticateResponses = async (
   resultArr: AuthJRPCResponse[],
-  threshold: number,
+  nodesCount: number,
 ): Promise<AuthRequestResult[]> => {
+  // start with half the nodes count optimistically.
+  const threshold = Math.floor(nodesCount / 2) + 1;
+
   const completedRequests = resultArr.filter((res): res is AuthJRPCResponse => {
     if (!res || typeof res !== 'object') {
       return false;
@@ -89,7 +92,17 @@ export const validateThresholdAuthenticateResponses = async (
       };
     });
     const thresholdPubData = thresholdSame(pubData, threshold);
-    if (thresholdPubData) {
+    const isExistingUser = Boolean(thresholdPubData?.pubKey);
+    const hasThresholdResponses = threshold < nodesCount;
+    const hasMaxResponses = nodesCount === completedRequests.length;
+    // if it is old user thn we can return the result, as soon as we get the threshold number of responses.
+    // if it is new user then we need to wait for all the responses because we will need all nodes to be online
+    // while storing shares of this new user.
+    if (isExistingUser && hasThresholdResponses) {
+      return Promise.resolve(
+        completedRequests.map((res) => res.result as AuthRequestResult),
+      );
+    } else if (!isExistingUser && hasMaxResponses) {
       return Promise.resolve(
         completedRequests.map((res) => res.result as AuthRequestResult),
       );
@@ -102,27 +115,34 @@ export const validateThresholdAuthenticateResponses = async (
 };
 
 /**
- * Creates a authenticate request to the given endpoints and validates the responses
+ * Authenticates the user with the given idToken and verifierID and validates the responses.
  *
  * @param params - The parameters for the authenticate request
  * @param params.idToken - The idToken to be used for the authenticate request
  * @param params.verifier - The verifier to be used for the authenticate request
  * @param params.verifierID - The verifierID to be used for the authenticate request
+ * @param params.sessionPrivateKey - The session private key used for commitment request.
  * @param params.endpoints - The endpoints to be used for the authenticate request
  * @param params.commitmentSignatures - The idToken commitment signatures to be used for the authenticate request.
  * @returns resultArr - The authenticate request result, where each element is
  * a signed authenticate data from a node.
  */
-export const authenticateRequest = async (params: {
+export const authenticateUser = async (params: {
   idToken: string;
   verifier: string;
   verifierID: string;
+  sessionPrivateKey: string;
   endpoints: string[];
   commitmentSignatures: CommitmentRequestResult[];
 }): Promise<AuthRequestResult[]> => {
-  const { idToken, endpoints, verifier, verifierID, commitmentSignatures } =
-    params;
-  const halfThreshold = Math.floor(endpoints.length / 2) + 1;
+  const {
+    idToken,
+    endpoints,
+    verifier,
+    verifierID,
+    commitmentSignatures,
+    sessionPrivateKey,
+  } = params;
   const requestParams = createAuthenticateRequestParams(
     idToken,
     verifier,
@@ -133,9 +153,9 @@ export const authenticateRequest = async (params: {
     createAuthenticateRequest(endpoint, requestParams),
   );
 
-  return new Promise<AuthRequestResult[]>((resolve, reject) => {
+  const results = await new Promise<AuthRequestResult[]>((resolve, reject) => {
     Some<AuthJRPCResponse, AuthRequestResult[]>(promiseArr, async (resultArr) =>
-      validateThresholdAuthenticateResponses(resultArr, halfThreshold),
+      validateThresholdAuthenticateResponses(resultArr, endpoints.length),
     )
       .then((resultArr: AuthRequestResult[] | void) => {
         if (!resultArr || resultArr.length === 0) {
@@ -146,4 +166,21 @@ export const authenticateRequest = async (params: {
       })
       .catch(reject);
   });
+  const decryptedAuthResults = await Promise.all(
+    results.map(async (result) => {
+      const { authToken, nodeIndex, nodePubKey, pubKey, keyIndex } = result;
+      const decryptedAuthToken = await decryptAuthToken(
+        authToken,
+        sessionPrivateKey,
+      );
+      return {
+        authToken: decryptedAuthToken,
+        nodeIndex,
+        nodePubKey,
+        pubKey,
+        keyIndex,
+      };
+    }),
+  );
+  return decryptedAuthResults;
 };

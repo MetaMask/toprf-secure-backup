@@ -39,11 +39,12 @@ export function generate32BytesPrivateKeyBuffer(ecCurve: EC): Buffer {
  * @param encParams - The encrypted parameters with fields as buffers
  * @returns The encrypted parameters with fields converted to hex strings
  */
-export function encryptedParamsBufToHex(encParams: Ecies): EciesHex {
+export function encryptedParamsBufToHex(
+  encParams: Ecies,
+): Omit<EciesHex, 'ciphertext'> {
   return {
     iv: Buffer.from(encParams.iv).toString('hex'),
     ephemPublicKey: Buffer.from(encParams.ephemPublicKey).toString('hex'),
-    ciphertext: Buffer.from(encParams.ciphertext).toString('hex'),
     mac: Buffer.from(encParams.mac).toString('hex'),
     mode: 'AES256',
   };
