@@ -51,11 +51,13 @@
     "@noble/ciphers": "^1.2.1",
     "@noble/curves": "^1.8.1",
     "@noble/hashes": "^1.7.1",
+    "@noble/secp256k1": "^2.2.3",
     "@toruslabs/constants": "^15.0.0",
     "@toruslabs/eccrypto": "^6.0.2",
     "@toruslabs/http-helpers": "^8.1.1",
     "bn.js": "^5.2.1",
-    "ethereum-cryptography": "^3.1.0"
+    "ethereum-cryptography": "^3.1.0",
+    "json-stable-stringify": "^1.2.1"
   },
   "devDependencies": {
     "@babel/runtime": "^7.26.10",

@@ -1,21 +1,25 @@
 import { gcm } from '@noble/ciphers/aes';
 import { bytesToUtf8 } from '@noble/ciphers/utils';
-import { sha256 } from '@noble/hashes/sha256';
+import { secp256k1 } from '@noble/curves/secp256k1';
+import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
 import {
   bytesToHex,
   concatBytes,
   randomBytes,
   utf8ToBytes,
 } from '@noble/hashes/utils';
+import stringify from 'json-stable-stringify';
 
 import { DEFAULT_METADATA_SERVER_URL } from './constants';
 import type {
-  FetchSecretDataParams,
   FetchSecretDataResult,
-  KeyPair,
-  StoreSecretDataParams,
+  IGetSecretDataRequestBody,
+  ISetSecretDataRequestBody,
 } from './interfaces';
-import { deriveEncryptionKey } from './keyDerivation';
+import {
+  deriveAuthenticationKeyPair,
+  deriveEncryptionKey,
+} from './keyDerivation';
 
 export enum MetadataStorageLocation {
   // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -25,6 +29,7 @@ export enum MetadataStorageLocation {
 }
 
 type MetadataStoreOptions = {
+  authToken: string;
   storageLocation?: MetadataStorageLocation;
   metadataServerUrl?: string;
 };
@@ -47,7 +52,7 @@ export class MetadataStoreError extends Error {
  *
  */
 export class MetadataStore {
-  readonly #feature = 'srp_backup';
+  readonly #feature = 'srp-backup';
 
   readonly #storageLocation: MetadataStorageLocation;
 
@@ -56,17 +61,22 @@ export class MetadataStore {
 
   readonly #metadataServerUrl: string = '';
 
+  readonly #authToken: string;
+
   /**
    *
-   * @param options0 - The initialization options for the metadata store.
-   * @param options0.storageLocation - The storage location of the metadata.
-   * @param options0.metadataServerUrl - The metadata server URL.
+   * @param options - The initialization options for the metadata store.
+   * @param options.authToken - The auth token to be used for authenticating requests to the metadata server.
+   * @param options.storageLocation - The storage location of the metadata.
+   * @param options.metadataServerUrl - The metadata server URL.
    */
   constructor({
+    authToken,
     storageLocation = MetadataStorageLocation.METADATA_SERVER,
     metadataServerUrl = DEFAULT_METADATA_SERVER_URL,
-  }: MetadataStoreOptions = {}) {
+  }: MetadataStoreOptions) {
     this.#storageLocation = storageLocation;
+    this.#authToken = authToken;
 
     if (storageLocation === MetadataStorageLocation.METADATA_SERVER) {
       this.#metadataServerUrl = metadataServerUrl;
@@ -86,44 +96,40 @@ export class MetadataStore {
   /**
    * Encrypts the secret data and stores it in the metadata store.
    *
-   * @param params - The parameters for storing the secret data.
-   * @param params.secretData - The secret data to be stored.
-   * @param params.keyPair - The authentication key pair derived from Threshold OPRF.
-   * @param params.nodeAuthTokens - The node auth tokens to be used for authenticating store request.
+   * @param secretData - The secret data to be stored.
+   * @param seed - The seed to derive the encryption/authentication key from.
    * @returns A promise that resolves when the secret data is stored.
    */
-  async storeSecretData(params: StoreSecretDataParams): Promise<void> {
-    await this.#setData(params);
+  async storeSecretData(secretData: string, seed: Uint8Array): Promise<void> {
+    await this.#setData(secretData, seed);
   }
 
   /**
    * Fetches the secret data from the metadata store and decrypts it.
    *
-   * @param params - The parameters for fetching the secret data.
-   * @param params.keyPair - The authentication key pair derived from Threshold OPRF.
-   * @param nodeAuthTokens - The node auth tokens to be used for authenticating fetch request.
+   * @param seed - The seed to derive the encryption/authentication key from.
    * @returns A promise that resolves with the decrypted secret data.
    */
   async fetchSecretData(
-    params: FetchSecretDataParams,
-    nodeAuthTokens: string,
+    seed: Uint8Array,
   ): Promise<FetchSecretDataResult | null> {
-    const data = await this.#getData(params);
-    return data;
+    return await this.#getData(seed);
   }
 
   /**
    * Encrypts the secret data and inserts or updates it in the metadata store.
    *
-   * @param params - The parameters for storing the secret data.
+   * @param secretData - The secret data to be stored.
+   * @param seed - The seed to derive the encryption/authentication key from.
    * @returns A promise that resolves when the secret data is stored.
    */
-  async #setData(params: StoreSecretDataParams): Promise<void> {
+  async #setData(secretData: string, seed: Uint8Array): Promise<void> {
     try {
-      const data = this.#encryptData(params.secretData, params.keyPair.privKey);
-      const key = this.#getMetadataKey(params.keyPair);
-
-      const url = this.#computeMetadataServerUrl('write');
+      const url = this.#computeMetadataServerUrl('set');
+      const payload = this.#generatePayloadForSetSecretDataRequest(
+        secretData,
+        seed,
+      );
 
       const response = await fetch(url, {
         headers: {
@@ -131,10 +137,7 @@ export class MetadataStore {
           'Content-Type': 'application/json',
         },
         method: 'POST',
-        body: JSON.stringify({
-          key,
-          data,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -153,16 +156,13 @@ export class MetadataStore {
   /**
    * Fetches the secret data from the metadata store by provided public key and decrypts it.
    *
-   * @param params - The parameters for fetching the secret data.
-   * @param params.keyPair - The authentication key pair derived from Threshold OPRF.
+   * @param seed - The seed to derive the encryption/authentication key from.
    * @returns A promise that resolves with the decrypted secret data.
    */
-  async #getData({
-    keyPair,
-  }: FetchSecretDataParams): Promise<FetchSecretDataResult | null> {
+  async #getData(seed: Uint8Array): Promise<FetchSecretDataResult | null> {
     try {
-      const key = this.#getMetadataKey(keyPair);
-      const url = this.#computeMetadataServerUrl('read');
+      const url = this.#computeMetadataServerUrl('get');
+      const payload = this.#generatePayloadForGetSecretDataRequest(seed);
 
       const response = await fetch(url, {
         headers: {
@@ -170,7 +170,7 @@ export class MetadataStore {
           'Content-Type': 'application/json',
         },
         method: 'POST',
-        body: JSON.stringify({ key }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -178,12 +178,15 @@ export class MetadataStore {
         throw new Error(`HTTP error message: ${responseBody.error}`);
       }
 
-      const { message: encryptedData } = await response.json();
-      if (!encryptedData) {
+      const jsonData = await response.json();
+      if (!jsonData.data) {
         return null;
       }
 
-      const secretData = this.#decryptData(encryptedData, keyPair.privKey);
+      const encryptionKey = deriveEncryptionKey(seed);
+      const secretData = jsonData.data.map((data: string) =>
+        this.#decryptData(data, encryptionKey),
+      );
       return {
         secretData,
       };
@@ -196,27 +199,14 @@ export class MetadataStore {
 
   /**
    *
-   * @param keyPair - The authentication key pair derived from Threshold OPRF.
-   * @returns The metadata key.
-   */
-  #getMetadataKey(keyPair: KeyPair): string {
-    const { pubKey } = keyPair;
-    const pubKeyHex = Buffer.from(pubKey).toString('hex');
-    const rawHashedKey = sha256(this.#feature + pubKeyHex);
-
-    return bytesToHex(rawHashedKey);
-  }
-
-  /**
-   *
    * @param operation - The operation to be performed on the metadata server.
    * @returns The metadata server URL.
    */
-  #computeMetadataServerUrl(operation: 'read' | 'write'): string {
+  #computeMetadataServerUrl(operation: 'set' | 'get' | 'batch_write'): string {
     this.#assertIsUsingMetadataServer();
 
     const baseUrl = this.#metadataServerUrl;
-    return `${baseUrl}/option-2-${operation}`;
+    return `${baseUrl}/${operation}`;
   }
 
   /**
@@ -227,6 +217,90 @@ export class MetadataStore {
       // TODO: use error constants
       throw new Error('Metadata store is not using metadata server');
     }
+  }
+
+  /**
+   * Generate the payload for the set secret data request and get payload signature.
+   *
+   * @param secretData - The secret data to be stored.
+   * @param seed - The seed to derive the encryption/authentication key from.
+   * @returns The payload for the set secret data request.
+   */
+  #generatePayloadForSetSecretDataRequest(
+    secretData: string,
+    seed: Uint8Array,
+  ): ISetSecretDataRequestBody {
+    const data = this.#encryptData(secretData, seed);
+    const timestamp = Date.now().toString();
+    const feature = this.#feature;
+    const authToken = this.#authToken;
+    const { pk: pubKeyRaw, sk: privKey } = deriveAuthenticationKeyPair(seed);
+    const pubKey = bytesToHex(pubKeyRaw);
+    const signature = this.#generatePayloadSignature(
+      { data, timestamp, feature, authToken },
+      privKey,
+    );
+
+    return {
+      data,
+      signature,
+      feature,
+      timestamp,
+      authToken,
+      pubKey,
+    };
+  }
+
+  /**
+   * Generate the payload for the get secret data request and get payload signature.
+   *
+   * @param seed - The seed to derive the encryption/authentication key from.
+   * @returns The payload for the get secret data request.
+   */
+  #generatePayloadForGetSecretDataRequest(
+    seed: Uint8Array,
+  ): IGetSecretDataRequestBody {
+    const timestamp = Date.now().toString();
+    const feature = this.#feature;
+    const authToken = this.#authToken;
+    const { pk: pubKeyRaw, sk: privKey } = deriveAuthenticationKeyPair(seed);
+
+    const signature = this.#generatePayloadSignature(
+      { feature, timestamp, authToken },
+      privKey,
+    );
+
+    const pubKey = bytesToHex(pubKeyRaw);
+
+    return {
+      feature,
+      pubKey,
+      timestamp,
+      authToken,
+      signature,
+    };
+  }
+
+  /**
+   * Generate the signature for the payload.
+   *
+   * @param payload - The payload to be signed.
+   * @param privKey - The private key to sign the payload.
+   * @returns The signature hex string.
+   */
+  #generatePayloadSignature(
+    payload: Record<string, unknown>,
+    privKey: bigint,
+  ): string {
+    // TODO: we can move this to auth-network-utils
+    const payloadString = stringify(payload);
+    if (!payloadString) {
+      throw new Error('Failed to stringify payload');
+    }
+    const hash = keccak256(payloadString);
+    const signature = secp256k1.sign(hash, privKey);
+
+    return signature.toCompactHex();
   }
 
   /**
@@ -255,19 +329,17 @@ export class MetadataStore {
    * Decrypt the data using the encryption key.
    *
    * @param cipherTextCombinedWithNonceString - The cipher text combined with nonce.
-   * @param seed - The seed to derive the encryption key from.
+   * @param encryptionKey - The encryption key to decrypt the data.
    * @returns The decrypted data.
    */
   #decryptData(
     cipherTextCombinedWithNonceString: string,
-    seed: Uint8Array,
+    encryptionKey: Uint8Array,
   ): string {
-    const encryptionKey = deriveEncryptionKey(seed);
     const cipherTextCombinedWithNonce = new Uint8Array(
       Buffer.from(cipherTextCombinedWithNonceString, 'base64'),
     );
     const nonce = cipherTextCombinedWithNonce.slice(0, this.#nonceSize);
-
     const rawEncData = cipherTextCombinedWithNonce.slice(this.#nonceSize);
 
     const aes = gcm(encryptionKey, nonce);

@@ -125,7 +125,7 @@ export type FetchSecretDataParams = {
  * secretData - The secret data in decrypted form.
  */
 export type FetchSecretDataResult = {
-  secretData: string;
+  secretData: string[];
 };
 
 export type IMetamaskTOPRFAuth = {
@@ -208,4 +208,66 @@ export type IMetamaskTOPRFAuth = {
   fetchSecretData: (
     params: FetchSecretDataParams,
   ) => Promise<FetchSecretDataResult>;
+};
+
+/**
+ * Payload structure for storing secret data
+ */
+export type ISetSecretDataRequestBody = {
+  /**
+   * The secret data to be stored
+   */
+  data: string;
+  /**
+   * The feature name related to the secret data
+   */
+  feature: string;
+  /**
+   * The authentication token of the user issued by the SSS services
+   */
+  authToken: string;
+  /**
+   * The public key of the user
+   */
+  pubKey: string;
+  /**
+   * The Unix timestamp when the request payload is created along with the signature.
+   *
+   */
+  timestamp: string;
+  /**
+   * The signature produced by signing the payload (without pubKey field) using the user's private key.
+   *
+   * Sample signature: sign(keccak256(data, feature, authToken, timestamp))
+   */
+  signature: string;
+};
+
+/**
+ * Payload structure for fetching secret data
+ */
+export type IGetSecretDataRequestBody = {
+  /**
+   * The feature name related to the secret data
+   */
+  feature: string;
+  /**
+   * The authentication token of the user issued by the SSS services
+   */
+  authToken: string;
+  /**
+   * The public key of the user
+   */
+  pubKey: string;
+  /**
+   * The Unix timestamp when the request payload is created along with the signature.
+   *
+   */
+  timestamp: string;
+  /**
+   * The signature produced by signing the payload (without pubKey field) using the user's private key.
+   *
+   * Sample signature: sign(keccak256(feature, authToken, timestamp))
+   */
+  signature: string;
 };
