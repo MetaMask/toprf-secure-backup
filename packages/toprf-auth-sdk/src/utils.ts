@@ -28,6 +28,16 @@ type EncryptedData = {
 };
 
 /**
+ * Converts a BigInt to BN
+ *
+ * @param value - BigInt value to convert
+ * @returns BN instance
+ */
+export const bigIntToBN = (value: bigint): BN => {
+  return new BN(value.toString());
+};
+
+/**
  * Randomly selects a node URL from the available nodes
  *
  * @returns An object containing:
@@ -143,7 +153,7 @@ export const generateShareImportItems = async (
   nodeIndexes: number[],
   nodePubkeys: INodePub[],
   authTokens: NodeAuthToken[],
-  privKey: BN,
+  privKey: bigint,
   keyIndex: number,
 ): Promise<ShareImportItem[]> => {
   if (
@@ -154,11 +164,12 @@ export const generateShareImportItems = async (
       'Invalid inputs, nodeIndexes, nodePubkeys and authTokens must have the same length while generating share import items',
     );
   }
+  const privKeyBN = bigIntToBN(privKey);
   const ecCurve = getSecp256K1Curve();
   const threshold = Math.floor(nodePubkeys.length / 2) + 1;
 
   // Generate shares for each node
-  const shares = generateShares(ecCurve, nodeIndexes, privKey, threshold);
+  const shares = generateShares(ecCurve, nodeIndexes, privKeyBN, threshold);
 
   // Encrypt shares for each node
   const encryptionPromises = nodeIndexes.map(async (nodeIndex, i) => {

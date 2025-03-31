@@ -4,14 +4,23 @@ import type {
   TORUS_SAPPHIRE_NETWORK_TYPE,
 } from '@toruslabs/constants';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
+import { keccak256 } from 'ethereum-cryptography/keccak';
 
 import { authenticateUser } from './authenticateRequest';
 import { commitmentRequest } from './commitmentRequest';
 import type {
   AuthenticateParams,
   AuthenticateResult,
+  CreateEncryptionKeyParams,
+  CreateEncryptionKeyResult,
   IToprfSecureBackup,
 } from './interfaces';
+import {
+  deriveAuthenticationKeyPair,
+  deriveEncryptionKey,
+} from './keyDerivation';
+import { OPRF, generateRandomScalar } from './oprf';
+import { storeKeyShares } from './storeSharesRequest';
 
 /**
  *
@@ -33,11 +42,16 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   }
 
   /**
-   * Authenticates the user and returns the authentication result
-   * containing the auth tokens and the flag indicating if user has valid encryption key.
+   * This function is used to authenticate the user by sending the oauth idToken to the nodes and
+   * getting the authentication tokens from the nodes in return.
    *
-   * @param params - The authenticate parameters.
-   * @returns The authenticate result.
+   * @param params - The authentication parameters.
+   * @param params.idTokens - An array of ID tokens for authentication.
+   * @param params.verifier - The verifier who issued the idToken.
+   * @param params.verifierID - The verifierID/userID assigned to the user by the verifier.
+   *
+   * @returns A promise that resolves with the authentication result.
+   * @throws {Error} If idToken is older than 6 minutes.
    */
   async authenticate(params: AuthenticateParams): Promise<AuthenticateResult> {
     const { nodeEndpoints, nodeIndexes } = await this.#getNodeDetails();
@@ -81,6 +95,48 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       })),
       hasValidEncKey: Boolean(hasValidEncKey),
     });
+  }
+
+  /**
+   * This function creates the encryption key which is used to encrypt/decrypt the secret data.
+   *
+   * @param params - The parameters for creating the encryption key.
+   * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
+   * @param params.password - New password of the user.
+   *
+   * @returns A promise that resolves with the encryption key.
+   */
+  async createEncKey(
+    params: CreateEncryptionKeyParams,
+  ): Promise<CreateEncryptionKeyResult> {
+    const { nodeAuthTokens, password, verifier, verifierId } = params;
+    const { nodeEndpoints, nodeIndexes, nodePubkeys } =
+      await this.#getNodeDetails();
+    const passwordBytes = new TextEncoder().encode(password);
+    const hashedInput = keccak256(passwordBytes);
+    const randomScalar = generateRandomScalar();
+    const seed = OPRF.localEval(randomScalar, hashedInput);
+    const authKeyPair = deriveAuthenticationKeyPair(seed);
+
+    await storeKeyShares(nodeEndpoints, {
+      nodeIndexes,
+      nodePubkeys,
+      verifier,
+      verifierId,
+      authTokens: nodeAuthTokens,
+      keyIndex: 1,
+      oprfKey: randomScalar,
+      authPubKey: authKeyPair.pk,
+    });
+    const encKeyPair = deriveEncryptionKey(seed);
+
+    return {
+      authKeyPair: {
+        privKey: authKeyPair.sk,
+        pubKey: authKeyPair.pk,
+      },
+      encKey: encKeyPair,
+    };
   }
 
   /**

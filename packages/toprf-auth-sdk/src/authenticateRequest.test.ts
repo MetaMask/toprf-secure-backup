@@ -6,8 +6,8 @@ import {
 } from './authenticateRequest';
 import { commitmentRequest } from './commitmentRequest';
 import { NODE_URLS } from './constants';
+import { generateIdToken } from './testHelpers';
 import { decryptAuthToken } from './utils';
-import { generateIdToken } from '../tests/testHelpers';
 
 describe('authenticate request', function () {
   it('should create a authenticate request', async function () {
