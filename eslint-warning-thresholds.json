@@ -12,16 +12,9 @@
     "id-denylist": 1
   },
   "packages/auth-network-utils/src/errors.ts": {
-    "@typescript-eslint/explicit-function-return-type": 2,
     "@typescript-eslint/naming-convention": 1,
     "@typescript-eslint/prefer-nullish-coalescing": 2,
     "id-length": 2
-  },
-  "packages/auth-network-utils/src/lagrangeInterpolation.test.ts": {
-    "id-length": 2
-  },
-  "packages/auth-network-utils/src/point.ts": {
-    "id-length": 4
   },
   "packages/auth-network-utils/src/polynomial.ts": {
     "id-length": 1

@@ -8,12 +8,12 @@ export type SEC1EncodedPublicKey = Uint8Array;
 /**
  * KeyPair - The encryption/decryption private and public key pair.
  *
- * privKey - The decryption private key in Uint8Array format.
+ * privKey - The decryption private key in bigint format.
  *
  * pubKey - The encryption public key in SEC1 encoded format.
  */
 export type KeyPair = {
-  privKey: Uint8Array;
+  privKey: bigint;
   pubKey: SEC1EncodedPublicKey;
 };
 
@@ -21,10 +21,14 @@ export type AuthenticateParams = {
   // for now we only support one idToken, in future we will support multiple to remove commitment call
   // so leaving it as an array for future use
   idTokens: string[];
-  endpoints: string[];
-  indexes: number[];
   verifier: string;
   verifierID: string;
+};
+
+export type NodeAuthToken = {
+  authToken: string;
+  nodeIndex: number;
+  nodePubKey: string;
 };
 
 /**
@@ -32,10 +36,7 @@ export type AuthenticateParams = {
  *
  * nodeIndex - The index of the node that issued the token
  */
-export type NodeAuthTokens = {
-  nodeAuthToken: string;
-  nodeIndex: number;
-}[];
+export type NodeAuthTokens = NodeAuthToken[];
 
 /**
  * nodeAuthTokens - An array of authentication tokens issued by the nodes.
@@ -48,11 +49,14 @@ export type AuthenticateResult = {
 };
 
 /**
+ *
  * nodeAuthTokens - The tokens issued by the nodes on verifying the idTokens.
  *
  * password - The password of the user.
  */
 export type CreateEncryptionKeyParams = {
+  verifier: string;
+  verifierId: string;
   nodeAuthTokens: NodeAuthTokens;
   password: string;
 };
@@ -61,7 +65,8 @@ export type CreateEncryptionKeyParams = {
  * keyPair - The encryption/decryption key pair which is used to encrypt/decrypt the secret data.
  */
 export type CreateEncryptionKeyResult = {
-  keyPair: KeyPair;
+  authKeyPair: KeyPair;
+  encKey: Uint8Array;
 };
 
 /**
@@ -128,32 +133,9 @@ export type FetchSecretDataResult = {
   secretData: string[];
 };
 
-export type IMetamaskTOPRFAuth = {
-  /**
-   * This function is used to authenticate the user by sending the oauth idToken to the nodes and
-   * getting the authentication tokens from the nodes in return.
-   *
-   * @param {AuthenticateParams} params - The authentication parameters.
-   * @param {string[]} params.idTokens - An array of ID tokens for authentication.
-   * @param {string[]} params.endpoints - The endpoints of the nodes to send the idToken to.
-   * @param {number[]} params.indexes - The indexes of the nodes to send the idToken to.
-   * @param {string} params.verifier - The verifier who issued the idToken.
-   * @param {string} params.verifierID - The verifierID/userID assigned to the user by the verifier.
-   *
-   * @returns {AuthenticateResult} A promise that resolves with the authentication result.
-   * @throws {Error} If idToken is older than 6 minutes.
-   */
+export type IToprfSecureBackup = {
   authenticate: (params: AuthenticateParams) => Promise<AuthenticateResult>;
 
-  /**
-   * This function creates the encryption key which is used to encrypt/decrypt the secret data.
-   *
-   * @param params - The parameters for creating the encryption key.
-   * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
-   * @param params.password - New password of the user.
-   *
-   * @returns {CreateEncryptionKeyResult} A promise that resolves with the encryption key.
-   */
   createEncKey: (
     params: CreateEncryptionKeyParams,
   ) => Promise<CreateEncryptionKeyResult>;

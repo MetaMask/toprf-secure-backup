@@ -7,7 +7,7 @@ const HKDF_AUTHENTICATION_KEY_INFO = 'authentication-key';
 const HKDF_ENCRYPTION_KEY_INFO = 'encryption-key';
 
 /**
- * Deterministcally derives an secp256k1 keypair intended for authentication.
+ * Deterministically derives an secp256k1 keypair intended for authentication.
  *
  * @param seed The input seed from which the output key is derived from.
  * @returns The derived keypair.
@@ -22,12 +22,12 @@ export function deriveAuthenticationKeyPair(seed: Uint8Array): {
   // Converting from bytes to scalar like this is OK because statistical
   // distance between U(2^256) % secp256k1.n and U(secp256k1.n) is negligible.
   const sk = bytesToNumberBE(k) % secp256k1.CURVE.n;
-  const pk = secp256k1.getPublicKey(sk);
+  const pk = secp256k1.getPublicKey(sk, false);
   return { sk, pk };
 }
 
 /**
- * Deterministcally derives an AES-256 key intended for data encryption.
+ * Deterministically derives an AES-256 key intended for data encryption.
  *
  * @param seed The input seed from which the output key is derived from.
  * @returns The derived key.
