@@ -105,8 +105,8 @@ describe('lagrange interpolation', function () {
 
     // Verify that the polynomial passes through all points
     for (const point of points) {
-      const evaluated = interpolatedPoly.polyEval(point.x);
-      expect(evaluated.eq(point.y)).toBe(true);
+      const evaluated = interpolatedPoly.polyEval(point.xCoordinate);
+      expect(evaluated.eq(point.yCoordinate)).toBe(true);
     }
   });
 
@@ -148,15 +148,15 @@ describe('lagrange interpolation', function () {
 
   it('should interpolate constant polynomial when given single point', function () {
     const curve = getSecp256K1Curve();
-    const x = new BN(1);
-    const y = new BN(2);
-    const point = new Point(x, y, curve);
+    const xCoordinate = new BN(1);
+    const yCoordinate = new BN(2);
+    const point = new Point(xCoordinate, yCoordinate, curve);
 
     const interpolatedPoly = lagrangeInterpolatePolynomial(curve, [point]);
 
     // Should be a constant polynomial equal to the y-value
     expect(interpolatedPoly.polynomial).toHaveLength(1);
-    expect(interpolatedPoly.polynomial[0].eq(y)).toBe(true);
+    expect(interpolatedPoly.polynomial[0].eq(yCoordinate)).toBe(true);
   });
 
   it('should interpolate linear polynomial when given two points', function () {
@@ -178,8 +178,8 @@ describe('lagrange interpolation', function () {
 
     // Verify it passes through both points
     for (const point of points) {
-      const evaluated = interpolatedPoly.polyEval(point.x);
-      expect(evaluated.eq(point.y)).toBe(true);
+      const evaluated = interpolatedPoly.polyEval(point.xCoordinate);
+      expect(evaluated.eq(point.yCoordinate)).toBe(true);
     }
   });
 });

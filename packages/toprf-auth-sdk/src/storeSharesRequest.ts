@@ -85,6 +85,11 @@ export const createStoreKeySharesRequest = async (
     JRPC_METHODS.STORE_KEY_SHARES_REQUEST,
     toSnakeCaseKeys(params),
   ) as StoreKeySharesJRPCRequest;
+  /**
+   * Sends the store key shares request to the given endpoint and returns the store key shares response.
+   *
+   * @returns The store key shares response.
+   */
   const storeKeySharesRequestPromise =
     async (): Promise<StoreKeySharesJRPCResponse> =>
       postJRPCRequest<StoreKeySharesJRPCResponse>(endpoint, authJRPCRequest);

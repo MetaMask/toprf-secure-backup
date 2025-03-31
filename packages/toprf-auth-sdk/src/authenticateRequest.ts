@@ -55,6 +55,11 @@ export const createAuthenticateRequest = async (
     JRPC_METHODS.AUTHENTICATE_REQUEST,
     params,
   ) as AuthJRPCRequest;
+  /**
+   * Sends the authenticate request to the given endpoint and returns the authenticate response.
+   *
+   * @returns The authenticate response.
+   */
   const authRequestPromise = async (): Promise<AuthJRPCResponse> =>
     postJRPCRequest<AuthJRPCResponse>(endpoint, authJRPCRequest);
   return authRequestPromise();

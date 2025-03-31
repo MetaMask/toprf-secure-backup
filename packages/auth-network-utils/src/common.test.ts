@@ -44,6 +44,12 @@ describe('common utils', function () {
       }),
     ];
 
+    /**
+     *
+     * @param threshold - The threshold for the number of promises to be resolved.
+     *
+     * @returns The callback function.
+     */
     const callbackFnFactory =
       (threshold: number) => async (resultArr: { data: string }[]) => {
         const completedResult = resultArr.filter((result) =>

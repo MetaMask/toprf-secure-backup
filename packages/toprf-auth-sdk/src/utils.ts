@@ -227,6 +227,14 @@ export const postJRPCRequest = async <
   );
 };
 
+/**
+ * Decrypts the auth token using the session private key
+ *
+ * @param authToken - The auth token to be decrypted.
+ * @param sessionPrivateKey - The session private key to be used for the decryption.
+ *
+ * @returns The decrypted auth token.
+ */
 export const decryptAuthToken = async (
   authToken: string,
   sessionPrivateKey: string,

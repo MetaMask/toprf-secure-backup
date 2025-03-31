@@ -4,7 +4,7 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 import { authenticateUser } from './authenticateRequest';
 import { commitmentRequest } from './commitmentRequest';
 import { storeKeySharesRequest } from './storeSharesRequest';
-import { generateIdToken } from './testHelpers';
+import { generateIdToken } from '../tests/testHelpers';
 
 describe('store shares request', function () {
   let nodeDetailManager: NodeDetailManager;

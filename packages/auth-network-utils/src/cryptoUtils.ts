@@ -14,9 +14,7 @@ let secp256k1Curve: EC | null = null;
  * @returns secp256k1 elliptic curve
  */
 export function getSecp256K1Curve(): EC {
-  if (!secp256k1Curve) {
-    secp256k1Curve = new EC('secp256k1');
-  }
+  secp256k1Curve = secp256k1Curve ?? new EC('secp256k1');
   return secp256k1Curve;
 }
 

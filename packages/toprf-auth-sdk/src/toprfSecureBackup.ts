@@ -13,9 +13,17 @@ import type {
   IToprfSecureBackup,
 } from './interfaces';
 
+/**
+ *
+ */
 export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   readonly #nodeDetailManager: NodeDetailManager;
 
+  /**
+   *
+   * @param params - The parameters for the constructor.
+   * @param params.network - The web3auth network to be used key management and authentication.
+   */
   constructor(params: { network: TORUS_SAPPHIRE_NETWORK_TYPE }) {
     this.#nodeDetailManager = new NodeDetailManager({
       network: params.network,
@@ -24,6 +32,13 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     });
   }
 
+  /**
+   * Authenticates the user and returns the authentication result
+   * containing the auth tokens and the flag indicating if user has valid encryption key.
+   *
+   * @param params - The authenticate parameters.
+   * @returns The authenticate result.
+   */
   async authenticate(params: AuthenticateParams): Promise<AuthenticateResult> {
     const { nodeEndpoints, nodeIndexes } = await this.#getNodeDetails();
     const curve = getSecp256K1Curve();
@@ -68,6 +83,11 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     });
   }
 
+  /**
+   * Gets the node details.
+   *
+   * @returns The node details containing the node endpoints, indexes and pubkeys.
+   */
   async #getNodeDetails(): Promise<{
     nodeEndpoints: string[];
     nodeIndexes: number[];

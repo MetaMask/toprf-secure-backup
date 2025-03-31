@@ -1,5 +1,5 @@
-import { generateIdToken } from './testHelpers';
 import { ToprfSecureBackup } from './toprfSecureBackup';
+import { generateIdToken } from '../tests/testHelpers';
 
 describe('toprf secure backup', function () {
   it('should be able to authenticate user', async function () {
