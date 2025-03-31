@@ -118,7 +118,7 @@ describe('OPRF', () => {
 
     // Interpolate the curve points directly using Lagrange interpolation
     const reconstructedPoint = lagrangeInterpolationForPoints(
-      ec,
+      secp256k1.CURVE.n,
       curvePoints,
       nodeIndex,
     );
