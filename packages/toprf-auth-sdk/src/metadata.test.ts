@@ -89,6 +89,27 @@ describe('MetadatStore', () => {
     expect(result?.secretData[0]).toBe(secretData);
   });
 
+  it('should be able to store secret data in batch', async () => {
+    const metadataStore = new MetadataStore({
+      authToken,
+      metadataServerUrl: METADATA_SERVER_URL,
+    });
+
+    const newMockSeed = randomBytes(32);
+    const secretDataArray = ['SECRET_DATA_1', 'SECRET_DATA_2'].sort();
+
+    await metadataStore.storeSecretDataBatch(secretDataArray, newMockSeed);
+
+    const result = await metadataStore.fetchSecretData(newMockSeed);
+    expect(result).not.toBeNull();
+    expect(result?.secretData.length).toBe(2);
+
+    const sortedResult = result?.secretData.sort();
+
+    expect(sortedResult?.[0]).toBe(secretDataArray[0]);
+    expect(sortedResult?.[1]).toBe(secretDataArray[1]);
+  });
+
   it('should get empty array if metadata key not found', async () => {
     const metadataStore = new MetadataStore({
       authToken,
@@ -154,11 +175,18 @@ describe('MetadatStore', () => {
       metadataStore.storeSecretData('SECRET_DATA', MOCK_SEED),
     ).rejects.toThrow('Something went wrong!');
 
-    expect(fetchSpy).toHaveBeenCalled();
+    await expect(
+      metadataStore.storeSecretDataBatch(
+        ['SECRET_DATA_1', 'SECRET_DATA_2'],
+        MOCK_SEED,
+      ),
+    ).rejects.toThrow('Something went wrong!');
 
     await expect(metadataStore.fetchSecretData(MOCK_SEED)).rejects.toThrow(
       'Something went wrong!',
     );
+
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
 
     jest.restoreAllMocks();
   });
@@ -179,11 +207,18 @@ describe('MetadatStore', () => {
       metadataStore.storeSecretData('SECRET_DATA', MOCK_SEED),
     ).rejects.toThrow('Unknown error');
 
-    expect(fetchSpy).toHaveBeenCalled();
+    await expect(
+      metadataStore.storeSecretDataBatch(
+        ['SECRET_DATA_1', 'SECRET_DATA_2'],
+        MOCK_SEED,
+      ),
+    ).rejects.toThrow('Unknown error');
 
     await expect(metadataStore.fetchSecretData(MOCK_SEED)).rejects.toThrow(
       'Unknown error',
     );
+
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
 
     jest.restoreAllMocks();
   });
