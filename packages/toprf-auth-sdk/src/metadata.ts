@@ -36,10 +36,11 @@ type MetadataStoreOptions = {
 };
 
 /**
- *
+ * Error class for metadata store.
  */
 export class MetadataStoreError extends Error {
   /**
+   * Constructor for MetadataStoreError.
    *
    * @param message - The error message.
    */
@@ -50,7 +51,10 @@ export class MetadataStoreError extends Error {
 }
 
 /**
+ * MetadataStore class.
  *
+ * This class is used to store and retrieve encrypted account metadata for the
+ * given feature.
  */
 export class MetadataStore {
   readonly #feature = 'srp-backup';
@@ -87,6 +91,7 @@ export class MetadataStore {
   }
 
   /**
+   * Get the storage location of the metadata.
    *
    * @returns The storage location of the metadata.
    */
@@ -252,6 +257,7 @@ export class MetadataStore {
   }
 
   /**
+   * Computes the metadata server URL for the given operation.
    *
    * @param operation - The operation to be performed on the metadata server.
    * @returns The metadata server URL.
@@ -264,6 +270,9 @@ export class MetadataStore {
   }
 
   /**
+   * Asserts that the metadata store is using the metadata server.
+   *
+   * This assertion is called before making any requests to the metadata server.
    *
    */
   #assertIsUsingMetadataServer(): void {
