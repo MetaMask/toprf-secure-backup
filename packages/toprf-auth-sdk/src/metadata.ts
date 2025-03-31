@@ -1,3 +1,4 @@
+import { safeStringify } from '@metamask/auth-network-utils';
 import { gcm } from '@noble/ciphers/aes';
 import { bytesToUtf8 } from '@noble/ciphers/utils';
 import { secp256k1 } from '@noble/curves/secp256k1';
@@ -8,7 +9,6 @@ import {
   randomBytes,
   utf8ToBytes,
 } from '@noble/hashes/utils';
-import { safeStringify } from '@toruslabs/auth-network-utils';
 
 import { DEFAULT_METADATA_SERVER_URL } from './constants';
 import type {
@@ -145,8 +145,8 @@ export class MetadataStore {
         throw new Error(`HTTP error message: ${responseBody.error}`);
       }
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
+      console.log('error', error);
+      const errorMessage = (error as Error).message || 'Unknown error';
       throw new MetadataStoreError(
         `failed to upsert metadata: ${errorMessage}`,
       );
@@ -191,8 +191,7 @@ export class MetadataStore {
         secretData,
       };
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = (error as Error).message || 'Unknown error';
       throw new MetadataStoreError(`failed to fetch metadata: ${errorMessage}`);
     }
   }

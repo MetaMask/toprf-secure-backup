@@ -165,6 +165,31 @@ describe('MetadatStore', () => {
     jest.restoreAllMocks();
   });
 
+  it('should handle if it fails to read the http error response', async () => {
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(async () => {
+        throw new Error();
+      });
+
+    const metadataStore = new MetadataStore({
+      authToken,
+      metadataServerUrl: METADATA_SERVER_URL,
+    });
+
+    await expect(
+      metadataStore.storeSecretData('SECRET_DATA', MOCK_SEED),
+    ).rejects.toThrow('Unknown error');
+
+    expect(fetchSpy).toHaveBeenCalled();
+
+    await expect(metadataStore.fetchSecretData(MOCK_SEED)).rejects.toThrow(
+      'Unknown error',
+    );
+
+    jest.restoreAllMocks();
+  });
+
   it('should not make network requests to metadata server if profile-sync storage location is used', async () => {
     const metadataStore = new MetadataStore({
       authToken,
