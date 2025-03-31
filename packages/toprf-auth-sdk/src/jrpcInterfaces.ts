@@ -64,3 +64,16 @@ export type StoreKeySharesJRPCRequest =
   JRPCRequest<StoreKeySharesJRPCRequestParams>;
 
 export type StoreKeySharesJRPCResponse = JRPCResponse<null>;
+
+export type ResetRateLimitJRPCRequestParams = {
+  authToken: string;
+  signature: string;
+  signedData: string;
+  verifier: string;
+  verifierId: string;
+};
+
+export type ResetRateLimitJRPCRequest =
+  JRPCRequest<ResetRateLimitJRPCRequestParams>;
+
+export type ResetRateLimitJRPCResponse = JRPCResponse<null>;
