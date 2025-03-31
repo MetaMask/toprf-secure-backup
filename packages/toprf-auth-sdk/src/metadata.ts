@@ -8,7 +8,7 @@ import {
   randomBytes,
   utf8ToBytes,
 } from '@noble/hashes/utils';
-import stringify from 'json-stable-stringify';
+import { safeStringify } from '@toruslabs/auth-network-utils';
 
 import { DEFAULT_METADATA_SERVER_URL } from './constants';
 import type {
@@ -292,11 +292,7 @@ export class MetadataStore {
     payload: Record<string, unknown>,
     privKey: bigint,
   ): string {
-    // TODO: we can move this to auth-network-utils
-    const payloadString = stringify(payload);
-    if (!payloadString) {
-      throw new Error('Failed to stringify payload');
-    }
+    const payloadString = safeStringify(payload);
     const hash = keccak256(payloadString);
     const signature = secp256k1.sign(hash, privKey);
 

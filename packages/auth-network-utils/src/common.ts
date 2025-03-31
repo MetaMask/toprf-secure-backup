@@ -18,6 +18,20 @@ export function keccak256AndHexify(buffer: Uint8Array): `0x${string}` {
 }
 
 /**
+ * Stringifies a JSON object and persists the key orders of the object
+ *
+ * @param json - The JSON object to stringify
+ * @returns The stringified JSON object
+ */
+export function safeStringify(json: unknown): string {
+  const stringified = JsonStringify(json);
+  if (!stringified) {
+    throw new Error('Failed to stringify');
+  }
+  return stringified;
+}
+
+/**
  * Finds the first element that appears t times in the array
  *
  * @param arr - The array to search
