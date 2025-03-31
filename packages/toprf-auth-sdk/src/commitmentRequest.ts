@@ -53,6 +53,11 @@ export const createCommitmentRequest = async (
     JRPC_METHODS.COMMITMENT_REQUEST,
     params,
   ) as CommitmentJRPCRequest;
+  /**
+   * Sends the commitment request to the given endpoint and returns the commitment response.
+   *
+   * @returns The commitment response.
+   */
   const commitmentResponse = async (): Promise<CommitmentJRPCResponse> =>
     postJRPCRequest<CommitmentJRPCResponse>(endpoint, commitmentJRPCRequest);
   return retryPromiseWithBackoff(commitmentResponse, 4);
@@ -144,7 +149,6 @@ export const commitmentRequest = async (params: {
         if (!resultArr || resultArr.length === 0) {
           throw new Error('No commitment request results');
         } else {
-          console.log('result array', resultArr);
           return resolve(resultArr);
         }
       })

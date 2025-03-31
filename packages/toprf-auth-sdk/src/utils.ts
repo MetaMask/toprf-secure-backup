@@ -1,9 +1,11 @@
 import type {
+  EciesHex,
   JRPCRequest,
   JSONValue,
   ShareMap,
 } from '@metamask/auth-network-utils';
 import {
+  encParamsHexToBuf,
   encryptedParamsBufToHex,
   generateRandomPolynomial,
   getSecp256K1Curve,
@@ -11,14 +13,19 @@ import {
   toSnakeCaseKeys,
 } from '@metamask/auth-network-utils';
 import type { INodePub } from '@toruslabs/constants';
-import type { Ecies } from '@toruslabs/eccrypto';
-import { encrypt } from '@toruslabs/eccrypto';
+import { decrypt, encrypt } from '@toruslabs/eccrypto';
 import { post } from '@toruslabs/http-helpers';
 import BN from 'bn.js';
 import type * as ec from 'elliptic';
 
 import { NODE_URLS } from './constants';
+import type { NodeAuthToken } from './interfaces';
 import type { ShareImportItem } from './jrpcInterfaces';
+
+type EncryptedData = {
+  data: string;
+  metadata: Omit<EciesHex, 'ciphertext'>;
+};
 
 /**
  * Randomly selects a node URL from the available nodes
@@ -62,44 +69,59 @@ const generateShares = (
  *
  * @param ecCurve - The elliptic curve to be used for the encryption.
  * @param nodePubKey - The public key of the node to be used for the encryption.
- * @param share - The share to be used for the encryption.
+ * @param data - The buffer data to be used for the encryption.
  *
- * @returns The encrypted share, encrypted with the given node's public key.
+ * @returns The encrypted data, encrypted with the given node's public key.
  */
-const encryptShareForNode = async (
+const encryptDataForNode = async (
   ecCurve: ec.ec,
   nodePubKey: INodePub,
-  share: string,
-): Promise<Ecies> => {
+  data: Buffer,
+): Promise<EncryptedData> => {
   const nodeKey = ecCurve.keyFromPublic({ x: nodePubKey.X, y: nodePubKey.Y });
-  const shareBuffer = Buffer.from(share.padStart(64, '0'), 'hex');
   const pubKeyBuffer = Buffer.from(
     nodeKey.getPublic().encodeCompressed('hex'),
     'hex',
   );
 
-  return encrypt(pubKeyBuffer, shareBuffer);
+  const encryptedData = await encrypt(pubKeyBuffer, data);
+  const encryptedDataHex = encryptedParamsBufToHex(encryptedData);
+  return {
+    data: Buffer.from(encryptedData.ciphertext).toString('hex'),
+    metadata: {
+      ...encryptedDataHex,
+    },
+  };
 };
 
 /**
  * Creates a share import item for a node
  *
  * @param encryptedShare - The encrypted share to be used for the share import item.
+ * @param authToken - The auth token of the node required for validating the user on backend.
  * @param keyIndex - The key index to be used for the share import item.
+ * @param nodePubKey - The public key of the node to be used for the share import item.
  * @param nodeIndex - The node index to be used for the share import item.
  *
  * @returns The share import item containing the encrypted share, the key index, the node index, and the sss endpoint.
  */
-const createShareImportItem = (
-  encryptedShare: Ecies,
+const createShareImportItem = async (
+  encryptedShare: EncryptedData,
+  authToken: string,
   keyIndex: number,
+  nodePubKey: INodePub,
   nodeIndex: number,
-): ShareImportItem => {
-  const encParamsMetadata = encryptedParamsBufToHex(encryptedShare);
+): Promise<ShareImportItem> => {
+  const ecCurve = getSecp256K1Curve();
+  const encryptedAuthToken = await encryptDataForNode(
+    ecCurve,
+    nodePubKey,
+    Buffer.from(authToken, 'base64'),
+  );
 
   return {
-    encryptedShare: encParamsMetadata.ciphertext,
-    encryptedShareMetadata: encParamsMetadata,
+    encryptedShare: JSON.stringify(encryptedShare),
+    encryptedAuthToken: JSON.stringify(encryptedAuthToken),
     shareKeyIndex: keyIndex,
     nodeIndex,
     sssEndpoint: NODE_URLS[nodeIndex - 1],
@@ -111,6 +133,7 @@ const createShareImportItem = (
  *
  * @param nodeIndexes - The node indexes to be used for the share import items.
  * @param nodePubkeys - The node public keys to be used for the share import items.
+ * @param authTokens - The auth tokens issued by the nodes on authenticating the user.
  * @param privKey - The private key to be used for the share import items.
  * @param keyIndex - The key index to be used for the share import items.
  *
@@ -119,9 +142,18 @@ const createShareImportItem = (
 export const generateShareImportItems = async (
   nodeIndexes: number[],
   nodePubkeys: INodePub[],
+  authTokens: NodeAuthToken[],
   privKey: BN,
   keyIndex: number,
 ): Promise<ShareImportItem[]> => {
+  if (
+    nodeIndexes.length !== nodePubkeys.length ||
+    nodeIndexes.length !== authTokens.length
+  ) {
+    throw new Error(
+      'Invalid inputs, nodeIndexes, nodePubkeys and authTokens must have the same length while generating share import items',
+    );
+  }
   const ecCurve = getSecp256K1Curve();
   const threshold = Math.floor(nodePubkeys.length / 2) + 1;
 
@@ -137,14 +169,31 @@ export const generateShareImportItems = async (
     const shareJson = shares[
       new BN(nodeIndex).toString('hex', 64)
     ].toJSON() as Record<string, string>;
-    return encryptShareForNode(ecCurve, nodePubkeys[i], shareJson.share);
+    return encryptDataForNode(
+      ecCurve,
+      nodePubkeys[i],
+      Buffer.from(shareJson.share.padStart(64, '0'), 'hex'),
+    );
   });
 
   const encryptedShares = await Promise.all(encryptionPromises);
 
+  const authTokensMap = new Map<number, NodeAuthToken>();
+  authTokens.forEach((token) => {
+    authTokensMap.set(token.nodeIndex, token);
+  });
+
   // Create share import items
-  return nodeIndexes.map((nodeIndex, i) =>
-    createShareImportItem(encryptedShares[i], keyIndex, nodeIndex),
+  return Promise.all(
+    authTokens.map(async (tokenData, i) =>
+      createShareImportItem(
+        encryptedShares[i],
+        tokenData.authToken,
+        keyIndex,
+        nodePubkeys[tokenData.nodeIndex - 1],
+        tokenData.nodeIndex,
+      ),
+    ),
   );
 };
 
@@ -168,7 +217,6 @@ export const postJRPCRequest = async <
   const req = { ...request };
   const params = toSnakeCaseKeys(request.params);
   req.params = params;
-
   return post<Response>(endpoint, req, {}, { logTracingHeader: false }).then(
     (res) => {
       if (res.result) {
@@ -177,4 +225,31 @@ export const postJRPCRequest = async <
       return res;
     },
   );
+};
+
+/**
+ * Decrypts the auth token using the session private key
+ *
+ * @param authToken - The auth token to be decrypted.
+ * @param sessionPrivateKey - The session private key to be used for the decryption.
+ *
+ * @returns The decrypted auth token.
+ */
+export const decryptAuthToken = async (
+  authToken: string,
+  sessionPrivateKey: string,
+): Promise<string> => {
+  const ecCurve = getSecp256K1Curve();
+  const decryptionKey = ecCurve.keyFromPrivate(sessionPrivateKey);
+  const authTokenData = JSON.parse(authToken) as EncryptedData;
+  const metadata = encParamsHexToBuf(authTokenData.metadata);
+
+  const decryptedAuthToken = await decrypt(
+    decryptionKey.getPrivate().toArrayLike(Buffer),
+    {
+      ...metadata,
+      ciphertext: Buffer.from(authTokenData.data, 'hex'),
+    },
+  );
+  return Buffer.from(decryptedAuthToken).toString('base64');
 };

@@ -14,14 +14,12 @@ describe('commitment request', function () {
     const curve = getSecp256K1Curve();
     const keyPair = curve.genKeyPair();
     const pubPoint = keyPair.getPublic();
-
-    const { url, index } = getRandomNode();
-    const endpoint = `${url}/sss/jrpc`;
-
-    const tokenCommitment = randomBytes(16).toString('hex');
-    const verifier = 'google';
     const sessionPubKeyX = pubPoint.getX().toString('hex');
     const sessionPubKeyY = pubPoint.getY().toString('hex');
+
+    const { url: endpoint, index } = getRandomNode();
+    const tokenCommitment = randomBytes(16).toString('hex');
+    const verifier = 'google';
 
     const params = createCommitmentRequestParams(
       tokenCommitment,

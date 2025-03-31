@@ -21,10 +21,14 @@ export type AuthenticateParams = {
   // for now we only support one idToken, in future we will support multiple to remove commitment call
   // so leaving it as an array for future use
   idTokens: string[];
-  endpoints: string[];
-  indexes: number[];
   verifier: string;
   verifierID: string;
+};
+
+export type NodeAuthToken = {
+  authToken: string;
+  nodeIndex: number;
+  nodePubKey: string;
 };
 
 /**
@@ -32,10 +36,7 @@ export type AuthenticateParams = {
  *
  * nodeIndex - The index of the node that issued the token
  */
-export type NodeAuthTokens = {
-  nodeAuthToken: string;
-  nodeIndex: number;
-}[];
+export type NodeAuthTokens = NodeAuthToken[];
 
 /**
  * nodeAuthTokens - An array of authentication tokens issued by the nodes.
@@ -128,16 +129,14 @@ export type FetchSecretDataResult = {
   secretData: string;
 };
 
-export type IMetamaskTOPRFAuth = {
+export type IToprfSecureBackup = {
   /**
    * This function is used to authenticate the user by sending the oauth idToken to the nodes and
    * getting the authentication tokens from the nodes in return.
    *
    * @param {AuthenticateParams} params - The authentication parameters.
    * @param {string[]} params.idTokens - An array of ID tokens for authentication.
-   * @param {string[]} params.endpoints - The endpoints of the nodes to send the idToken to.
-   * @param {number[]} params.indexes - The indexes of the nodes to send the idToken to.
-   * @param {string} params.verifier - The verifier who issued the idToken.
+   * @param {string[]} params.verifier - The verifier who issued the idToken.
    * @param {string} params.verifierID - The verifierID/userID assigned to the user by the verifier.
    *
    * @returns {AuthenticateResult} A promise that resolves with the authentication result.

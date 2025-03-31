@@ -1,8 +1,4 @@
-import type {
-  JRPCResponse,
-  JRPCRequest,
-  EciesHex,
-} from '@metamask/auth-network-utils';
+import type { JRPCResponse, JRPCRequest } from '@metamask/auth-network-utils';
 
 export type CommitmentJRPCRequestParams = {
   messagePrefix: string;
@@ -31,7 +27,7 @@ export type AuthJRPCRequestParams = {
       verifier: string;
       verifierId: string;
     };
-    verifierOauthParams: Record<string, string | number | boolean>;
+    extraOauthParams?: Record<string, string | number | boolean>;
   };
   commitmentSignatures: CommitmentRequestResult[];
   clientTime: string;
@@ -42,6 +38,7 @@ export type AuthJRPCRequest = JRPCRequest<AuthJRPCRequestParams>;
 export type AuthRequestResult = {
   authToken: string;
   nodeIndex: number;
+  nodePubKey: string;
   pubKey: string;
   keyIndex: number;
 };
@@ -49,8 +46,8 @@ export type AuthRequestResult = {
 export type AuthJRPCResponse = JRPCResponse<AuthRequestResult>;
 
 export type ShareImportItem = {
+  encryptedAuthToken: string;
   encryptedShare: string;
-  encryptedShareMetadata: EciesHex;
   shareKeyIndex: number;
   nodeIndex: number;
   sssEndpoint: string;
@@ -59,7 +56,6 @@ export type ShareImportItem = {
 export type StoreKeySharesJRPCRequestParams = {
   verifier: string;
   verifierId: string;
-  authToken: string;
   pubKey: string;
   shareImportItems: ShareImportItem[];
 };
