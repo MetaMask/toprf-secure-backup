@@ -69,12 +69,12 @@ export const createResetRateLimitRequest = async (
  * Validates the reset rate limit responses
  *
  * @param resultArr - The reset rate limit request result
- * @param threeFourthsThreshold - The threshold for the number reset rate limit responses to be valid
+ * @param threshold - The threshold for the number reset rate limit responses to be valid
  * @returns The reset rate limit request result
  */
 export const validateThresholdResetRateLimitResponses = async (
   resultArr: ResetRateLimitJRPCResponse[],
-  threeFourthsThreshold: number,
+  threshold: number,
 ): Promise<boolean> => {
   const completedRequests = resultArr.filter(
     (res): res is ResetRateLimitJRPCResponse => {
@@ -88,7 +88,7 @@ export const validateThresholdResetRateLimitResponses = async (
     },
   );
 
-  if (completedRequests.length >= threeFourthsThreshold) {
+  if (completedRequests.length >= threshold) {
     return Promise.resolve(true);
   }
 
@@ -104,23 +104,23 @@ export const validateThresholdResetRateLimitResponses = async (
  * @param params.authTokens - The auth tokens issued by the nodes on authenticating the user.
  * @param params.verifier - The verifier name used for authentication.
  * @param params.verifierId - The verifierId issued to user after authentication.
- * @param params.endpoints - Map of node index to endpoint to be used for the reset rate limit request.
+ * @param params.endpointsMap - Map of node index to endpoint to be used for the reset rate limit request.
  *
  * @returns - A promise that resolves when the rate limit is reset successfully.
  */
-export const resetRateLimitRequest = async (params: {
+export const resetRateLimits = async (params: {
   authTokens: NodeAuthTokens;
-  endpoints: Record<number, string>;
+  endpointsMap: Record<number, string>;
   verifier: string;
   verifierId: string;
 }): Promise<void> => {
-  const { authTokens, endpoints, verifier, verifierId } = params;
+  const { authTokens, endpointsMap, verifier, verifierId } = params;
 
   if (authTokens.length === 0) {
     throw new Error('No auth tokens provided');
   }
 
-  if (Object.keys(endpoints).length === 0) {
+  if (Object.keys(endpointsMap).length === 0) {
     throw new Error('No endpoints provided');
   }
 
@@ -133,7 +133,7 @@ export const resetRateLimitRequest = async (params: {
   const signedData = '';
 
   const promiseArr = authTokens.map(async (authToken) => {
-    const endpoint = endpoints[authToken.nodeIndex];
+    const endpoint = endpointsMap[authToken.nodeIndex];
     if (!endpoint) {
       throw new Error(
         `Endpoint not found for node index ${authToken.nodeIndex}`,

@@ -1277,6 +1277,7 @@ __metadata:
   resolution: "@metamask/auth-network-utils@workspace:packages/auth-network-utils"
   dependencies:
     "@metamask/auto-changelog": "npm:^3.4.4"
+    "@noble/curves": "npm:^1.8.1"
     "@toruslabs/bs58": "npm:^1.0.0"
     "@toruslabs/constants": "npm:^15.0.0"
     "@toruslabs/eccrypto": "npm:^6.0.2"
