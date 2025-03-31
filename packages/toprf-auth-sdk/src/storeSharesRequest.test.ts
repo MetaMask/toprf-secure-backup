@@ -3,8 +3,10 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import { authenticateUser } from './authenticateRequest';
 import { commitmentRequest } from './commitmentRequest';
-import { storeKeySharesRequest } from './storeSharesRequest';
-import { generateIdToken } from '../tests/testHelpers';
+import { deriveAuthenticationKeyPair } from './keyDerivation';
+import { OPRF, generateRandomScalar } from './oprf';
+import { storeKeyShares } from './storeSharesRequest';
+import { generateIdToken } from './testHelpers';
 
 describe('store shares request', function () {
   let nodeDetailManager: NodeDetailManager;
@@ -55,33 +57,29 @@ describe('store shares request', function () {
       commitmentSignatures: commitmentResults,
     });
 
-    console.log('authTokens', authTokens);
     expect(authTokens).toBeDefined();
-
-    const oprfKeyPair = curve.genKeyPair();
-    const oprfPubKey = oprfKeyPair.getPublic();
-    const oprfPubKeyX = oprfPubKey.getX().toString('hex');
-    const oprfPubKeyY = oprfPubKey.getY().toString('hex');
-
-    const storeSharesResponse = await storeKeySharesRequest(
-      torusNodeSSSEndpoints,
-      {
-        nodeIndexes: torusIndexes,
-        nodePubkeys: torusNodePub,
-        verifier,
-        verifierId: verifierID,
-        authTokens: authTokens.map((tokenData) => ({
-          authToken: tokenData.authToken,
-          nodeIndex: tokenData.nodeIndex,
-          nodePubKey: tokenData.nodePubKey,
-        })),
-        keyIndex: 1,
-        oprfKey: oprfKeyPair.getPrivate(),
-        encryptionPubKey: `04${oprfPubKeyX}${oprfPubKeyY}`,
-      },
+    const randomScalar = generateRandomScalar();
+    const seed = OPRF.localEval(
+      randomScalar,
+      new TextEncoder().encode('abcdefgh'),
     );
+    const authKeyPair = deriveAuthenticationKeyPair(seed);
 
-    console.log('storeSharesResponse', storeSharesResponse);
+    const storeSharesResponse = await storeKeyShares(torusNodeSSSEndpoints, {
+      nodeIndexes: torusIndexes,
+      nodePubkeys: torusNodePub,
+      verifier,
+      verifierId: verifierID,
+      authTokens: authTokens.map((tokenData) => ({
+        authToken: tokenData.authToken,
+        nodeIndex: tokenData.nodeIndex,
+        nodePubKey: tokenData.nodePubKey,
+      })),
+      keyIndex: 1,
+      oprfKey: randomScalar,
+      authPubKey: authKeyPair.pk,
+    });
+
     expect(storeSharesResponse).toBeDefined();
     expect(storeSharesResponse.error).toBeUndefined();
   });

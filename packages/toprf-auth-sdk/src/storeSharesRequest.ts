@@ -1,10 +1,10 @@
 import {
   getProxyCoordinatorEndpointIndex,
+  pubKeyToSec1,
   toSnakeCaseKeys,
 } from '@metamask/auth-network-utils';
 import type { INodePub } from '@toruslabs/constants';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
-import type BN from 'bn.js';
 
 import { JRPC_METHODS } from './constants';
 import type { NodeAuthTokens } from './interfaces';
@@ -18,27 +18,27 @@ import { generateShareImportItems, postJRPCRequest } from './utils';
 export type CreateStoreKeySharesRequestParamsInput = {
   nodeIndexes: number[];
   nodePubkeys: INodePub[];
-  verifier: string;
-  verifierId: string;
   authTokens: NodeAuthTokens;
   keyIndex: number;
-  oprfKey: BN;
-  encryptionPubKey: string;
+  verifier: string;
+  verifierId: string;
+  oprfKey: bigint;
+  authPubKey: Uint8Array;
 };
 
+export type StoreKeySharesRequestParams =
+  CreateStoreKeySharesRequestParamsInput;
 /**
  * Creates the parameters for the store key shares request
  *
  * @param params - The parameters for the store key shares request.
  * @param params.nodeIndexes - The node indexes to be used for the store key shares request.
  * @param params.nodePubkeys - The node pubkeys to be used for the store key shares request.
- * @param params.verifier - The verifier to be used for the store key shares request.
- * @param params.verifierId - The verifierId to be used for the store key shares request.
  * @param params.authTokens - The authTokens to be used for the store key shares request.
  * @param params.keyIndex - The key index to be used for the store key shares request.
  * KeyIndex should be 1 for the first key registration and derived from response of authenticate request for subsequent key registrations.
  * @param params.oprfKey - The oprfKey to be used for the store key shares request.
- * @param params.encryptionPubKey - The encryption pubkey associated with the oprfKey.
+ * @param params.authPubKey - The auth pubkey associated with the authentication key pair derived from the seed and input.
  *
  * @returns The parameters for the store key shares request
  */
@@ -48,12 +48,12 @@ export const createStoreKeySharesRequestParams = async (
   const {
     nodeIndexes,
     nodePubkeys,
-    verifier,
-    verifierId,
     authTokens,
     keyIndex,
     oprfKey,
-    encryptionPubKey,
+    authPubKey,
+    verifier,
+    verifierId,
   } = params;
   const shareImportItems = await generateShareImportItems(
     nodeIndexes,
@@ -63,10 +63,10 @@ export const createStoreKeySharesRequestParams = async (
     keyIndex,
   );
   return {
+    pubKey: pubKeyToSec1(authPubKey),
+    shareImportItems,
     verifier,
     verifierId,
-    pubKey: encryptionPubKey,
-    shareImportItems,
   };
 };
 
@@ -111,33 +111,33 @@ export const createStoreKeySharesRequest = async (
  * KeyIndex should be 1 for the first key registration and derived from response of authenticate request for subsequent key registrations.
  *
  * @param params.oprfKey - The oprfKey to be used for the store key shares request.
- * @param params.encryptionPubKey - The encryption pubkey associated with the oprfKey.
+ * @param params.authPubKey - The  auth pubkey associated with the authentication key pair derived from the seed and input.
  *
  * @returns The store key shares request promise.
  */
-export const storeKeySharesRequest = async (
+export const storeKeyShares = async (
   nodeEndpoints: string[],
-  params: CreateStoreKeySharesRequestParamsInput,
+  params: StoreKeySharesRequestParams,
 ): Promise<StoreKeySharesJRPCResponse> => {
   const {
     nodeIndexes,
     nodePubkeys,
-    verifier,
-    verifierId,
     authTokens,
     keyIndex,
     oprfKey,
-    encryptionPubKey,
+    verifier,
+    verifierId,
+    authPubKey,
   } = params;
   const requestParams = await createStoreKeySharesRequestParams({
     nodeIndexes,
     nodePubkeys,
-    verifier,
-    verifierId,
     authTokens,
     keyIndex,
+    authPubKey,
     oprfKey,
-    encryptionPubKey,
+    verifier,
+    verifierId,
   });
   const proxyNodeEndpointIndex = getProxyCoordinatorEndpointIndex(
     nodeEndpoints,
