@@ -2,20 +2,18 @@
 // of PRFs.
 /* eslint-disable id-length */
 
-import BN from 'bn.js';
-import { ec as EC } from 'elliptic';
 import { secp256k1 } from 'ethereum-cryptography/secp256k1';
 
 import { deriveAuthenticationKeyPair } from './keyDerivation';
-import { lagrangeInterpolationForPoints } from './lagrangeInterpolation';
+import {
+  generateRandomPolynomial,
+  lagrangeInterpolationForPoints,
+} from './lagrangeInterpolation';
 import { generateRandomScalar, OPRF } from './oprf';
-import { generateRandomPolynomial } from '../../auth-network-utils/src/lagrangeInterpolation';
 
 describe('OPRF', () => {
   const testInput = new Uint8Array([1, 2, 3, 4]);
   const testKey = generateRandomScalar();
-
-  const ec = new EC('secp256k1');
 
   it('should blind input correctly', () => {
     const { a, r } = OPRF.blind(testInput);
@@ -89,14 +87,17 @@ describe('OPRF', () => {
     const totalShares = 5;
 
     // Create a polynomial with testKey as the constant term
-    const testKeyBN = new BN(testKey.toString());
-    const polynomial = generateRandomPolynomial(ec, degree, testKeyBN);
+    const polynomial = generateRandomPolynomial(
+      secp256k1.CURVE.n,
+      degree,
+      testKey,
+    );
 
     // Generate shares from the polynomial
     const shares: { x: bigint; y: bigint }[] = [];
     for (let i = 1; i <= totalShares; i++) {
       const x = BigInt(i);
-      const y = BigInt(polynomial.polyEval(new BN(i)).toString());
+      const y = polynomial.evaluate(x);
       shares.push({ x, y });
     }
 
