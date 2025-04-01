@@ -132,7 +132,7 @@ export const resetRateLimits = async (params: {
   const signature = '0x';
   const signedData = JSON.stringify({
     node_index: 0,
-    timestamp: Date.now(),
+    timestamp: Date.now().toString(),
     action: 'reset_ratelimit',
   });
 

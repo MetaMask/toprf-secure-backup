@@ -108,13 +108,11 @@ export const evaluateSeed = async (
     },
   );
 
-  console.log('completedRequests a', completedRequests.length);
   if (completedRequests.length >= threshold) {
     const thresholdAuthPubKey = thresholdSame(
       completedRequests.map((res) => res.result?.pubKey),
       threshold,
     );
-    console.log('thresholdAuthPubKey', thresholdAuthPubKey);
     if (thresholdAuthPubKey) {
       const blindedServerPoints = completedRequests
         .map((resp): BlindedPoint | null => {
@@ -141,15 +139,12 @@ export const evaluateSeed = async (
         const currentCombiPoints = blindedServerPoints.filter((_, index) =>
           currentCombi.includes(index),
         );
-
         const curvePoints = currentCombiPoints.map((point) =>
           secp256k1.ProjectivePoint.fromHex(`04${point.x}${point.y}`),
         );
-
         const nodeIndexes = currentCombiPoints.map((point) =>
           BigInt(point.nodeIndex),
         );
-
         // Interpolate the curve points directly using Lagrange interpolation
         const reconstructedPoint = lagrangeInterpolationForPoints(
           secp256k1.CURVE.n,

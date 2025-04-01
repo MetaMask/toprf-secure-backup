@@ -108,6 +108,7 @@ export type RecoverEncryptionKeyResult = {
  * newPassword - The new password of the user.
  *
  * keyPair - The current encryption key of the user.
+ *
  */
 export type ChangeEncryptionKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
