@@ -54,7 +54,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @throws {Error} If idToken is older than 6 minutes.
    */
   async authenticate(params: AuthenticateParams): Promise<AuthenticateResult> {
-    const { nodeEndpoints, nodeIndexes } = await this.#getNodeDetails();
+    const { nodeEndpoints } = await this.#getNodeDetails();
     const curve = getSecp256K1Curve();
     const sessionKeyPair = curve.genKeyPair();
     const sessionPubKey = sessionKeyPair.getPublic();
@@ -68,7 +68,6 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       sessionPubKeyX,
       sessionPubKeyY,
       endpoints: nodeEndpoints,
-      indexes: nodeIndexes,
     });
     // get auth tokens from nodes
     const authTokens = await authenticateUser({

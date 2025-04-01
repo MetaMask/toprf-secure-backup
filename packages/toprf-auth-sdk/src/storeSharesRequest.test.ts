@@ -45,7 +45,6 @@ describe('store shares request', function () {
       sessionPubKeyX,
       sessionPubKeyY,
       endpoints: torusNodeSSSEndpoints,
-      indexes: torusIndexes,
     });
 
     const authTokens = await authenticateUser({

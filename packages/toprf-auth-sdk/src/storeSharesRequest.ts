@@ -42,7 +42,7 @@ export type StoreKeySharesRequestParams =
  *
  * @returns The parameters for the store key shares request
  */
-export const createStoreKeySharesRequestParams = async (
+const createStoreKeySharesRequestParams = async (
   params: CreateStoreKeySharesRequestParamsInput,
 ): Promise<StoreKeySharesJRPCRequestParams> => {
   const {
@@ -71,13 +71,13 @@ export const createStoreKeySharesRequestParams = async (
 };
 
 /**
- * Creates a store key shares request to the given endpoint
+ * Send a store key shares request to the given endpoint.
  *
  * @param endpoint - The endpoint to be used for the store key shares request
  * @param params - The parameters for the store key shares request
  * @returns The store key shares request promise.
  */
-export const createStoreKeySharesRequest = async (
+const sendStoreKeySharesRequest = async (
   endpoint: string,
   params: StoreKeySharesJRPCRequestParams,
 ): Promise<StoreKeySharesJRPCResponse> => {
@@ -85,15 +85,7 @@ export const createStoreKeySharesRequest = async (
     JRPC_METHODS.STORE_KEY_SHARES_REQUEST,
     toSnakeCaseKeys(params),
   ) as StoreKeySharesJRPCRequest;
-  /**
-   * Sends the store key shares request to the given endpoint and returns the store key shares response.
-   *
-   * @returns The store key shares response.
-   */
-  const storeKeySharesRequestPromise =
-    async (): Promise<StoreKeySharesJRPCResponse> =>
-      postJRPCRequest<StoreKeySharesJRPCResponse>(endpoint, authJRPCRequest);
-  return storeKeySharesRequestPromise();
+  return postJRPCRequest<StoreKeySharesJRPCResponse>(endpoint, authJRPCRequest);
 };
 
 /**
@@ -146,7 +138,7 @@ export const storeKeyShares = async (
   );
   const proxyNodeEndpoint = nodeEndpoints[proxyNodeEndpointIndex];
 
-  const storeReqPromise = await createStoreKeySharesRequest(
+  const storeReqPromise = await sendStoreKeySharesRequest(
     proxyNodeEndpoint,
     requestParams,
   );
