@@ -13,7 +13,6 @@ import {
 import { DEFAULT_METADATA_SERVER_URL } from './constants';
 import type {
   FetchSecretDataResult,
-  IBatchSetSecretDataRequestBody,
   IGetSecretDataRequestBody,
   ISetSecretDataRequestBody,
 } from './interfaces';
@@ -147,11 +146,10 @@ export class MetadataStore {
     try {
       const url = this.#computeMetadataServerUrl('set');
       const encryptedData = this.#encryptData(secretData, seed);
-      const payload =
-        this.#generatePayloadForSetOrBatchSetSecretDataRequest<string>(
-          encryptedData,
-          seed,
-        );
+      const payload = this.#generatePayloadForSetOrBatchSetSecretDataRequest(
+        encryptedData,
+        seed,
+      );
 
       const response = await fetch(url, {
         headers: {
@@ -291,12 +289,7 @@ export class MetadataStore {
    */
   #generatePayloadForSetOrBatchSetSecretDataRequest<
     T extends string | { data: string }[],
-  >(
-    data: T,
-    seed: Uint8Array,
-  ): T extends string
-    ? ISetSecretDataRequestBody
-    : IBatchSetSecretDataRequestBody {
+  >(data: T, seed: Uint8Array): ISetSecretDataRequestBody<T> {
     const timestamp = Date.now().toString();
     const feature = this.#feature;
     const authToken = this.#authToken;
@@ -315,9 +308,7 @@ export class MetadataStore {
       timestamp,
       authToken,
       pubKey,
-    } as T extends string
-      ? ISetSecretDataRequestBody
-      : IBatchSetSecretDataRequestBody;
+    };
   }
 
   /**

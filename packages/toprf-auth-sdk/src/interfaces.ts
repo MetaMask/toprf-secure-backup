@@ -215,27 +215,12 @@ export type IBaseMetadataRequestBody = {
 /**
  * Payload structure for storing secret data
  */
-export type ISetSecretDataRequestBody = IBaseMetadataRequestBody & {
+// eslint-disable-next-line @typescript-eslint/naming-convention
+export type ISetSecretDataRequestBody<T> = IBaseMetadataRequestBody & {
   /**
    * The secret data to be stored
    */
-  data: string;
-  /**
-   * The signature produced by signing the payload (without pubKey field) using the user's private key.
-   *
-   * Sample signature: sign(keccak256(data, feature, authToken, timestamp))
-   */
-  signature: string;
-};
-
-export type IBatchSetSecretDataRequestBody = IBaseMetadataRequestBody & {
-  /**
-   * The array of secret data to be stored
-   */
-  data: {
-    data: string;
-    version?: string;
-  }[];
+  data: T;
   /**
    * The signature produced by signing the payload (without pubKey field) using the user's private key.
    *
