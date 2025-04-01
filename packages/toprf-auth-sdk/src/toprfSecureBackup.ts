@@ -1,10 +1,10 @@
 import { getSecp256K1Curve, thresholdSame } from '@metamask/auth-network-utils';
+import { utf8ToBytes } from '@noble/curves/abstract/utils';
 import type {
   INodePub,
   TORUS_SAPPHIRE_NETWORK_TYPE,
 } from '@toruslabs/constants';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
-import { keccak256 } from 'ethereum-cryptography/keccak';
 
 import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitmentRequest';
@@ -86,14 +86,14 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       })),
       nodeEndpoints.length / 2,
     );
-    return Promise.resolve({
+    return {
       nodeAuthTokens: authTokens.map((tokenData) => ({
         authToken: tokenData.authToken,
         nodeIndex: tokenData.nodeIndex,
         nodePubKey: tokenData.nodePubKey,
       })),
       hasValidEncKey: Boolean(hasValidEncKey),
-    });
+    };
   }
 
   /**
@@ -111,10 +111,9 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     const { nodeAuthTokens, password, verifier, verifierId } = params;
     const { nodeEndpoints, nodeIndexes, nodePubkeys } =
       await this.#getNodeDetails();
-    const passwordBytes = new TextEncoder().encode(password);
-    const hashedInput = keccak256(passwordBytes);
-    const randomScalar = generateRandomScalar();
-    const seed = OPRF.localEval(randomScalar, hashedInput);
+    const oprfKey = generateRandomScalar();
+    const pwBytes = utf8ToBytes(password);
+    const seed = OPRF.localEval(oprfKey, pwBytes);
     const authKeyPair = deriveAuthenticationKeyPair(seed);
 
     await storeKeyShares(nodeEndpoints, {
@@ -124,17 +123,17 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       verifierId,
       authTokens: nodeAuthTokens,
       keyIndex: 1,
-      oprfKey: randomScalar,
+      oprfKey,
       authPubKey: authKeyPair.pk,
     });
-    const encKeyPair = deriveEncryptionKey(seed);
+    const encKey = deriveEncryptionKey(seed);
 
     return {
       authKeyPair: {
         privKey: authKeyPair.sk,
         pubKey: authKeyPair.pk,
       },
-      encKey: encKeyPair,
+      encKey,
     };
   }
 
