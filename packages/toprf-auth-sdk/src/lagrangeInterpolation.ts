@@ -100,7 +100,73 @@ export function generateRandomPolynomial(
 }
 
 /**
- * Performs Lagrange interpolation for curve points directly on the elliptic curve.
+ * Generic Lagrange interpolation function that can handle both scalars and points
+ *
+ * @param curveN - The order of the elliptic curve as a bigint
+ * @param values - Array of values (either scalars or curve points) to interpolate
+ * @param nodeIndexes - Array of indices corresponding to each value
+ * @returns The interpolated value at x=0
+ */
+export function lagrangeInterpolation<T extends bigint | ProjPointType<bigint>>(
+  curveN: bigint,
+  values: T[],
+  nodeIndexes: bigint[],
+): T {
+  if (values.length !== nodeIndexes.length) {
+    throw new Error('Values and nodeIndex arrays must have the same length');
+  }
+
+  if (values.length === 0) {
+    throw new Error('Cannot interpolate with empty arrays');
+  }
+
+  const fieldOps = Field(curveN);
+  const isScalar = typeof values[0] === 'bigint';
+  let result = (isScalar ? 0n : secp256k1.ProjectivePoint.ZERO) as T;
+
+  // Add contribution from each value
+  for (let i = 0; i < values.length; i++) {
+    // Calculate Lagrange coefficient
+    let numerator = 1n;
+    let denominator = 1n;
+
+    for (let j = 0; j < nodeIndexes.length; j++) {
+      if (i === j) {
+        continue;
+      }
+
+      const xi = nodeIndexes[i];
+      const xj = nodeIndexes[j];
+
+      // Computing (0 - xj) for the numerator
+      const numeratorTerm = fieldOps.neg(xj);
+
+      // Computing (xi - xj) for the denominator
+      const denominatorTerm = fieldOps.sub(xi, xj);
+
+      numerator = fieldOps.mul(numerator, numeratorTerm);
+      denominator = fieldOps.mul(denominator, denominatorTerm);
+    }
+    // Compute coefficient with a single inversion
+    const coefficient = fieldOps.mul(numerator, fieldOps.inv(denominator));
+
+    // Apply coefficient to the current value and add to result
+    if (isScalar) {
+      const scalar = values[i] as bigint;
+      const term = fieldOps.mul(scalar, coefficient);
+      result = fieldOps.add(result as bigint, term) as T;
+    } else {
+      const point = values[i] as ProjPointType<bigint>;
+      const term = point.multiply(coefficient);
+      result = (result as ProjPointType<bigint>).add(term) as T;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Lagrange interpolation for curve points on the elliptic curve.
  *
  * @param curveN - The order of the elliptic curve as a bigint
  * @param points - Array of curve points to interpolate
@@ -112,64 +178,21 @@ export function lagrangeInterpolationForPoints(
   points: ProjPointType<bigint>[],
   nodeIndexes: bigint[],
 ): ProjPointType<bigint> {
-  if (points.length !== nodeIndexes.length) {
-    throw new Error('Points and nodeIndex arrays must have the same length');
-  }
-
-  if (points.length === 0) {
-    throw new Error('Cannot interpolate with empty arrays');
-  }
-
-  let result: ProjPointType<bigint> = secp256k1.ProjectivePoint.ZERO;
-
-  // Add contribution from each point
-  for (let i = 0; i < points.length; i++) {
-    const coefficient = computeLagrangeCoefficient(curveN, i, nodeIndexes);
-    result = result.add(points[i].multiply(coefficient));
-  }
-
-  return result;
+  return lagrangeInterpolation(curveN, points, nodeIndexes);
 }
 
 /**
- * Computes the Lagrange coefficient for a single point at x=0.
+ * Lagrange interpolation for scalars in the field.
  *
  * @param curveN - The order of the elliptic curve as a bigint
- * @param idx - Index of the current point
- * @param nodeIndexes - Array of all node indices
- * @returns The Lagrange coefficient for the point at index idx
+ * @param scalars - Array of scalar values to interpolate
+ * @param nodeIndexes - Array of indices corresponding to each scalar
+ * @returns The interpolated scalar at x=0
  */
-function computeLagrangeCoefficient(
+export function lagrangeInterpolationForScalars(
   curveN: bigint,
-  idx: number,
+  scalars: bigint[],
   nodeIndexes: bigint[],
 ): bigint {
-  const xi = nodeIndexes[idx];
-
-  // Create a scalar field using the curve's order
-  const fieldOps = Field(curveN);
-
-  let numerator = 1n;
-  let denominator = 1n;
-
-  for (let j = 0; j < nodeIndexes.length; j++) {
-    if (idx === j) {
-      continue;
-    }
-
-    const xj = nodeIndexes[j];
-
-    // Computing (0 - xj) for the numerator
-    const numeratorTerm = fieldOps.neg(xj); // 0 - xj
-
-    // Computing (xi - xj) for the denominator
-    const denominatorTerm = fieldOps.sub(xi, xj); // xi - xj
-
-    // Accumulate products
-    numerator = fieldOps.mul(numerator, numeratorTerm);
-    denominator = fieldOps.mul(denominator, denominatorTerm);
-  }
-
-  // Perform a single inversion and final multiplication
-  return fieldOps.mul(numerator, fieldOps.inv(denominator));
+  return lagrangeInterpolation(curveN, scalars, nodeIndexes);
 }
