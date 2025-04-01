@@ -192,6 +192,9 @@ export type IToprfSecureBackup = {
   ) => Promise<FetchSecretDataResult>;
 };
 
+/**
+ * Base payload structure for metadata request
+ */
 export type IBaseMetadataRequestBody = {
   /**
    * The feature name related to the secret data
@@ -215,15 +218,11 @@ export type IBaseMetadataRequestBody = {
 /**
  * Payload structure for storing secret data
  */
-export type ISetSecretDataRequestBody<T> = IBaseMetadataRequestBody & {
+export type IBaseSetSecretDataRequestBody<T> = IBaseMetadataRequestBody & {
   /**
    * The secret data to be stored
    */
   data: T;
-  /**
-   * The secret data to be stored
-   */
-  data: string;
   /**
    * The signature produced by signing the payload (without pubKey field) using the user's private key.
    *
@@ -232,21 +231,24 @@ export type ISetSecretDataRequestBody<T> = IBaseMetadataRequestBody & {
   signature: string;
 };
 
-export type IBatchSetSecretDataRequestBody = IBaseMetadataRequestBody & {
-  /**
-   * The array of secret data to be stored
-   */
-  data: {
-    data: string;
-    version?: string;
-  }[];
-  /**
-   * The signature produced by signing the payload (without pubKey field) using the user's private key.
-   *
-   * Sample signature: sign(keccak256(data, feature, authToken, timestamp))
-   */
-  signature: string;
-};
+/**
+ * Payload structure for storing secret data for single secret data
+ */
+export type ISetSecretDataRequestBody = IBaseSetSecretDataRequestBody<string>;
+
+/**
+ * The array of secret data to be stored in batch request
+ */
+export type IBatchSetData = {
+  data: string;
+  version?: string;
+}[];
+
+/**
+ * Payload structure for storing secret data in batch request
+ */
+export type IBatchSetSecretDataRequestBody =
+  IBaseSetSecretDataRequestBody<IBatchSetData>;
 
 /**
  * Payload structure for fetching secret data
@@ -260,6 +262,9 @@ export type IGetSecretDataRequestBody = IBaseMetadataRequestBody & {
   signature: string;
 };
 
+/**
+ * Payload structure for acquiring/releasing the metadata lock
+ */
 export type IMetadataLockRequestBody = {
   /**
    * The public key of the user
