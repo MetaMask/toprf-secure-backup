@@ -11,7 +11,7 @@ import { generateMockAuthTokenForMetadataRequests } from '../tests/metadata-util
 const MOCK_SEED = randomBytes(32);
 const METADATA_SERVER_URL = 'http://localhost:5051';
 
-describe('MetadatStore', () => {
+describe('MetadataStore', () => {
   let authToken: string;
   const verifier = 'torus-test-health';
   const verifierId = 'test-verifier-id';
