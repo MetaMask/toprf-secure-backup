@@ -1,4 +1,5 @@
-import { Field } from '@noble/curves/abstract/modular';
+import { Field, getMinHashLength } from '@noble/curves/abstract/modular';
+import { bytesToNumberBE } from '@noble/curves/abstract/utils';
 import type { ProjPointType } from '@noble/curves/abstract/weierstrass';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { randomBytes } from '@noble/hashes/utils';
@@ -117,10 +118,6 @@ export function lagrangeInterpolationForPoints(
 
   if (points.length === 0) {
     throw new Error('Cannot interpolate with empty arrays');
-  }
-
-  if (points.length === 1) {
-    return points[0];
   }
 
   let result: ProjPointType<bigint> = secp256k1.ProjectivePoint.ZERO;
