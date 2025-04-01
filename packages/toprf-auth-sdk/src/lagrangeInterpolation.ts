@@ -62,24 +62,9 @@ export class Polynomial {
  * @returns A random scalar (bigint) below the curve order
  */
 function generateRandomScalar(curveN = secp256k1.CURVE.n): bigint {
-  // Generate 32 random bytes and create a bigint
-  const bytes = randomBytes(32);
-
-  // Convert to a hex string and then to bigint
-  const bytesHex = Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-  let value = BigInt(`0x${bytesHex}`);
-
-  // Ensure the value is below the curve order
-  value %= curveN;
-
-  // Ensure the value is non-zero
-  if (value === 0n) {
-    return 1n;
-  }
-
-  return value;
+  const length = getMinHashLength(curveN);
+  const rBytes = randomBytes(length);
+  return bytesToNumberBE(rBytes) % curveN;
 }
 
 /**
