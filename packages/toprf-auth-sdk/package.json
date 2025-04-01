@@ -60,6 +60,7 @@
   "devDependencies": {
     "@babel/runtime": "^7.26.10",
     "@metamask/auto-changelog": "^3.4.4",
+    "@sentry/core": "^9.x",
     "@types/jest": "^29.5.14",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/node-fetch": "2",
@@ -71,6 +72,9 @@
     "typedoc": "^0.24.8",
     "typedoc-plugin-missing-exports": "^2.0.0",
     "typescript": "~5.2.2"
+  },
+  "peerDependencies": {
+    "@sentry/core": "^9.x"
   },
   "resolutions": {
     "@metamask/auth-network-utils@0.0.0": "file:../auth-network-utils/packages/auth-network-utils"

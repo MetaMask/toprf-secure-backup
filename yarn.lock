@@ -1432,6 +1432,7 @@ __metadata:
     "@metamask/auto-changelog": "npm:^3.4.4"
     "@noble/curves": "npm:^1.8.1"
     "@noble/hashes": "npm:^1.7.1"
+    "@sentry/core": "npm:^9.x"
     "@toruslabs/constants": "npm:^15.0.0"
     "@toruslabs/eccrypto": "npm:^6.0.2"
     "@toruslabs/fetch-node-details": "npm:^15.0.0"
@@ -1449,6 +1450,8 @@ __metadata:
     typedoc: "npm:^0.24.8"
     typedoc-plugin-missing-exports: "npm:^2.0.0"
     typescript: "npm:~5.2.2"
+  peerDependencies:
+    "@sentry/core": ^9.x
   languageName: unknown
   linkType: soft
 
@@ -1803,6 +1806,13 @@ __metadata:
     "@noble/hashes": "npm:~1.7.1"
     "@scure/base": "npm:~1.2.4"
   checksum: 10/9f08b433511d7637bc48c51aa411457d5f33da5a85bd03370bf394822b0ea8c007ceb17247a3790c28237303d8fc20c4e7725765940cd47e1365a88319ad0d5c
+  languageName: node
+  linkType: hard
+
+"@sentry/core@npm:^9.x":
+  version: 9.10.1
+  resolution: "@sentry/core@npm:9.10.1"
+  checksum: 10/a509833c47e116df98100811e39bef382d2036f9f0e257a8a651ed471bec4ef3099ce0a234188630bd8ef07adca443df2c8e3f1c5cf18fac4d1079dfbf75faf8
   languageName: node
   linkType: hard
 
