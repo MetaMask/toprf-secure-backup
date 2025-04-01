@@ -14,13 +14,17 @@ import type {
   CreateEncryptionKeyParams,
   CreateEncryptionKeyResult,
   IToprfSecureBackup,
+  RecoverEncryptionKeyParams,
+  RecoverEncryptionKeyResult,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
   deriveEncryptionKey,
 } from './keyDerivation';
 import { OPRF, generateRandomScalar } from './oprf';
+import { resetRateLimits } from './resetRateLimits';
 import { storeKeyShares } from './storeSharesRequest';
+import { recoverTOPRFSeed } from './toprfEvalRequest';
 
 /**
  *
@@ -140,12 +144,55 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   }
 
   /**
+   * This function recovers the encryption key which is used to decrypt the secret data.
+   *
+   * @param params - The parameters for recovering the encryption key.
+   * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
+   * @param params.password - The password of the user.
+   * @param params.verifier - The verifier name used for authentication.
+   * @param params.verifierId - The verifierId/userID of the user.
+   *
+   * @returns A promise that resolves with the encryption key.
+   */
+  async recoverEncKey(
+    params: RecoverEncryptionKeyParams,
+  ): Promise<RecoverEncryptionKeyResult> {
+    const { nodeAuthTokens, password, verifier, verifierId } = params;
+    const { nodeEndpointsMap } = await this.#getNodeDetails();
+    const seed = await recoverTOPRFSeed({
+      authTokens: nodeAuthTokens,
+      endpointsMap: nodeEndpointsMap,
+      verifier,
+      verifierId,
+      password,
+    });
+    const authKeyPair = deriveAuthenticationKeyPair(seed);
+    const encKeyPair = deriveEncryptionKey(seed);
+    resetRateLimits({
+      authTokens: nodeAuthTokens,
+      endpointsMap: nodeEndpointsMap,
+      verifier,
+      verifierId,
+    }).catch((error) => {
+      console.error('Error resetting rate limits', error);
+    });
+    return {
+      authKeyPair: {
+        privKey: authKeyPair.sk,
+        pubKey: authKeyPair.pk,
+      },
+      encKey: encKeyPair,
+    };
+  }
+
+  /**
    * Gets the node details.
    *
    * @returns The node details containing the node endpoints, indexes and pubkeys.
    */
   async #getNodeDetails(): Promise<{
     nodeEndpoints: string[];
+    nodeEndpointsMap: Record<number, string>;
     nodeIndexes: number[];
     nodePubkeys: INodePub[];
   }> {
@@ -161,6 +208,13 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
 
     return {
       nodeEndpoints: torusNodeSSSEndpoints,
+      nodeEndpointsMap: torusIndexes.reduce<Record<number, string>>(
+        (acc, index) => {
+          acc[index] = torusNodeSSSEndpoints[index - 1];
+          return acc;
+        },
+        {},
+      ),
       nodeIndexes: torusIndexes,
       nodePubkeys: torusNodePub,
     };

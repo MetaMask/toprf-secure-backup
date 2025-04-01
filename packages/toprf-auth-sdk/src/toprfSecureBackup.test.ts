@@ -47,4 +47,50 @@ describe('toprf secure backup', function () {
     expect(encKey.authKeyPair.pubKey).toBeDefined();
     expect(encKey.encKey).toBeDefined();
   });
+
+  it('should be able to recover enc key', async function () {
+    const verifier = 'torus-test-health';
+    const verifierID = `test-verifier-id-${Math.random()}`;
+    const idToken = generateIdToken(verifierID, 'ES256');
+    const toprfSecureBackup = new ToprfSecureBackup({
+      network: 'sapphire_devnet',
+    });
+
+    const result = await toprfSecureBackup.authenticate({
+      idTokens: [idToken],
+      verifier,
+      verifierID,
+    });
+    const encKey = await toprfSecureBackup.createEncKey({
+      nodeAuthTokens: result.nodeAuthTokens,
+      password: 'test-password',
+      verifier,
+      verifierId: verifierID,
+    });
+    expect(encKey).toBeDefined();
+    expect(encKey.authKeyPair).toBeDefined();
+    expect(encKey.authKeyPair.privKey).toBeDefined();
+    expect(encKey.authKeyPair.pubKey).toBeDefined();
+    expect(encKey.encKey).toBeDefined();
+
+    const recoveredEncKey = await toprfSecureBackup.recoverEncKey({
+      nodeAuthTokens: result.nodeAuthTokens,
+      password: 'test-password',
+      verifier,
+      verifierId: verifierID,
+    });
+    expect(recoveredEncKey).toBeDefined();
+    expect(recoveredEncKey.authKeyPair).toBeDefined();
+    expect(recoveredEncKey.authKeyPair.privKey).toBeDefined();
+    expect(recoveredEncKey.authKeyPair.pubKey).toBeDefined();
+    expect(recoveredEncKey.encKey).toBeDefined();
+
+    expect(recoveredEncKey.authKeyPair.privKey).toStrictEqual(
+      encKey.authKeyPair.privKey,
+    );
+    expect(recoveredEncKey.encKey).toStrictEqual(encKey.encKey);
+    expect(recoveredEncKey.authKeyPair.pubKey).toStrictEqual(
+      encKey.authKeyPair.pubKey,
+    );
+  });
 });
