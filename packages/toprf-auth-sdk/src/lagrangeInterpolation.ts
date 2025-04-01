@@ -145,10 +145,12 @@ function computeLagrangeCoefficient(
   nodeIndexes: bigint[],
 ): bigint {
   const xi = nodeIndexes[idx];
-  let coefficient = 1n;
 
   // Create a scalar field using the curve's order
   const fieldOps = Field(curveN);
+
+  let numerator = 1n;
+  let denominator = 1n;
 
   for (let j = 0; j < nodeIndexes.length; j++) {
     if (idx === j) {
@@ -157,16 +159,17 @@ function computeLagrangeCoefficient(
 
     const xj = nodeIndexes[j];
 
-    // Computing (0 - xj) / (xi - xj) mod n
-    const numerator = fieldOps.neg(xj); // 0 - xj
-    const denominator = fieldOps.sub(xi, xj); // xi - xj
+    // Computing (0 - xj) for the numerator
+    const numeratorTerm = fieldOps.neg(xj); // 0 - xj
 
-    // Calculate the term: numerator / denominator = -xj / (xi - xj)
-    const term = fieldOps.mul(numerator, fieldOps.inv(denominator));
+    // Computing (xi - xj) for the denominator
+    const denominatorTerm = fieldOps.sub(xi, xj); // xi - xj
 
-    // Multiply into the running coefficient
-    coefficient = fieldOps.mul(coefficient, term);
+    // Accumulate products
+    numerator = fieldOps.mul(numerator, numeratorTerm);
+    denominator = fieldOps.mul(denominator, denominatorTerm);
   }
 
-  return coefficient;
+  // Perform a single inversion and final multiplication
+  return fieldOps.mul(numerator, fieldOps.inv(denominator));
 }
