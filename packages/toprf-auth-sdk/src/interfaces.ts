@@ -215,7 +215,11 @@ export type IBaseMetadataRequestBody = {
 /**
  * Payload structure for storing secret data
  */
-export type ISetSecretDataRequestBody = IBaseMetadataRequestBody & {
+export type ISetSecretDataRequestBody<T> = IBaseMetadataRequestBody & {
+  /**
+   * The secret data to be stored
+   */
+  data: T;
   /**
    * The secret data to be stored
    */
