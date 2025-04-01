@@ -7,7 +7,7 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 import { keccak256 } from 'ethereum-cryptography/keccak';
 
 import { authenticateUser } from './authenticateRequest';
-import { commitmentRequest } from './commitmentRequest';
+import { commitIdToken } from './commitmentRequest';
 import type {
   AuthenticateParams,
   AuthenticateResult,
@@ -62,7 +62,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     const sessionPubKeyY = sessionPubKey.getY().toString('hex');
 
     // commit idToken to nodes
-    const commitmentResults = await commitmentRequest({
+    const commitmentResults = await commitIdToken({
       idToken: params.idTokens[0],
       verifier: params.verifier,
       sessionPubKeyX,

@@ -1,7 +1,7 @@
 import { getSecp256K1Curve } from '@metamask/auth-network-utils';
 
 import { authenticateUser } from './authenticateRequest';
-import { commitmentRequest } from './commitmentRequest';
+import { commitIdToken } from './commitmentRequest';
 import { NODE_URLS } from './constants';
 import { generateIdToken } from './testHelpers';
 
@@ -17,13 +17,12 @@ describe('authenticate request', function () {
     const sessionPubKeyX = pubPoint.getX().toString('hex');
     const sessionPubKeyY = pubPoint.getY().toString('hex');
 
-    const commitmentResults = await commitmentRequest({
+    const commitmentResults = await commitIdToken({
       idToken,
       verifier,
       sessionPubKeyX,
       sessionPubKeyY,
       endpoints: NODE_URLS,
-      indexes: [1, 2, 3, 4, 5],
     });
 
     const sessionPrivateKey = keyPair.getPrivate().toString('hex');
