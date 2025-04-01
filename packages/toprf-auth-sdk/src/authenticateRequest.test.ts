@@ -1,16 +1,12 @@
 import { getSecp256K1Curve } from '@metamask/auth-network-utils';
 
-import {
-  createAuthenticateRequest,
-  createAuthenticateRequestParams,
-} from './authenticateRequest';
+import { authenticateUser } from './authenticateRequest';
 import { commitmentRequest } from './commitmentRequest';
 import { NODE_URLS } from './constants';
 import { generateIdToken } from './testHelpers';
-import { decryptAuthToken } from './utils';
 
 describe('authenticate request', function () {
-  it('should create a authenticate request', async function () {
+  it('should authenticate user and validate responses', async function () {
     const curve = getSecp256K1Curve();
     const keyPair = curve.genKeyPair();
     const pubPoint = keyPair.getPublic();
@@ -30,29 +26,25 @@ describe('authenticate request', function () {
       indexes: [1, 2, 3, 4, 5],
     });
 
-    const authParams = createAuthenticateRequestParams(
+    const sessionPrivateKey = keyPair.getPrivate().toString('hex');
+    const authenticateResults = await authenticateUser({
       idToken,
       verifier,
       verifierID,
-      commitmentResults,
-    );
-    const authJRPCRequest = await createAuthenticateRequest(
-      NODE_URLS[0],
-      authParams,
-    );
-    expect(authJRPCRequest).toBeDefined();
-    expect(authJRPCRequest.jsonrpc).toBe('2.0');
-    expect(authJRPCRequest.id).toBeDefined();
-    expect(authJRPCRequest.result).toBeDefined();
-    expect(authJRPCRequest.result?.authToken).toBeDefined();
-    expect(authJRPCRequest.result?.nodeIndex).toBeDefined();
-    expect(authJRPCRequest.result?.pubKey).toBeDefined();
-    expect(authJRPCRequest.result?.keyIndex).toBeDefined();
-    const authToken = authJRPCRequest.result?.authToken as string;
-    const decryptedAuthToken = await decryptAuthToken(
-      authToken,
-      keyPair.getPrivate().toString('hex'),
-    );
-    expect(decryptedAuthToken).toBeDefined();
+      sessionPrivateKey,
+      endpoints: NODE_URLS,
+      commitmentSignatures: commitmentResults,
+    });
+
+    expect(authenticateResults).toBeDefined();
+    expect(authenticateResults.length).toBeGreaterThan(0);
+
+    authenticateResults.forEach((result) => {
+      expect(result.authToken).toBeDefined();
+      expect(result.nodeIndex).toBeDefined();
+      expect(result.nodePubKey).toBeDefined();
+      expect(result.pubKey).toBeDefined();
+      expect(result.keyIndex).toBeDefined();
+    });
   });
 });
