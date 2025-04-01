@@ -255,3 +255,27 @@ export type IGetSecretDataRequestBody = IBaseMetadataRequestBody & {
    */
   signature: string;
 };
+
+export type IMetadataLockRequestBody = {
+  /**
+   * The public key of the user
+   */
+  key: string;
+  /**
+   * The Unix timestamp when the request payload is created along with the signature.
+   *
+   */
+  data: {
+    timestamp: number;
+  };
+  /**
+   * The signature produced by signing the payload (without pubKey field) using the user's private key.
+   *
+   * Sample signature: sign(keccak256(feature, authToken, timestamp))
+   */
+  signature: string;
+  /**
+   * The lock id to be released.
+   */
+  id?: string;
+};

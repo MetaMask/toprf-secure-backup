@@ -15,6 +15,7 @@ import type {
   FetchSecretDataResult,
   IBatchSetSecretDataRequestBody,
   IGetSecretDataRequestBody,
+  IMetadataLockRequestBody,
   ISetSecretDataRequestBody,
 } from './interfaces';
 import {
@@ -27,6 +28,11 @@ export enum MetadataStorageLocation {
   METADATA_SERVER = 'metadata-server',
   // eslint-disable-next-line @typescript-eslint/naming-convention
   PROFILE_SYNC = 'profile-sync',
+}
+
+export enum MetadataLockStatus {
+  FAILED = 0,
+  SUCCESS = 1,
 }
 
 type MetadataStoreOptions = {
@@ -134,6 +140,41 @@ export class MetadataStore {
     seed: Uint8Array,
   ): Promise<FetchSecretDataResult | null> {
     return await this.#getData(seed);
+  }
+
+  /**
+   * Acquires a lock on the metadata store.
+   *
+   * @param seed - The seed to derive the user public key.
+   * @returns A promise that resolves with the lock id.
+   */
+  async acquireMetadataLock(seed: Uint8Array): Promise<string> {
+    const { status, id: lockId } = await this.#acquireLock(seed);
+    if (status !== MetadataLockStatus.SUCCESS) {
+      throw new MetadataStoreError('Failed to acquire metadata lock');
+    }
+
+    if (!lockId) {
+      throw new MetadataStoreError(
+        'Failed to acquire metadata lock. Missing lock id',
+      );
+    }
+
+    return lockId;
+  }
+
+  /**
+   * Releases the lock on the metadata store.
+   *
+   * @param seed - The seed to derive the user public key.
+   * @param lockId - The lock id to be released.
+   * @returns A promise that resolves with the lock status.
+   */
+  async releaseMetadataLock(
+    seed: Uint8Array,
+    lockId: string,
+  ): Promise<MetadataLockStatus> {
+    return await this.#releaseLock(seed, lockId);
   }
 
   /**
@@ -257,15 +298,100 @@ export class MetadataStore {
   }
 
   /**
+   * Acquires a lock on the metadata store.
+   *
+   * @param seed - The seed to derive the user public key.
+   * @returns A promise that resolves when the lock is acquired.
+   */
+  async #acquireLock(
+    seed: Uint8Array,
+  ): Promise<{ status: MetadataLockStatus; id?: string }> {
+    try {
+      const payload = this.#generatePayloadForLockRequests(seed);
+      const url = this.#computeMetadataServerUrl('acquireLock');
+
+      const response = await fetch(url, {
+        headers: {
+          // eslint-disable-next-line @typescript-eslint/naming-convention
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const responseBody = await response.json();
+        throw new Error(`HTTP error message: ${responseBody.error}`);
+      }
+
+      const jsonData = await response.json();
+      return {
+        status: jsonData.status,
+        id: jsonData.id,
+      };
+    } catch (error) {
+      const errorMessage = (error as Error).message || 'Unknown error';
+      throw new MetadataStoreError(
+        `failed to acquire metadata lock: ${errorMessage}`,
+      );
+    }
+  }
+
+  /**
+   * Releases the lock on the metadata store.
+   *
+   * @param seed - The seed to derive the user public key.
+   * @param lockId - The lock id to be released.
+   * @returns A promise that resolves with the lock status.
+   */
+  async #releaseLock(
+    seed: Uint8Array,
+    lockId: string,
+  ): Promise<MetadataLockStatus> {
+    try {
+      const payload = this.#generatePayloadForLockRequests(seed, lockId);
+
+      const url = this.#computeMetadataServerUrl('releaseLock');
+      const response = await fetch(url, {
+        headers: {
+          // eslint-disable-next-line @typescript-eslint/naming-convention
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const responseBody = await response.json();
+        throw new Error(`HTTP error message: ${responseBody.error}`);
+      }
+
+      const jsonData = await response.json();
+      return jsonData.status;
+    } catch (error) {
+      const errorMessage = (error as Error).message || 'Unknown error';
+      throw new MetadataStoreError(
+        `failed to release metadata lock: ${errorMessage}`,
+      );
+    }
+  }
+
+  /**
    * Computes the metadata server URL for the given operation.
    *
    * @param operation - The operation to be performed on the metadata server.
    * @returns The metadata server URL.
    */
-  #computeMetadataServerUrl(operation: 'set' | 'get' | 'batch_set'): string {
+  #computeMetadataServerUrl(
+    operation: 'set' | 'get' | 'batch_set' | 'acquireLock' | 'releaseLock',
+  ): string {
     this.#assertIsUsingMetadataServer();
+    let baseUrl = this.#metadataServerUrl;
 
-    const baseUrl = this.#metadataServerUrl;
+    if (operation !== 'acquireLock' && operation !== 'releaseLock') {
+      baseUrl = `${baseUrl}/enc_account_data`;
+    }
+
     return `${baseUrl}/${operation}`;
   }
 
@@ -351,19 +477,59 @@ export class MetadataStore {
   }
 
   /**
+   * Generate the payload for the lock requests.
+   *
+   * @param seed - The seed to derive the user public key.
+   * @param lockId - The lock id to be released.
+   * @returns The payload for the lock requests.
+   */
+  #generatePayloadForLockRequests(
+    seed: Uint8Array,
+    lockId?: string,
+  ): IMetadataLockRequestBody {
+    const { pk: pubKeyRaw, sk: privKey } = deriveAuthenticationKeyPair(seed);
+    const data = { timestamp: Date.now() };
+    // metadata server expects der encoded signature for lock requests
+    const shouldDerEncoded = true;
+    const signature = this.#generatePayloadSignature(
+      data,
+      privKey,
+      shouldDerEncoded,
+    );
+    const key = bytesToHex(pubKeyRaw);
+
+    const payloadForLockRequest: IMetadataLockRequestBody = {
+      data,
+      signature,
+      key,
+    };
+    if (lockId) {
+      payloadForLockRequest.id = lockId;
+    }
+
+    return payloadForLockRequest;
+  }
+
+  /**
    * Generate the signature for the payload.
    *
    * @param payload - The payload to be signed.
    * @param privKey - The private key to sign the payload.
+   * @param shouldDerEncoded - Whether to return the signature in der encoded format.
    * @returns The signature hex string.
    */
   #generatePayloadSignature(
     payload: Record<string, unknown>,
     privKey: bigint,
+    shouldDerEncoded = false,
   ): string {
     const payloadString = safeStringify(payload);
     const hash = keccak256(payloadString);
     const signature = secp256k1.sign(hash, privKey);
+
+    if (shouldDerEncoded) {
+      return signature.toDERHex();
+    }
 
     return signature.toCompactHex();
   }
