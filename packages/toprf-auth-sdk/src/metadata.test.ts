@@ -1,6 +1,7 @@
 import { randomBytes } from '@noble/hashes/utils';
 
 import {
+  MetadataLockStatus,
   MetadataStorageLocation,
   MetadataStore,
   MetadataStoreError,
@@ -8,7 +9,7 @@ import {
 import { generateMockAuthTokenForMetadataRequests } from '../tests/metadata-utils';
 
 const MOCK_SEED = randomBytes(32);
-const METADATA_SERVER_URL = 'http://localhost:5051/enc_account_data';
+const METADATA_SERVER_URL = 'http://localhost:5051';
 
 describe('MetadatStore', () => {
   let authToken: string;
@@ -110,6 +111,72 @@ describe('MetadatStore', () => {
     expect(sortedResult?.[1]).toBe(secretDataArray[1]);
   });
 
+  it('should be able to acquire/release lock', async () => {
+    const metadataStore = new MetadataStore({
+      authToken,
+      metadataServerUrl: METADATA_SERVER_URL,
+    });
+
+    const lockId = await metadataStore.acquireMetadataLock(MOCK_SEED);
+    expect(lockId).toBeDefined();
+
+    const lockStatus = await metadataStore.releaseMetadataLock(
+      MOCK_SEED,
+      lockId,
+    );
+    expect(lockStatus).toBe(MetadataLockStatus.SUCCESS);
+  });
+
+  it('should fail to acquire lock if it is already acquired', async () => {
+    const metadataStore = new MetadataStore({
+      authToken,
+      metadataServerUrl: METADATA_SERVER_URL,
+    });
+
+    const lockId = await metadataStore.acquireMetadataLock(MOCK_SEED);
+    expect(lockId).toBeDefined();
+
+    await expect(metadataStore.acquireMetadataLock(MOCK_SEED)).rejects.toThrow(
+      'Failed to acquire metadata lock',
+    );
+
+    // release the lock
+    const lockStatus = await metadataStore.releaseMetadataLock(
+      MOCK_SEED,
+      lockId,
+    );
+    expect(lockStatus).toBe(MetadataLockStatus.SUCCESS);
+  });
+
+  it('should throw an error if lockId is missing in the response', async () => {
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(async () => {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          /**
+           * @returns json object
+           */
+          json: async () => Promise.resolve({ status: 1 }),
+          // eslint-disable-next-line no-restricted-globals
+        } as Response);
+      });
+
+    const metadataStore = new MetadataStore({
+      authToken,
+      metadataServerUrl: METADATA_SERVER_URL,
+    });
+
+    await expect(metadataStore.acquireMetadataLock(MOCK_SEED)).rejects.toThrow(
+      'Failed to acquire metadata lock. Missing lock id',
+    );
+
+    expect(fetchSpy).toHaveBeenCalled();
+    jest.restoreAllMocks();
+  });
+
   it('should get empty array if metadata key not found', async () => {
     const metadataStore = new MetadataStore({
       authToken,
@@ -150,7 +217,7 @@ describe('MetadatStore', () => {
     jest.restoreAllMocks();
   });
 
-  it('should handle network errors', async () => {
+  it('should handle network errors if the metadata server is down', async () => {
     const fetchSpy = jest
       .spyOn(global, 'fetch')
       .mockImplementation(async () => {
@@ -186,7 +253,15 @@ describe('MetadatStore', () => {
       'Something went wrong!',
     );
 
-    expect(fetchSpy).toHaveBeenCalledTimes(3);
+    await expect(metadataStore.acquireMetadataLock(MOCK_SEED)).rejects.toThrow(
+      'Something went wrong!',
+    );
+
+    await expect(
+      metadataStore.releaseMetadataLock(MOCK_SEED, 'LOCK_ID'),
+    ).rejects.toThrow('Something went wrong!');
+
+    expect(fetchSpy).toHaveBeenCalledTimes(5);
 
     jest.restoreAllMocks();
   });
@@ -218,7 +293,15 @@ describe('MetadatStore', () => {
       'Unknown error',
     );
 
-    expect(fetchSpy).toHaveBeenCalledTimes(3);
+    await expect(metadataStore.acquireMetadataLock(MOCK_SEED)).rejects.toThrow(
+      'Unknown error',
+    );
+
+    await expect(
+      metadataStore.releaseMetadataLock(MOCK_SEED, 'LOCK_ID'),
+    ).rejects.toThrow('Unknown error');
+
+    expect(fetchSpy).toHaveBeenCalledTimes(5);
 
     jest.restoreAllMocks();
   });
