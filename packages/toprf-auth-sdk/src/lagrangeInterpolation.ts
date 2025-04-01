@@ -127,6 +127,9 @@ export function lagrangeInterpolation<T extends bigint | ProjPointType<bigint>>(
   // Add contribution from each value
   for (let i = 0; i < values.length; i++) {
     // Calculate Lagrange coefficient
+    // TODO: Computing all Lagrange coefficients together can be more efficient
+    // than computing them individually. Consider implementing this optimization
+    // in the future if performance becomes critical.
     let numerator = 1n;
     let denominator = 1n;
 
