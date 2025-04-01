@@ -108,12 +108,13 @@ export const evaluateSeed = async (
     },
   );
 
-  console.log('completedRequests', completedRequests.length);
+  console.log('completedRequests a', completedRequests.length);
   if (completedRequests.length >= threshold) {
     const thresholdAuthPubKey = thresholdSame(
       completedRequests.map((res) => res.result?.pubKey),
       threshold,
     );
+    console.log('thresholdAuthPubKey', thresholdAuthPubKey);
     if (thresholdAuthPubKey) {
       const blindedServerPoints = completedRequests
         .map((resp): BlindedPoint | null => {
@@ -148,6 +149,7 @@ export const evaluateSeed = async (
         const nodeIndexes = currentCombiPoints.map((point) =>
           BigInt(point.nodeIndex),
         );
+
         // Interpolate the curve points directly using Lagrange interpolation
         const reconstructedPoint = lagrangeInterpolationForPoints(
           secp256k1.CURVE.n,
@@ -238,8 +240,7 @@ export const recoverTOPRFSeed = async (params: {
 
   const result = await Some<ToprfEvalJRPCResponse, Uint8Array>(
     promiseArr,
-    async (resultArr) =>
-      evaluateSeed(hashedInput, r, resultArr, authTokens.length),
+    async (resultArr) => evaluateSeed(hashedInput, r, resultArr, 3),
   );
 
   if (!result) {
