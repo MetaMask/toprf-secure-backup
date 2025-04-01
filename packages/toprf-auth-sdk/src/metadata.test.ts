@@ -99,6 +99,9 @@ describe('MetadataStore', () => {
     const newMockSeed = randomBytes(32);
     const secretDataArray = ['SECRET_DATA_1', 'SECRET_DATA_2'].sort();
 
+    const lockId = await metadataStore.acquireMetadataLock(newMockSeed);
+    expect(lockId).toBeDefined();
+
     await metadataStore.storeSecretDataBatch(secretDataArray, newMockSeed);
 
     const result = await metadataStore.fetchSecretData(newMockSeed);
@@ -109,6 +112,8 @@ describe('MetadataStore', () => {
 
     expect(sortedResult?.[0]).toBe(secretDataArray[0]);
     expect(sortedResult?.[1]).toBe(secretDataArray[1]);
+
+    await metadataStore.releaseMetadataLock(newMockSeed, lockId);
   });
 
   it('should be able to acquire/release lock', async () => {
