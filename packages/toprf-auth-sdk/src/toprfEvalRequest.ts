@@ -108,6 +108,7 @@ export const evaluateSeed = async (
     },
   );
 
+  console.log('completedRequests', completedRequests.length);
   if (completedRequests.length >= threshold) {
     const thresholdAuthPubKey = thresholdSame(
       completedRequests.map((res) => res.result?.pubKey),
@@ -160,7 +161,7 @@ export const evaluateSeed = async (
           reconstructedPoint,
           randomScalar,
         );
-
+        console.log('recoveredSeed', recoveredSeed);
         const { pk } = deriveAuthenticationKeyPair(recoveredSeed);
         const authPubKey = pubKeyToSec1(pk);
         if (authPubKey === thresholdAuthPubKey) {

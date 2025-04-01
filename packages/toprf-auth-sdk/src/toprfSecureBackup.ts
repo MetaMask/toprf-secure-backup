@@ -149,6 +149,8 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @param params - The parameters for recovering the encryption key.
    * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
    * @param params.password - The password of the user.
+   * @param params.verifier - The verifier name used for authentication.
+   * @param params.verifierId - The verifierId/userID of the user.
    *
    * @returns A promise that resolves with the encryption key.
    */

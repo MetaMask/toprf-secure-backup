@@ -129,8 +129,8 @@ export const resetRateLimits = async (params: {
   }
 
   // TODO: get signature and signedData from the user authentication key.
-  const signature = '';
-  const signedData = '';
+  const signature = '0x';
+  const signedData = '0x';
 
   const promiseArr = authTokens.map(async (authToken) => {
     const endpoint = endpointsMap[authToken.nodeIndex];
