@@ -3,8 +3,13 @@
   "compilerOptions": {
     "baseUrl": "./",
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "skipLibCheck": true,
   },
-  "references": [],
-  "include": ["./src"]
+  "references": [
+    {
+      "path": "../auth-network-utils/tsconfig.build.json"
+    }
+  ],
+  "include": ["./src/**/*"]
 }
