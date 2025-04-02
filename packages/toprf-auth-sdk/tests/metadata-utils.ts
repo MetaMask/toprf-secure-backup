@@ -1,5 +1,7 @@
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
+import { bytesToHex } from '@noble/hashes/utils';
+import type { NodeAuthTokens } from 'src/interfaces';
 
 const AUTH_TOKEN_EXPIRY = 1800000000;
 // TODO: Replace with the dynamic values
@@ -16,12 +18,12 @@ const TEST_AUD =
  * @param params - params required to generate the test auth token
  * @param params.verifier - verifier address
  * @param params.verifierId - verifier id
- * @returns base-64 encoded auth token
+ * @returns NodeAuthTokens
  */
 export function generateMockAuthTokenForMetadataRequests(params: {
   verifier: string;
   verifierId: string;
-}): string {
+}): NodeAuthTokens {
   const { verifier, verifierId } = params;
 
   const authNetworkTokenWithoutSig = {
@@ -42,6 +44,8 @@ export function generateMockAuthTokenForMetadataRequests(params: {
 
   // sign the msg
   const signatureObject = secp256k1.sign(messageHash, TEST_PRIVATE_KEY);
+  const nodePubKeyRaw = secp256k1.getPublicKey(TEST_PRIVATE_KEY);
+  const nodePubKey = bytesToHex(nodePubKeyRaw);
   const signature = signatureObject.toCompactHex();
 
   const authSig = {
@@ -54,5 +58,13 @@ export function generateMockAuthTokenForMetadataRequests(params: {
     'base64',
   );
 
-  return b64EncodedAuthSig;
+  const nodeAuthTokens: NodeAuthTokens = [
+    {
+      authToken: b64EncodedAuthSig,
+      nodeIndex: 1,
+      nodePubKey,
+    },
+  ];
+
+  return nodeAuthTokens;
 }
