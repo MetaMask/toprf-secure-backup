@@ -112,7 +112,7 @@ describe('validateThresholdAuthenticateResponses', () => {
       createMockResponse({ ...mockAuthResult(2), pubKey: '04abcd1231' }),
       createMockResponse({ ...mockAuthResult(3), pubKey: '04abcd1232' }),
       createMockResponse({ ...mockAuthResult(4), pubKey: '04abcd1238' }),
-      createMockResponse({ ...mockAuthResult(5), pubKey: '04abcd1234' }),
+      createMockResponse({ ...mockAuthResult(5), pubKey: '04abcd1231' }),
     ];
 
     await expect(

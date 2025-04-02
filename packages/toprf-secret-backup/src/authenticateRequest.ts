@@ -90,6 +90,11 @@ export const validateThresholdAuthenticateResponses = async (
       };
     });
     const thresholdPubData = thresholdSame(pubData, threshold);
+    if (!thresholdPubData) {
+      throw TOPRFError.invalidAuthenticateResults(
+        `Threshold pubKey not found for ${JSON.stringify(pubData)}`,
+      );
+    }
     const isExistingUser = Boolean(thresholdPubData?.pubKey);
     const hasThresholdResponses = completedRequests.length >= threshold;
     const hasMaxResponses = completedRequests.length === nodesCount;
