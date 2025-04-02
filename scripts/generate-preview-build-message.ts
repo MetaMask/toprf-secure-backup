@@ -7,7 +7,7 @@ import path from 'path';
 /**
  * Write a preview build message to the path "preview-build-message.txt".
  */
-async function main() {
+async function main(): Promise<void> {
   const packageMap: Record<string, string> = {};
 
   const { stdout } = await execa('yarn', [
@@ -30,7 +30,7 @@ async function main() {
   }
 
   const previewBuildMessage = `
-Preview builds have been published. [See these instructions](https://github.com/MetaMask/toprf-auth-sdk/blob/main/docs/contributing.md#using-packages-in-other-projects-during-developmenttesting) for more information about preview builds.
+Preview builds have been published. [See these instructions](https://github.com/MetaMask/toprf-secret-backup/blob/main/docs/contributing.md#using-packages-in-other-projects-during-developmenttesting) for more information about preview builds.
 
 <details>
 

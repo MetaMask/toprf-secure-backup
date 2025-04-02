@@ -1,9 +1,12 @@
 {
-  "compilerOptions": { "esModuleInterop": true, "noEmit": true },
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
   "references": [
     { "path": "./packages/auth-network-utils" },
-    { "path": "./packages/toprf-auth-sdk" }
+    { "path": "./packages/toprf-secret-backup" }
   ],
   "files": [],
-  "include": ["./types"]
+  "include": ["./scripts", "./types"]
 }

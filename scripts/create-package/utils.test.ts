@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import execa from 'execa';
 import fs from 'fs';
 import path from 'path';
-import prettier from 'prettier';
+import * as prettier from 'prettier';
 
 import { MonorepoFiles } from './constants';
 import * as fsUtils from './fs-utils';
@@ -14,6 +15,7 @@ jest.mock('fs', () => ({
     mkdir: jest.fn(),
     readFile: jest.fn(),
     writeFile: jest.fn(),
+    stat: jest.fn(),
   },
 }));
 
@@ -86,7 +88,12 @@ describe('create-package/utils', () => {
         nodeVersions: '>=18.0.0',
       };
 
-      (fs.existsSync as jest.Mock).mockReturnValueOnce(false);
+      (fs.promises.stat as jest.Mock).mockImplementation(() => {
+        const error = new Error('already exists');
+        // @ts-expect-error This property is not part of the Error type
+        error.code = 'ENOENT';
+        throw error;
+      });
 
       (fsUtils.readAllFiles as jest.Mock).mockResolvedValueOnce({
         'src/index.ts': 'export default 42;',
@@ -167,6 +174,8 @@ describe('create-package/utils', () => {
         nodeVersions: '20.0.0',
       };
 
+      // We are mocking this method.
+      // eslint-disable-next-line n/no-sync
       (fs.existsSync as jest.Mock).mockReturnValueOnce(true);
 
       await expect(

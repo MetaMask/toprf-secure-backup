@@ -1,0 +1,103 @@
+import type {
+  EciesHex,
+  JRPCRequest,
+  JSONValue,
+} from '@metamask/auth-network-utils';
+import {
+  encParamsHexToBuf,
+  getSecp256K1Curve,
+  toCamelCaseKeys,
+  toSnakeCaseKeys,
+} from '@metamask/auth-network-utils';
+import { decrypt } from '@toruslabs/eccrypto';
+import { post } from '@toruslabs/http-helpers';
+import BN from 'bn.js';
+
+import { NODE_URLS } from './constants';
+
+type EncryptedData = {
+  data: string;
+  metadata: Omit<EciesHex, 'ciphertext'>;
+};
+
+/**
+ * Converts a BigInt to BN
+ *
+ * @param value - BigInt value to convert
+ * @returns BN instance
+ */
+export const bigIntToBN = (value: bigint): BN => {
+  return new BN(value.toString());
+};
+
+/**
+ * Randomly selects a node URL from the available nodes
+ *
+ * @returns An object containing:
+ * - url: The URL of the randomly selected node
+ * - index: The 1-based index of the selected node
+ */
+export const getRandomNode = (): { url: string; index: string } => {
+  const randomIndex = Math.floor(Math.random() * NODE_URLS.length);
+  return {
+    url: NODE_URLS[randomIndex],
+    index: String(randomIndex + 1),
+  };
+};
+
+/**
+ * Common post function that handles snake_case conversion of request params
+ * and camelCase conversion of response result.
+ *
+ * @param endpoint - The endpoint to make the request to
+ * @param request - The request object to send. The params are converted to snake_case.
+ *
+ * @returns The response with camelCase converted result
+ */
+export const postJRPCRequest = async <
+  Response extends {
+    result?: JSONValue;
+  },
+>(
+  endpoint: string,
+  request: JRPCRequest<JSONValue>,
+): Promise<Response> => {
+  const req = { ...request };
+  const params = toSnakeCaseKeys(request.params);
+  req.params = params;
+  return post<Response>(endpoint, req, {}, { logTracingHeader: false }).then(
+    (res) => {
+      if (res.result) {
+        res.result = toCamelCaseKeys(res.result);
+      }
+      return res;
+    },
+  );
+};
+
+/**
+ * Decrypts the auth token using the session private key
+ *
+ * @param authToken - The auth token to be decrypted.
+ * @param sessionPrivateKey - The session private key to be used for the decryption.
+ *
+ * @returns The decrypted auth token.
+ */
+export const decryptAuthToken = async (
+  authToken: string,
+  sessionPrivateKey: string,
+): Promise<string> => {
+  const ecCurve = getSecp256K1Curve();
+  const decryptionKey = ecCurve.keyFromPrivate(sessionPrivateKey);
+  const authTokenData = JSON.parse(authToken) as EncryptedData;
+  const metadata = encParamsHexToBuf(authTokenData.metadata);
+
+  const decryptedAuthToken = await decrypt(
+    decryptionKey.getPrivate().toArrayLike(Buffer),
+    {
+      ...metadata,
+      ciphertext: Buffer.from(authTokenData.data, 'hex'),
+    },
+  );
+  return Buffer.from(decryptedAuthToken).toString('base64');
+};

@@ -9,10 +9,10 @@ import { waitFor } from './helpers';
 /**
  * Hashes a buffer using the keccak256 algorithm and hexify the result
  *
- * @param buffer - The buffer to hash
+ * @param buffer - The uint8array to hash
  * @returns The hash of the buffer as a hex string
  */
-export function keccak256AndHexify(buffer: Buffer): `0x${string}` {
+export function keccak256AndHexify(buffer: Uint8Array): `0x${string}` {
   const hash = Buffer.from(keccak256(buffer)).toString('hex');
   return `0x${hash}`;
 }
@@ -59,7 +59,7 @@ export function kCombinations(s: number | number[], k: number): number[][] {
   }
 
   if (k === 1) {
-    return set.reduce((acc, cur) => [...acc, [cur]], [] as number[][]);
+    return set.reduce<number[][]>((acc, cur) => [...acc, [cur]], []);
   }
 
   const combs: number[][] = [];
@@ -131,7 +131,7 @@ export function calculateMedian(arr: number[]): number {
  * @param maxRetries - The maximum number of retries
  * @returns The result of the promise
  */
-export function retryPromiseWithBackoff<T>(
+export async function retryPromiseWithBackoff<T>(
   executionPromise: () => Promise<JRPCResponse<T>>,
   maxRetries: number,
 ) {
@@ -249,7 +249,7 @@ export async function Some<K, T>(
   callbackFn: (resultArr: K[], params?: { resolved: boolean }) => Promise<T>,
 ): Promise<T | void> {
   let predicateError: Error | undefined; // to keep track of the latest error thrown by the callbackFn
-
+  let finishedCount = 0;
   const resultArr: K[] = new Array(promises.length).fill(undefined);
   const errorArr: Error[] = new Array(promises.length).fill(undefined);
 
@@ -267,10 +267,79 @@ export async function Some<K, T>(
       }
     } catch (e: unknown) {
       predicateError = e as Error;
+    } finally {
+      finishedCount += 1;
     }
   }
-
-  // handle error if the output of the callbackFn cannot be determined
-  // after all promises are settled
-  handleSomeCallBackFnError(errorArr, resultArr, predicateError);
+  if (finishedCount === promises.length) {
+    // handle error if the output of the callbackFn cannot be determined
+    // after all promises are settled
+    handleSomeCallBackFnError(errorArr, resultArr, predicateError);
+  }
 }
+
+export type Primitive = string | number | boolean | null;
+export type JSONObject = { [key: string]: JSONValue };
+export type JSONArray = JSONValue[];
+export type JSONValue = Primitive | JSONObject | JSONArray;
+
+// Convert snake_case to camelCase
+/**
+ *
+ * @param str - The string to convert to camelCase.
+ * @returns The camelCase string.
+ */
+export function toCamel(str: string): string {
+  return str.replace(/_([a-z])/gu, (_, letter) => letter.toUpperCase());
+}
+
+// Convert camelCase to snake_case
+/**
+ *
+ * @param str - The string to convert to snake_case.
+ * @returns The snake_case string.
+ */
+export function toSnake(str: string): string {
+  return str.replace(/([A-Z])/gu, '_$1').toLowerCase();
+}
+
+// Recursive key converter
+/**
+ *
+ * @param obj - The object to convert the keys of.
+ * @param convertFunc - The function to convert the keys of the object.
+ * @returns The object with the converted keys.
+ */
+export function convertKeys(
+  obj: JSONValue,
+  convertFunc: (key: string) => string,
+): JSONValue {
+  if (Array.isArray(obj)) {
+    return obj.map((item) => convertKeys(item, convertFunc));
+  } else if (obj !== null && typeof obj === 'object') {
+    const newObj: JSONObject = {};
+    for (const [key, value] of Object.entries(obj)) {
+      newObj[convertFunc(key)] = convertKeys(value, convertFunc);
+    }
+    return newObj;
+  }
+  return obj;
+}
+
+/**
+ * Converts the keys of an object from snake_case to camelCase.
+ *
+ * @param obj - The object to convert the keys of.
+ * @returns The object with the converted keys.
+ */
+export const toCamelCaseKeys = (obj: JSONValue): JSONValue =>
+  convertKeys(obj, toCamel);
+
+/**
+ * Converts the keys of an object from camelCase to snake_case.
+ *
+ * @param obj - The object to convert the keys of.
+ * @returns The object with the converted keys.
+ */
+export const toSnakeCaseKeys = (obj: JSONValue): JSONValue =>
+  convertKeys(obj, toSnake);

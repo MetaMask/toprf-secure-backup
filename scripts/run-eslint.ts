@@ -1,9 +1,8 @@
 import chalk from 'chalk';
+import { ESLint } from 'eslint';
 import fs from 'fs';
 import path from 'path';
 import yargs from 'yargs';
-
-import { ESLint } from 'eslint';
 
 const PROJECT_DIRECTORY = path.resolve(__dirname, '..');
 
@@ -63,7 +62,7 @@ main().catch((error) => {
 /**
  * The entrypoint to this script.
  */
-async function main() {
+async function main(): Promise<void> {
   const { cache, fix, quiet } = parseCommandLineArguments();
 
   const eslint = new ESLint({ cache, fix });
@@ -80,7 +79,11 @@ async function main() {
  *
  * @returns The parsed arguments.
  */
-function parseCommandLineArguments() {
+function parseCommandLineArguments(): {
+  cache: boolean;
+  fix: boolean;
+  quiet: boolean;
+} {
   return yargs(process.argv.slice(2))
     .option('cache', {
       type: 'boolean',
@@ -151,7 +154,7 @@ async function runESLint(
  *
  * @param results - The results of running ESLint.
  */
-function evaluateWarnings(results: ESLint.LintResult[]) {
+function evaluateWarnings(results: ESLint.LintResult[]): void {
   const warningThresholds = loadWarningThresholds();
   const warningCounts = getWarningCounts(results);
 
@@ -250,7 +253,11 @@ function evaluateWarnings(results: ESLint.LintResult[]) {
  * @returns The warning thresholds loaded from file.
  */
 function loadWarningThresholds(): WarningCounts {
+  // We're doing this for convenience.
+  // eslint-disable-next-line n/no-sync
   if (fs.existsSync(WARNING_THRESHOLDS_FILE)) {
+    // We're doing this for convenience.
+    // eslint-disable-next-line n/no-sync
     const data = fs.readFileSync(WARNING_THRESHOLDS_FILE, 'utf-8');
     return JSON.parse(data);
   }
@@ -264,6 +271,8 @@ function loadWarningThresholds(): WarningCounts {
  * @param newWarningCounts - The new warning thresholds to save.
  */
 function saveWarningThresholds(newWarningCounts: WarningCounts): void {
+  // We're doing this for convenience.
+  // eslint-disable-next-line n/no-sync
   fs.writeFileSync(
     WARNING_THRESHOLDS_FILE,
     `${JSON.stringify(newWarningCounts, null, 2)}\n`,
@@ -281,7 +290,7 @@ function saveWarningThresholds(newWarningCounts: WarningCounts): void {
  * warnings for the rule.
  */
 function getWarningCounts(results: ESLint.LintResult[]): WarningCounts {
-  const unsortedWarningCounts = results.reduce(
+  const unsortedWarningCounts = results.reduce<WarningCounts>(
     (workingWarningCounts, result) => {
       const { filePath } = result;
       const relativeFilePath = path.relative(PROJECT_DIRECTORY, filePath);
@@ -296,25 +305,22 @@ function getWarningCounts(results: ESLint.LintResult[]): WarningCounts {
       }
       return workingWarningCounts;
     },
-    {} as WarningCounts,
+    {},
   );
 
   const sortedWarningCounts: WarningCounts = {};
   for (const filePath of Object.keys(unsortedWarningCounts).sort()) {
     // We can safely assume this property is present.
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const unsortedWarningCountsForFile = unsortedWarningCounts[filePath]!;
+
+    const unsortedWarningCountsForFile = unsortedWarningCounts[filePath];
     sortedWarningCounts[filePath] = Object.keys(unsortedWarningCountsForFile)
       .sort(sortRules)
-      .reduce(
-        (acc, ruleId) => {
-          // We can safely assume this property is present.
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          acc[ruleId] = unsortedWarningCountsForFile[ruleId]!;
-          return acc;
-        },
-        {} as Record<string, number>,
-      );
+      .reduce<Record<string, number>>((acc, ruleId) => {
+        // We can safely assume this property is present.
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        acc[ruleId] = unsortedWarningCountsForFile[ruleId]!;
+        return acc;
+      }, {});
   }
   return sortedWarningCounts;
 }
@@ -341,8 +347,8 @@ function compareWarnings(
   for (const filePath of filePaths) {
     const ruleIds = Array.from(
       new Set([
-        ...Object.keys(warningThresholds[filePath] || {}),
-        ...Object.keys(warningCounts[filePath] || {}),
+        ...Object.keys(warningThresholds[filePath] ?? {}),
+        ...Object.keys(warningCounts[filePath] ?? {}),
       ]),
     );
 
@@ -358,14 +364,14 @@ function compareWarnings(
 
   return Object.keys(comparisons)
     .sort()
-    .reduce(
+    .reduce<Record<string, WarningComparison[]>>(
       (sortedComparisons, filePath) => {
         // We can safely assume this property is present.
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         sortedComparisons[filePath] = comparisons[filePath]!;
         return sortedComparisons;
       },
-      {} as Record<string, WarningComparison[]>,
+      {},
     );
 }
 
@@ -390,12 +396,14 @@ function compareWarnings(
  * ) //=> 1 (sort A after B)
  */
 function sortRules(ruleIdA: string, ruleIdB: string): number {
-  const [namespaceA, ruleA] = ruleIdA.includes('/')
-    ? ruleIdA.split('/')
-    : ['', ruleIdA];
-  const [namespaceB, ruleB] = ruleIdB.includes('/')
-    ? ruleIdB.split('/')
-    : ['', ruleIdB];
+  // Type assertion: This is safe because we are checking for "/" first.
+  const [namespaceA, ruleA] = (
+    ruleIdA.includes('/') ? ruleIdA.split('/') : ['', ruleIdA]
+  ) as [string, string];
+  // Type assertion: This is safe because we are checking for "/" first.
+  const [namespaceB, ruleB] = (
+    ruleIdB.includes('/') ? ruleIdB.split('/') : ['', ruleIdB]
+  ) as [string, string];
   if (namespaceA && !namespaceB) {
     return -1;
   }

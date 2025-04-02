@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import type { Ecies } from '@toruslabs/eccrypto';
 import type BN from 'bn.js';
 
@@ -18,4 +19,10 @@ export type JRPCResponse<T> = {
     message: string;
     data?: unknown;
   };
+};
+
+export type JRPCRequest<T> = {
+  jsonrpc: '2.0';
+  method: string;
+  params: T;
 };

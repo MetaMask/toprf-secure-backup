@@ -70,14 +70,20 @@ export function lagrangeInterpolatePolynomial(
         continue;
       }
       // Compute the denominator: (x_i - x_j) modulo the curve order
-      const denom = points[i].x.sub(points[j].x).umod(ecCurve.n);
+      const denom = points[i].xCoordinate
+        .sub(points[j].xCoordinate)
+        .umod(ecCurve.n);
       // Compute the modular inverse of denom
       const denomInv = denom.invm(ecCurve.n);
 
       // The linear factor (x - x_j)/(x_i - x_j) is represented as [ -x_j * denomInv, 1 * denomInv ]
       const linearFactor = [
         // Constant term: -x_j/(x_i - x_j)
-        points[j].x.neg().umod(ecCurve.n).mul(denomInv).umod(ecCurve.n),
+        points[j].xCoordinate
+          .neg()
+          .umod(ecCurve.n)
+          .mul(denomInv)
+          .umod(ecCurve.n),
         // Coefficient of x: 1/(x_i - x_j)
         denomInv,
       ];
@@ -89,7 +95,7 @@ export function lagrangeInterpolatePolynomial(
     // Multiply the basis polynomial by y_i and add it to the overall polynomial
     for (let k = 0; k < basisPoly.length; k++) {
       polyCoeffs[k] = polyCoeffs[k]
-        .add(basisPoly[k].mul(points[i].y))
+        .add(basisPoly[k].mul(points[i].yCoordinate))
         .umod(ecCurve.n);
     }
   }
@@ -101,9 +107,9 @@ export function lagrangeInterpolatePolynomial(
 /**
  * Generates a random polynomial
  *
- * @param ecCurve - The elliptic curve to use
- * @param degree - The degree of the polynomial
- * @param secret - The secret to use
+ * @param ecCurve - The elliptic curve to use.
+ * @param degree - The degree of the polynomial.
+ * @param secret - The secret to use.
  * @param deterministicShares - The deterministic shares to use
  * @returns The polynomial
  */
