@@ -502,10 +502,8 @@ export class MetadataStore {
       data,
       signature,
       key,
+      id: lockId,
     };
-    if (lockId) {
-      payloadForLockRequest.id = lockId;
-    }
 
     return payloadForLockRequest;
   }

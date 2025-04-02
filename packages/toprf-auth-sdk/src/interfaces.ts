@@ -228,7 +228,13 @@ export type IBaseSetSecretDataRequestBody<T> = IBaseMetadataRequestBody & {
 /**
  * Payload structure for storing secret data for single secret data
  */
-export type ISetSecretDataRequestBody = IBaseSetSecretDataRequestBody<string>;
+export type ISetSecretDataRequestBody =
+  IBaseSetSecretDataRequestBody<string> & {
+    /**
+     * The version of the secret data
+     */
+    version?: string;
+  };
 
 /**
  * The array of secret data to be stored in batch request
@@ -280,5 +286,5 @@ export type IMetadataLockRequestBody = {
   /**
    * The lock id to be released.
    */
-  id?: string;
+  id?: string | undefined;
 };
