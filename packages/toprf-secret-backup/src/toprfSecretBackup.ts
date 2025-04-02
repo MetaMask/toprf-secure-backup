@@ -7,13 +7,13 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 import { keccak256 } from 'ethereum-cryptography/keccak';
 
 import { authenticateUser } from './authenticateRequest';
-import { commitmentRequest } from './commitmentRequest';
+import { commitIdToken } from './commitRequest';
 import type {
   AuthenticateParams,
   AuthenticateResult,
+  IToprfSecureBackup,
   CreateEncryptionKeyParams,
   CreateEncryptionKeyResult,
-  IToprfSecureBackup,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -25,7 +25,7 @@ import { storeKeyShares } from './storeSharesRequest';
 /**
  *
  */
-export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
+export class ToprfSecretBackup implements Partial<IToprfSecureBackup> {
   readonly #nodeDetailManager: NodeDetailManager;
 
   /**
@@ -54,7 +54,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @throws {Error} If idToken is older than 6 minutes.
    */
   async authenticate(params: AuthenticateParams): Promise<AuthenticateResult> {
-    const { nodeEndpoints, nodeIndexes } = await this.#getNodeDetails();
+    const { nodeEndpoints } = await this.#getNodeDetails();
     const curve = getSecp256K1Curve();
     const sessionKeyPair = curve.genKeyPair();
     const sessionPubKey = sessionKeyPair.getPublic();
@@ -62,13 +62,12 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     const sessionPubKeyY = sessionPubKey.getY().toString('hex');
 
     // commit idToken to nodes
-    const commitmentResults = await commitmentRequest({
+    const commitmentResults = await commitIdToken({
       idToken: params.idTokens[0],
       verifier: params.verifier,
       sessionPubKeyX,
       sessionPubKeyY,
       endpoints: nodeEndpoints,
-      indexes: nodeIndexes,
     });
     // get auth tokens from nodes
     const authTokens = await authenticateUser({
@@ -79,22 +78,21 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       endpoints: nodeEndpoints,
       commitmentSignatures: commitmentResults,
     });
-
     const hasValidEncKey = thresholdSame(
       authTokens.map((tokenData) => ({
         token: tokenData.authToken,
         keyIndex: tokenData.keyIndex,
       })),
-      nodeEndpoints.length / 2,
+      Math.floor(nodeEndpoints.length / 2) + 1,
     );
-    return Promise.resolve({
+    return {
       nodeAuthTokens: authTokens.map((tokenData) => ({
         authToken: tokenData.authToken,
         nodeIndex: tokenData.nodeIndex,
         nodePubKey: tokenData.nodePubKey,
       })),
       hasValidEncKey: Boolean(hasValidEncKey),
-    });
+    };
   }
 
   /**
