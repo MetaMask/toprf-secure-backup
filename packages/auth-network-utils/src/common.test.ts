@@ -1,6 +1,13 @@
 import { keccak256 } from 'ethereum-cryptography/keccak';
 
-import { keccak256AndHexify, Some } from './common';
+import {
+  keccak256AndHexify,
+  Some,
+  toCamel,
+  toCamelCaseKeys,
+  toSnake,
+  toSnakeCaseKeys,
+} from './common';
 import { waitFor } from './helpers';
 
 describe('common utils', function () {
@@ -37,6 +44,12 @@ describe('common utils', function () {
       }),
     ];
 
+    /**
+     *
+     * @param threshold - The threshold for the number of promises to be resolved.
+     *
+     * @returns The callback function.
+     */
     const callbackFnFactory =
       (threshold: number) => async (resultArr: { data: string }[]) => {
         const completedResult = resultArr.filter((result) =>
@@ -53,9 +66,69 @@ describe('common utils', function () {
       const threshold = 3;
       const callbackFn = callbackFnFactory(threshold);
 
-      await expect(() => Some(promises, callbackFn)).rejects.toThrow(
+      await expect(async () => Some(promises, callbackFn)).rejects.toThrow(
         'not enough data',
       );
+    });
+  });
+
+  it('should be able to convert a field to a camel case field', function () {
+    const camelCaseObj = toCamel('auth_token');
+    expect(camelCaseObj).toBe('authToken');
+  });
+
+  it('should be able to convert a field to a snake case field', function () {
+    const snakeCaseObj = toSnake('authToken');
+    expect(snakeCaseObj).toBe('auth_token');
+  });
+
+  it('should be able to convert keys to camel case', function () {
+    const obj = {
+      auth_token: 'test',
+      node_index: 1,
+      pub_key: 'test',
+      key_index: 1,
+    };
+
+    const camelCaseObj = toCamelCaseKeys(obj);
+    expect(camelCaseObj).toStrictEqual({
+      authToken: 'test',
+      nodeIndex: 1,
+      pubKey: 'test',
+      keyIndex: 1,
+    });
+  });
+
+  it('should be able to convert keys to snake case', function () {
+    const obj = {
+      authData: {
+        authenticationContext: {
+          idToken: 'test',
+          verifier: 'test',
+          verifierId: 'test',
+        },
+        verifierOauthParams: {
+          test: 'test',
+        },
+      },
+      commitmentSignatures: [],
+      clientTime: 'test',
+    };
+
+    const snakeCaseObj = toSnakeCaseKeys(obj);
+    expect(snakeCaseObj).toStrictEqual({
+      auth_data: {
+        authentication_context: {
+          id_token: 'test',
+          verifier: 'test',
+          verifier_id: 'test',
+        },
+        verifier_oauth_params: {
+          test: 'test',
+        },
+      },
+      commitment_signatures: [],
+      client_time: 'test',
     });
   });
 });

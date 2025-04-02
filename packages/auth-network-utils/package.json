@@ -6,13 +6,13 @@
     "MetaMask",
     "Ethereum"
   ],
-  "homepage": "https://github.com/MetaMask/toprf-auth-sdk/tree/main/packages/auth-network-utils#readme",
+  "homepage": "https://github.com/MetaMask/toprf-secret-backup/tree/main/packages/auth-network-utils#readme",
   "bugs": {
-    "url": "https://github.com/MetaMask/toprf-auth-sdk/issues"
+    "url": "https://github.com/MetaMask/toprf-secret-backup/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/MetaMask/toprf-auth-sdk.git"
+    "url": "https://github.com/MetaMask/toprf-secret-backup.git"
   },
   "license": "MIT",
   "sideEffects": false,
@@ -50,10 +50,10 @@
     "@metamask/auto-changelog": "^3.4.4",
     "@types/bn.js": "^5",
     "@types/elliptic": "^6",
-    "@types/jest": "^27.4.1",
+    "@types/jest": "^29.5.14",
     "deepmerge": "^4.2.2",
-    "jest": "^27.5.1",
-    "ts-jest": "^27.1.4",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.3.0",
     "typedoc": "^0.24.8",
     "typedoc-plugin-missing-exports": "^2.0.0",
     "typescript": "~5.2.2"

@@ -14,9 +14,7 @@ let secp256k1Curve: EC | null = null;
  * @returns secp256k1 elliptic curve
  */
 export function getSecp256K1Curve(): EC {
-  if (!secp256k1Curve) {
-    secp256k1Curve = new EC('secp256k1');
-  }
+  secp256k1Curve = secp256k1Curve ?? new EC('secp256k1');
   return secp256k1Curve;
 }
 
@@ -39,11 +37,12 @@ export function generate32BytesPrivateKeyBuffer(ecCurve: EC): Buffer {
  * @param encParams - The encrypted parameters with fields as buffers
  * @returns The encrypted parameters with fields converted to hex strings
  */
-export function encryptedParamsBufToHex(encParams: Ecies): EciesHex {
+export function encryptedParamsBufToHex(
+  encParams: Ecies,
+): Omit<EciesHex, 'ciphertext'> {
   return {
     iv: Buffer.from(encParams.iv).toString('hex'),
     ephemPublicKey: Buffer.from(encParams.ephemPublicKey).toString('hex'),
-    ciphertext: Buffer.from(encParams.ciphertext).toString('hex'),
     mac: Buffer.from(encParams.mac).toString('hex'),
     mode: 'AES256',
   };
@@ -110,3 +109,27 @@ export function derivePubKey(ecCurve: EC, sk: BN): curve.base.BasePoint {
   const skHex = sk.toString(16, 64);
   return ecCurve.keyFromPrivate(skHex, 'hex').getPublic();
 }
+
+/**
+ * Converts a Uint8Array public key to SEC1 encoded format
+ * Format: 0x04 || x || y where x and y are 32-byte coordinates
+ *
+ * @param pubKey - Uint8Array public key to convert
+ * @returns SEC1 encoded public key string
+ */
+export const pubKeyToSec1 = (pubKey: Uint8Array): string => {
+  // SEC1 uncompressed format starts with 0x04
+  // Then has X and Y coordinates (32 bytes each)
+  const prefix = '04';
+
+  // Convert Uint8Array to hex string
+  const pubKeyHex = Array.from(pubKey)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  if (pubKeyHex.startsWith('04')) {
+    return pubKeyHex;
+  }
+
+  return prefix + pubKeyHex;
+};

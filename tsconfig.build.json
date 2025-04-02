@@ -2,7 +2,7 @@
   "extends": "./tsconfig.base.json",
   "references": [
     { "path": "./packages/auth-network-utils/tsconfig.build.json" },
-    { "path": "./packages/toprf-auth-sdk/tsconfig.build.json" }
+    { "path": "./packages/toprf-secret-backup/tsconfig.build.json" }
   ],
   "files": [],
   "include": []

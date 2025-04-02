@@ -8,20 +8,37 @@ export type ShareMap = {
   [x: string]: Share;
 };
 
+/**
+ *
+ */
 class Polynomial {
   polynomial: BN[];
 
   ecCurve: EC;
 
+  /**
+   *
+   * @param polynomial - polynomial coefficients.
+   * @param ecCurve - elliptic curve instance.
+   */
   constructor(polynomial: BN[], ecCurve: EC) {
     this.polynomial = polynomial;
     this.ecCurve = ecCurve;
   }
 
+  /**
+   * @returns - threshold of the polynomial.
+   */
   getThreshold(): number {
     return this.polynomial.length;
   }
 
+  /**
+   * Evaluates the polynomial at a given point.
+   *
+   * @param x - point to evaluate the polynomial at.
+   * @returns - value of the polynomial at the given point.
+   */
   polyEval(x: BNString): BN {
     const tmpX = new BN(x, 'hex');
     let xi = new BN(tmpX);
@@ -43,6 +60,12 @@ class Polynomial {
     return sum;
   }
 
+  /**
+   * Generates shares from the polynomial.
+   *
+   * @param shareIndexes - indexes to generate shares for on the polynomial.
+   * @returns - map of sharesIndexes to shares.
+   */
   generateShares(shareIndexes: BNString[]): ShareMap {
     const newShareIndexes = shareIndexes.map((index) => {
       if (typeof index === 'number') {

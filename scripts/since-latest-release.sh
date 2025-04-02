@@ -26,10 +26,10 @@ View changes for a package since its latest release.
 
 Examples:
 
-  yarn workspace @metamask/toprf-auth-sdk run since-latest-release
-  yarn workspace @metamask/toprf-auth-sdk run since-latest-release diff
-  yarn workspace @metamask/toprf-auth-sdk run since-latest-release log -p
-  yarn workspace @metamask/toprf-auth-sdk run since-latest-release --include-head -- log -p
+  yarn workspace @metamask/toprf-secret-backup run since-latest-release
+  yarn workspace @metamask/toprf-secret-backup run since-latest-release diff
+  yarn workspace @metamask/toprf-secret-backup run since-latest-release log -p
+  yarn workspace @metamask/toprf-secret-backup run since-latest-release --include-head -- log -p
 
 EOT
 }

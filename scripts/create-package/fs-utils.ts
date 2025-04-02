@@ -19,6 +19,13 @@ export type FileMap = Record<string, string>;
  * @returns A map of file paths to file contents.
  */
 export async function readAllFiles(baseDir: string): Promise<FileMap> {
+  /**
+   * Recursively reads a directory and returns a map of file paths to file contents.
+   * The file paths are relative to the specified directory.
+   *
+   * @param dir - An absolute path to the directory to read files from.
+   * @returns A map of file paths to file contents.
+   */
   const readAllFilesRecur = async (dir: string): Promise<FileMap> => {
     const result: FileMap = {};
     const entries = await fs.readdir(dir, { withFileTypes: true });

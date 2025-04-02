@@ -21,7 +21,7 @@ Each package in this repository has its own README where you can find installati
 <!-- start package list -->
 
 - [`@metamask/auth-network-utils`](packages/auth-network-utils)
-- [`@metamask/toprf-auth-sdk`](packages/toprf-auth-sdk)
+- [`@metamask/toprf-secret-backup`](packages/toprf-secret-backup)
 
 <!-- end package list -->
 
@@ -32,7 +32,7 @@ Each package in this repository has its own README where you can find installati
 graph LR;
 linkStyle default opacity:0.5
   auth_network_utils(["@metamask/auth-network-utils"]);
-  toprf_auth_sdk(["@metamask/toprf-auth-sdk"]);
+  toprf_auth_sdk(["@metamask/toprf-secret-backup"]);
 ```
 
 <!-- end dependency graph -->
