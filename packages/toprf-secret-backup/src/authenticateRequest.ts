@@ -10,6 +10,7 @@ import type {
   AuthRequestResult,
 } from './jrpcInterfaces';
 import { decryptAuthToken, postJRPCRequest } from './utils';
+import TOPRFError from '../../auth-network-utils/src/errors';
 
 /**
  * Creates the parameters for the authenticate request
@@ -104,7 +105,7 @@ export const validateThresholdAuthenticateResponses = async (
   }
 
   return Promise.reject(
-    new Error(`invalid authenticate results ${JSON.stringify(resultArr)}`),
+    TOPRFError.invalidAuthenticateResults(`${JSON.stringify(resultArr)}`),
   );
 };
 
