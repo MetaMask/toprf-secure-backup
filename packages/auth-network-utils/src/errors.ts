@@ -1,10 +1,10 @@
 /**
  * Error class for handling errors from `some` function promises.
  */
-export class SomeError<T> extends Error {
+export class SomeError<TResponse> extends Error {
   errors: (Error | undefined)[];
 
-  responses: T[];
+  responses: TResponse[];
 
   predicate: string;
 
@@ -21,7 +21,7 @@ export class SomeError<T> extends Error {
     predicate,
   }: {
     errors: (Error | undefined)[];
-    responses: T[];
+    responses: TResponse[];
     predicate: string;
   }) {
     // its fine to log responses in errors logs for better debugging,
