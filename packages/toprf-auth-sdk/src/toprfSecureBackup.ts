@@ -13,14 +13,19 @@ import type {
   AuthenticateResult,
   CreateEncryptionKeyParams,
   CreateEncryptionKeyResult,
+  FetchSecretDataParams,
+  FetchSecretDataResult,
   IToprfSecureBackup,
+  NodeAuthTokens,
   RecoverEncryptionKeyParams,
   RecoverEncryptionKeyResult,
+  StoreSecretDataParams,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
   deriveEncryptionKey,
 } from './keyDerivation';
+import { MetadataStore } from './metadata';
 import { OPRF, generateRandomScalar } from './oprf';
 import { resetRateLimits } from './resetRateLimits';
 import { storeKeyShares } from './storeSharesRequest';
@@ -132,14 +137,14 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       oprfKey: randomScalar,
       authPubKey: authKeyPair.pk,
     });
-    const encKeyPair = deriveEncryptionKey(seed);
+    const encKey = deriveEncryptionKey(seed);
 
     return {
       authKeyPair: {
         privKey: authKeyPair.sk,
         pubKey: authKeyPair.pk,
       },
-      encKey: encKeyPair,
+      encKey,
     };
   }
 
@@ -186,6 +191,43 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   }
 
   /**
+   * This function encrypts the secret data using the encryption key and stores it nodes metadata store in encrypted form.
+   *
+   * @param params - The parameters for registering new secret data.
+   * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
+   * @param params.encKey - The encryption key which is used to encrypt the secret data before storing it.
+   * @param params.secretData - The array of secret data to be registered.
+   * @param params.authKeyPair - The authentication key pair which is used to authenticate the user to the storage service.
+   *
+   * @returns A promise that resolves when the secret data is stored.
+   */
+  async storeSecretData(params: StoreSecretDataParams): Promise<void> {
+    const { nodeAuthTokens } = params;
+
+    const metadataStore = await this.#getMetadataStore(nodeAuthTokens);
+    await metadataStore.storeSecretData(
+      params.secretData,
+      params.encKey,
+      params.authKeyPair,
+    );
+  }
+
+  /**
+   * This function decrypts the secret data using the encryption key and returns the decrypted secret data.
+   *
+   * @param params - The parameters for fetching the secret data.
+   * @param params.keyPair - The encryption/decryption key pair which is used to decrypt the secret data.
+   *
+   * @returns A promise that resolves with the decrypted secret data. Null if no secret data is found.
+   */
+  async fetchSecretData(
+    params: FetchSecretDataParams,
+  ): Promise<FetchSecretDataResult | null> {
+    const metadataStore = await this.#getMetadataStore(params.nodeAuthTokens);
+    return metadataStore.fetchSecretData(params.encKey, params.authKeyPair);
+  }
+
+  /**
    * Gets the node details.
    *
    * @returns The node details containing the node endpoints, indexes and pubkeys.
@@ -218,5 +260,40 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       nodeIndexes: torusIndexes,
       nodePubkeys: torusNodePub,
     };
+  }
+
+  /**
+   * Creates the metadata store instance.
+   *
+   * @param nodeAuthTokens - The node auth tokens from the authenticate function.
+   *
+   * @returns The metadata store.
+   */
+  async #getMetadataStore(
+    nodeAuthTokens: NodeAuthTokens,
+  ): Promise<MetadataStore> {
+    const { nodeIndexes, nodeEndpoints } = await this.#getNodeDetails();
+    const metadataEndpoints = await this.#getMetadataEndpoints(nodeEndpoints);
+    const metadataStore = new MetadataStore({
+      authTokens: nodeAuthTokens,
+      nodeEndpoints: metadataEndpoints,
+      nodeIndexes,
+    });
+
+    return metadataStore;
+  }
+
+  /**
+   * Gets the metadata endpoints.
+   *
+   * @param nodeEndpoints - The node endpoints.
+   *
+   * @returns The metadata endpoints.
+   */
+  async #getMetadataEndpoints(nodeEndpoints: string[]): Promise<string[]> {
+    return nodeEndpoints.map((endpoint) => {
+      const url = new URL(endpoint);
+      return `${url.origin}/metadata`;
+    });
   }
 }

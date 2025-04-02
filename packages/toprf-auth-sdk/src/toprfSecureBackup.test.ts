@@ -22,6 +22,7 @@ describe('toprf secure backup', function () {
     // as this user doesn't have any enc key yet.
     expect(result.hasValidEncKey).toBe(false);
   });
+
   it('should be able to create enc key', async function () {
     const verifier = 'torus-test-health';
     const verifierID = `test-verifier-id-${Math.random()}`;
@@ -92,5 +93,45 @@ describe('toprf secure backup', function () {
     expect(recoveredEncKey.authKeyPair.pubKey).toStrictEqual(
       encKey.authKeyPair.pubKey,
     );
+  });
+
+  // TODO: Tests failed at the moment. We need to wait for the metadata-server to be deployed in all nodes.
+  it('should be able to store secret data', async function () {
+    const secretData = 'test-secret-data';
+    const verifier = 'torus-test-health';
+    const verifierID = `test-verifier-id-${Math.random()}`;
+    const idToken = generateIdToken(verifierID, 'ES256');
+    const toprfSecureBackup = new ToprfSecureBackup({
+      network: 'sapphire_devnet',
+    });
+
+    const result = await toprfSecureBackup.authenticate({
+      idTokens: [idToken],
+      verifier,
+      verifierID,
+    });
+    const encKeyResult = await toprfSecureBackup.createEncKey({
+      nodeAuthTokens: result.nodeAuthTokens,
+      password: 'test-password',
+      verifier,
+      verifierId: verifierID,
+    });
+
+    await toprfSecureBackup.storeSecretData({
+      nodeAuthTokens: result.nodeAuthTokens,
+      encKey: encKeyResult.encKey,
+      secretData,
+      authKeyPair: encKeyResult.authKeyPair,
+    });
+
+    const fetchedSecretData = await toprfSecureBackup.fetchSecretData({
+      nodeAuthTokens: result.nodeAuthTokens,
+      encKey: encKeyResult.encKey,
+      authKeyPair: encKeyResult.authKeyPair,
+    });
+    expect(fetchedSecretData).toBeDefined();
+    expect(fetchedSecretData?.secretData).toBeDefined();
+    expect(fetchedSecretData?.secretData.length).toBe(1);
+    expect(fetchedSecretData?.secretData[0]).toBe(secretData);
   });
 });
