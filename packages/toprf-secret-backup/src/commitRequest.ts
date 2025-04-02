@@ -17,7 +17,7 @@ import { postJRPCRequest } from './utils';
 /**
  * Creates the parameters for the commitment request
  *
- * @param tokenCommitment - The token commitment, hash of the idToken
+ * @param tokenCommitment - The token commitment, hash of the idToken (without 0x prefix).
  * @param verifier - The verifier
  * @param sessionPubKeyX - The public key x to be used for the commitment request session.
  * @param sessionPubKeyY - The public key y to be used for the commitment request session.
@@ -31,7 +31,7 @@ export const createCommitmentRequestParams = (
 ): CommitmentJRPCRequestParams => {
   return {
     messagePrefix: 'mug00',
-    tokenCommitment: tokenCommitment.slice(2),
+    tokenCommitment,
     verifier,
     tempPubKeyX: sessionPubKeyX,
     tempPubKeyY: sessionPubKeyY,
@@ -123,7 +123,9 @@ export const commitIdToken = async (params: {
   const { idToken, endpoints, verifier, sessionPubKeyX, sessionPubKeyY } =
     params;
   const threshold = Math.floor((endpoints.length * 3) / 4) + 1;
-  const tokenCommitment = keccak256AndHexify(new TextEncoder().encode(idToken));
+  const tokenCommitment = keccak256AndHexify(
+    new TextEncoder().encode(idToken),
+  ).slice(2);
 
   const requestParams = createCommitmentRequestParams(
     tokenCommitment,
