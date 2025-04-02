@@ -2,13 +2,13 @@
 // of PRFs.
 /* eslint-disable id-length */
 
+import {
+  generateRandomPolynomialNoble,
+  lagrangeInterpolationForPoints,
+} from '@metamask/auth-network-utils';
 import { secp256k1 } from 'ethereum-cryptography/secp256k1';
 
 import { deriveAuthenticationKeyPair } from './keyDerivation';
-import {
-  generateRandomPolynomial,
-  lagrangeInterpolationForPoints,
-} from './lagrangeInterpolation';
 import { generateRandomScalar, OPRF } from './oprf';
 
 describe('OPRF', () => {
@@ -87,7 +87,7 @@ describe('OPRF', () => {
     const totalShares = 5;
 
     // Create a polynomial with testKey as the constant term
-    const polynomial = generateRandomPolynomial(
+    const polynomial = generateRandomPolynomialNoble(
       secp256k1.CURVE.n,
       degree,
       testKey,
@@ -97,7 +97,7 @@ describe('OPRF', () => {
     const shares: { x: bigint; y: bigint }[] = [];
     for (let i = 1; i <= totalShares; i++) {
       const x = BigInt(i);
-      const y = polynomial.evaluate(x);
+      const y = polynomial.polyEvalNoble(x);
       shares.push({ x, y });
     }
 
