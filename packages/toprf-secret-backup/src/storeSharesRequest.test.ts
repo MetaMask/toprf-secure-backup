@@ -2,7 +2,7 @@ import { getSecp256K1Curve } from '@metamask/auth-network-utils';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import { authenticateUser } from './authenticateRequest';
-import { commitmentRequest } from './commitmentRequest';
+import { commitIdToken } from './commitRequest';
 import { deriveAuthenticationKeyPair } from './keyDerivation';
 import { OPRF, generateRandomScalar } from './oprf';
 import { storeKeyShares } from './storeSharesRequest';
@@ -39,13 +39,12 @@ describe('store shares request', function () {
     const sessionPubKeyX = pubPoint.getX().toString('hex');
     const sessionPubKeyY = pubPoint.getY().toString('hex');
 
-    const commitmentResults = await commitmentRequest({
+    const commitmentResults = await commitIdToken({
       idToken,
       verifier,
       sessionPubKeyX,
       sessionPubKeyY,
       endpoints: torusNodeSSSEndpoints,
-      indexes: torusIndexes,
     });
 
     const authTokens = await authenticateUser({
