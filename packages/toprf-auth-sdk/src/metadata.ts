@@ -13,6 +13,7 @@ import {
 import { DEFAULT_METADATA_SERVER_URL } from './constants';
 import type {
   FetchSecretDataResult,
+  IBatchSetData,
   IBatchSetSecretDataRequestBody,
   IGetSecretDataRequestBody,
   IMetadataLockRequestBody,
@@ -229,9 +230,11 @@ export class MetadataStore {
         data: this.#encryptData(secret, seed),
       }));
 
-      const payload = this.#generatePayloadForSetOrBatchSetSecretDataRequest<
-        { data: string }[]
-      >(encryptedDataArray, seed);
+      const payload =
+        this.#generatePayloadForSetOrBatchSetSecretDataRequest<IBatchSetData>(
+          encryptedDataArray,
+          seed,
+        );
 
       const response = await fetch(url, {
         headers: {
@@ -416,7 +419,7 @@ export class MetadataStore {
    * @returns The payload for the batch set secret data request.
    */
   #generatePayloadForSetOrBatchSetSecretDataRequest<
-    T extends string | { data: string }[],
+    T extends string | IBatchSetData,
   >(
     data: T,
     seed: Uint8Array,
