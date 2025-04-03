@@ -1,18 +1,18 @@
 {
-  "name": "@metamask/toprf-secret-backup",
+  "name": "@metamask/toprf-secure-backup",
   "version": "0.0.0",
   "description": "The MetaMask Node module template",
   "keywords": [
     "MetaMask",
     "Ethereum"
   ],
-  "homepage": "https://github.com/MetaMask/toprf-secret-backup/tree/main/packages/toprf-secret-backup#readme",
+  "homepage": "https://github.com/MetaMask/toprf-secure-backup/tree/main/packages/toprf-secure-backup#readme",
   "bugs": {
-    "url": "https://github.com/MetaMask/toprf-secret-backup/issues"
+    "url": "https://github.com/MetaMask/toprf-secure-backup/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/MetaMask/toprf-secret-backup.git"
+    "url": "https://github.com/MetaMask/toprf-secure-backup.git"
   },
   "license": "MIT",
   "sideEffects": false,
@@ -37,8 +37,8 @@
   "scripts": {
     "build": "ts-bridge --project tsconfig.build.json --verbose --clean --no-references",
     "build:docs": "typedoc",
-    "changelog:update": "../../scripts/update-changelog.sh @metamask/toprf-secret-backup",
-    "changelog:validate": "../../scripts/validate-changelog.sh @metamask/toprf-secret-backup",
+    "changelog:update": "../../scripts/update-changelog.sh @metamask/toprf-secure-backup",
+    "changelog:validate": "../../scripts/validate-changelog.sh @metamask/toprf-secure-backup",
     "publish:preview": "yarn npm publish --tag preview",
     "since-latest-release": "../../scripts/since-latest-release.sh",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --reporters=jest-silent-reporter",

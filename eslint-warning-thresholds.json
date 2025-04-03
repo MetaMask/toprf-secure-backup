@@ -16,9 +16,6 @@
     "@typescript-eslint/prefer-nullish-coalescing": 2,
     "id-length": 2
   },
-  "packages/auth-network-utils/src/polynomial.ts": {
-    "id-length": 1
-  },
   "scripts/create-package/cli.ts": {
     "@typescript-eslint/explicit-function-return-type": 1
   }
