@@ -1,12 +1,14 @@
 import { getSecp256K1Curve } from '@metamask/auth-network-utils';
+import { toBytes } from '@noble/hashes/utils';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
+import { sha256 } from 'ethereum-cryptography/sha256';
 
 import { authenticateUser } from './authenticateRequest';
-import { commitmentRequest } from './commitmentRequest';
+import { commitIdToken } from './commitRequest';
 import { deriveAuthenticationKeyPair } from './keyDerivation';
 import { OPRF, generateRandomScalar } from './oprf';
 import { storeKeyShares } from './storeSharesRequest';
-import { generateIdToken } from './testHelpers';
+import { generateIdToken } from '../tests/testHelpers';
 
 describe('store shares request', function () {
   let nodeDetailManager: NodeDetailManager;
@@ -39,44 +41,45 @@ describe('store shares request', function () {
     const sessionPubKeyX = pubPoint.getX().toString('hex');
     const sessionPubKeyY = pubPoint.getY().toString('hex');
 
-    const commitmentResults = await commitmentRequest({
+    const commitmentResults = await commitIdToken({
       idToken,
       verifier,
       sessionPubKeyX,
       sessionPubKeyY,
       endpoints: torusNodeSSSEndpoints,
-      indexes: torusIndexes,
     });
 
     const authTokens = await authenticateUser({
       idToken,
       verifier,
       verifierID,
-      sessionPrivateKey: keyPair.getPrivate().toString('hex'),
+      sessionPrivateKey: keyPair.getPrivate().toBuffer(),
       endpoints: torusNodeSSSEndpoints,
       commitmentSignatures: commitmentResults,
     });
 
     expect(authTokens).toBeDefined();
-    const randomScalar = generateRandomScalar();
-    const seed = OPRF.localEval(
-      randomScalar,
-      new TextEncoder().encode('abcdefgh'),
-    );
+    const passwordBytes = toBytes('test-input');
+    const hashedInput = sha256(passwordBytes);
+    const oprfKey = generateRandomScalar();
+    const seed = OPRF.localEval(oprfKey, hashedInput);
     const authKeyPair = deriveAuthenticationKeyPair(seed);
 
-    const storeSharesResponse = await storeKeyShares(torusNodeSSSEndpoints, {
-      nodeIndexes: torusIndexes,
-      nodePubkeys: torusNodePub,
+    const nodeEndpointsMap = torusIndexes.reduce<Record<number, string>>(
+      (acc, index) => {
+        acc[index] = torusNodeSSSEndpoints[index - 1];
+        return acc;
+      },
+      {},
+    );
+
+    const storeSharesResponse = await storeKeyShares({
+      nodeEndpointsMap,
       verifier,
       verifierId: verifierID,
-      authTokens: authTokens.map((tokenData) => ({
-        authToken: tokenData.authToken,
-        nodeIndex: tokenData.nodeIndex,
-        nodePubKey: tokenData.nodePubKey,
-      })),
+      authTokens,
       keyIndex: 1,
-      oprfKey: randomScalar,
+      oprfKey,
       authPubKey: authKeyPair.pk,
     });
 

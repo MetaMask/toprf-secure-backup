@@ -6,10 +6,12 @@ import {
   thresholdSame,
 } from '@metamask/auth-network-utils';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
-import { keccak256 } from 'ethereum-cryptography/keccak';
 import { secp256k1 } from 'ethereum-cryptography/secp256k1';
 
-import { JRPC_METHODS } from './constants';
+import {
+  EXISTING_USER_AUTHENTICATION_THRESHOLD,
+  JRPC_METHODS,
+} from './constants';
 import type { NodeAuthTokens } from './interfaces';
 import type {
   ToprfEvalJRPCRequest,
@@ -68,17 +70,8 @@ export const createToprfEvalRequest = async (
     JRPC_METHODS.TOPRF_EVAL_REQUEST,
     params,
   ) as ToprfEvalJRPCRequest;
-  /**
-   * Sends the toprf eval request to the given endpoint and returns the toprf eval response.
-   *
-   * @returns The toprf eval response.
-   */
-  const toprfEvalResponse = postJRPCRequest<ToprfEvalJRPCResponse>(
-    endpoint,
-    toprfEvalJRPCRequest,
-  );
 
-  return toprfEvalResponse;
+  return postJRPCRequest<ToprfEvalJRPCResponse>(endpoint, toprfEvalJRPCRequest);
 };
 
 /**
@@ -87,14 +80,12 @@ export const createToprfEvalRequest = async (
  * @param hashedInput - The hashed input i.e. hash of the password.
  * @param randomScalar - The random scalar used to blind the input.
  * @param resultArr - The toprf eval request result
- * @param threshold - Mininum number of valid responses required to evaluate key using toprf.
  * @returns The toprf eval request result
  */
 export const evaluateSeed = async (
   hashedInput: Uint8Array,
   randomScalar: bigint,
   resultArr: ToprfEvalJRPCResponse[],
-  threshold: number,
 ): Promise<Uint8Array> => {
   const completedRequests = resultArr.filter(
     (res): res is ToprfEvalJRPCResponse => {
@@ -108,10 +99,10 @@ export const evaluateSeed = async (
     },
   );
 
-  if (completedRequests.length >= threshold) {
+  if (completedRequests.length >= EXISTING_USER_AUTHENTICATION_THRESHOLD) {
     const thresholdAuthPubKey = thresholdSame(
       completedRequests.map((res) => res.result?.pubKey),
-      threshold,
+      EXISTING_USER_AUTHENTICATION_THRESHOLD,
     );
     if (thresholdAuthPubKey) {
       const blindedServerPoints = completedRequests
@@ -133,7 +124,10 @@ export const evaluateSeed = async (
         .filter((point): point is BlindedPoint => point !== null);
 
       // evaluate auth priv key using oprf and match with the threshold auth pub key
-      const allCombis = kCombinations(completedRequests.length, threshold);
+      const allCombis = kCombinations(
+        completedRequests.length,
+        EXISTING_USER_AUTHENTICATION_THRESHOLD,
+      );
       let seed: Uint8Array | null = null;
       for (const currentCombi of allCombis) {
         const currentCombiPoints = blindedServerPoints.filter((_, index) =>
@@ -187,42 +181,47 @@ export const evaluateSeed = async (
  * @param params.authTokens - The auth tokens issued by the nodes on authenticating the user.
  * @param params.verifier - The verifier name used for authentication.
  * @param params.verifierId - The verifierId issued to user after authentication.
- * @param params.endpointsMap - Map of node index to endpoint to be used for the reset rate limit request.
+ * @param params.nodeEndpointsMap - Map of node index to endpoint to be used for the reset rate limit request.
+ * @param params.userPasswordHash - The password of the user.
  *
- * @param params.password - The password of the user.
  * @returns - A promise that resolves with the key pair seed successfully.
  */
 export const recoverTOPRFSeed = async (params: {
   authTokens: NodeAuthTokens;
-  endpointsMap: Record<number, string>;
+  nodeEndpointsMap: Record<number, string>;
   verifier: string;
   verifierId: string;
-  password: string;
+  userPasswordHash: Uint8Array;
 }): Promise<Uint8Array> => {
-  const { authTokens, endpointsMap, verifier, verifierId, password } = params;
+  const {
+    authTokens,
+    nodeEndpointsMap,
+    verifier,
+    verifierId,
+    userPasswordHash,
+  } = params;
 
   if (authTokens.length === 0) {
     throw new Error('No auth tokens provided');
   }
 
-  if (Object.keys(endpointsMap).length === 0) {
+  if (Object.keys(nodeEndpointsMap).length === 0) {
     throw new Error('No endpoints provided');
   }
 
   if (authTokens.length < 3) {
     throw new Error('At least 3 auth tokens are required');
   }
+  const { a, r } = OPRF.blind(userPasswordHash);
 
-  const passwordBytes = new TextEncoder().encode(password);
-  const hashedInput = keccak256(passwordBytes);
-  const { a, r } = OPRF.blind(hashedInput);
   const promiseArr = authTokens.map(async (authToken) => {
-    const endpoint = endpointsMap[authToken.nodeIndex];
+    const endpoint = nodeEndpointsMap[authToken.nodeIndex];
     if (!endpoint) {
       throw new Error(
         `Endpoint not found for node index ${authToken.nodeIndex}`,
       );
     }
+
     const requestParams = createToprfEvalRequestParams(
       authToken.authToken,
       a.x.toString(16),
@@ -235,7 +234,7 @@ export const recoverTOPRFSeed = async (params: {
 
   const result = await Some<ToprfEvalJRPCResponse, Uint8Array>(
     promiseArr,
-    async (resultArr) => evaluateSeed(hashedInput, r, resultArr, 3),
+    async (resultArr) => evaluateSeed(userPasswordHash, r, resultArr),
   );
 
   if (!result) {

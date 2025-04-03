@@ -1,14 +1,14 @@
-# `PACKAGE_NAME`
+# `@metamask/toprf-secure-backup`
 
-PACKAGE_DESCRIPTION
+The MetaMask Node module template
 
 ## Installation
 
-`yarn add PACKAGE_NAME`
+`yarn add @metamask/toprf-secure-backup`
 
 or
 
-`npm install PACKAGE_NAME`
+`npm install @metamask/toprf-secure-backup`
 
 ## Contributing
 

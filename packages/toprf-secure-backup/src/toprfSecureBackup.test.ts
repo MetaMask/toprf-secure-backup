@@ -1,7 +1,7 @@
-import { generateIdToken } from './testHelpers';
 import { ToprfSecureBackup } from './toprfSecureBackup';
+import { generateIdToken } from '../tests/testHelpers';
 
-describe('toprf secure backup', function () {
+describe('toprf secret backup', function () {
   it('should be able to authenticate user', async function () {
     const verifier = 'torus-test-health';
     const verifierID = 'test-verifier-id-xyz-123';
@@ -22,6 +22,7 @@ describe('toprf secure backup', function () {
     // as this user doesn't have any enc key yet.
     expect(result.hasValidEncKey).toBe(false);
   });
+
   it('should be able to create enc key', async function () {
     const verifier = 'torus-test-health';
     const verifierID = `test-verifier-id-${Math.random()}`;
@@ -43,8 +44,8 @@ describe('toprf secure backup', function () {
     });
     expect(encKey).toBeDefined();
     expect(encKey.authKeyPair).toBeDefined();
-    expect(encKey.authKeyPair.privKey).toBeDefined();
-    expect(encKey.authKeyPair.pubKey).toBeDefined();
+    expect(encKey.authKeyPair.sk).toBeDefined();
+    expect(encKey.authKeyPair.pk).toBeDefined();
     expect(encKey.encKey).toBeDefined();
   });
 
@@ -69,8 +70,8 @@ describe('toprf secure backup', function () {
     });
     expect(encKey).toBeDefined();
     expect(encKey.authKeyPair).toBeDefined();
-    expect(encKey.authKeyPair.privKey).toBeDefined();
-    expect(encKey.authKeyPair.pubKey).toBeDefined();
+    expect(encKey.authKeyPair.sk).toBeDefined();
+    expect(encKey.authKeyPair.pk).toBeDefined();
     expect(encKey.encKey).toBeDefined();
 
     const recoveredEncKey = await toprfSecureBackup.recoverEncKey({
@@ -81,16 +82,12 @@ describe('toprf secure backup', function () {
     });
     expect(recoveredEncKey).toBeDefined();
     expect(recoveredEncKey.authKeyPair).toBeDefined();
-    expect(recoveredEncKey.authKeyPair.privKey).toBeDefined();
-    expect(recoveredEncKey.authKeyPair.pubKey).toBeDefined();
+    expect(recoveredEncKey.authKeyPair.sk).toBeDefined();
+    expect(recoveredEncKey.authKeyPair.pk).toBeDefined();
     expect(recoveredEncKey.encKey).toBeDefined();
 
-    expect(recoveredEncKey.authKeyPair.privKey).toStrictEqual(
-      encKey.authKeyPair.privKey,
-    );
+    expect(recoveredEncKey.authKeyPair.sk).toStrictEqual(encKey.authKeyPair.sk);
     expect(recoveredEncKey.encKey).toStrictEqual(encKey.encKey);
-    expect(recoveredEncKey.authKeyPair.pubKey).toStrictEqual(
-      encKey.authKeyPair.pubKey,
-    );
+    expect(recoveredEncKey.authKeyPair.pk).toStrictEqual(encKey.authKeyPair.pk);
   });
 });

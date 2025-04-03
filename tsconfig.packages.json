@@ -11,7 +11,7 @@
      * `jest.config.packages.js`.
      */
     "paths": {
-      "@metamask/*": ["../*/src"]
+      "@metamask/*": ["./packages/*/src"]
     }
   }
 }

@@ -1,6 +1,5 @@
 /**
  * SEC1 encoded public key
- * Format: 0x04 || x || y
  * Where x and y are 32-byte coordinates in big-endian format
  */
 export type SEC1EncodedPublicKey = Uint8Array;
@@ -13,8 +12,8 @@ export type SEC1EncodedPublicKey = Uint8Array;
  * pubKey - The encryption public key in SEC1 encoded format.
  */
 export type KeyPair = {
-  privKey: bigint;
-  pubKey: SEC1EncodedPublicKey;
+  sk: bigint;
+  pk: SEC1EncodedPublicKey;
 };
 
 export type AuthenticateParams = {
@@ -25,16 +24,22 @@ export type AuthenticateParams = {
   verifierID: string;
 };
 
+/**
+ * NodeAuthToken - An authentication token and the node details.
+ *
+ * authToken - The authentication token.
+ *
+ * nodeIndex - The index of the node that issued the token.
+ *
+ * nodePubKey - The public key of the node that issued the token.
+ */
 export type NodeAuthToken = {
   authToken: string;
   nodeIndex: number;
   nodePubKey: string;
 };
-
 /**
- * nodeAuthToken - The token issued by the node on verifying the idToken.
- *
- * nodeIndex - The index of the node that issued the token
+ * nodeAuthTokens - An array of authentication tokens issued by the nodes.
  */
 export type NodeAuthTokens = NodeAuthToken[];
 
@@ -49,6 +54,11 @@ export type AuthenticateResult = {
 };
 
 /**
+ * CreateEncryptionKeyParams - The parameters for creating an encryption key.
+ *
+ * verifier - The verifier of the user.
+ *
+ * verifierId - The verifier ID of the user.
  *
  * nodeAuthTokens - The tokens issued by the nodes on verifying the idTokens.
  *
@@ -62,7 +72,11 @@ export type CreateEncryptionKeyParams = {
 };
 
 /**
- * keyPair - The encryption/decryption key pair which is used to encrypt/decrypt the secret data.
+ * CreateEncryptionKeyResult - The result of creating an encryption key.
+ *
+ * authKeyPair - The authentication key pair which is used to authenticate the user.
+ *
+ * encKey - The encryption key which is used to encrypt the secret data.
  */
 export type CreateEncryptionKeyResult = {
   authKeyPair: KeyPair;

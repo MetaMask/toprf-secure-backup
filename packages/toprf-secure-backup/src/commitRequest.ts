@@ -5,7 +5,11 @@ import {
 } from '@metamask/auth-network-utils';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
-import { JRPC_METHODS } from './constants';
+import {
+  COMMIT_RESPONSE_THRESHOLD,
+  COMMIT_RETRY_COUNT,
+  JRPC_METHODS,
+} from './constants';
 import type {
   CommitmentJRPCRequest,
   CommitmentJRPCRequestParams,
@@ -15,13 +19,13 @@ import type {
 import { postJRPCRequest } from './utils';
 
 /**
- * Creates the parameters for the commitment request
+ * Creates the parameters for the commitment request.
  *
- * @param tokenCommitment - The token commitment, hash of the idToken
+ * @param tokenCommitment - The token commitment, hash of the idToken (without 0x prefix).
  * @param verifier - The verifier
  * @param sessionPubKeyX - The public key x to be used for the commitment request session.
  * @param sessionPubKeyY - The public key y to be used for the commitment request session.
- * @returns The parameters for the commitment jrpc request
+ * @returns The parameters for the commitment JRPC request.
  */
 export const createCommitmentRequestParams = (
   tokenCommitment: string,
@@ -31,7 +35,7 @@ export const createCommitmentRequestParams = (
 ): CommitmentJRPCRequestParams => {
   return {
     messagePrefix: 'mug00',
-    tokenCommitment: tokenCommitment.slice(2),
+    tokenCommitment,
     verifier,
     tempPubKeyX: sessionPubKeyX,
     tempPubKeyY: sessionPubKeyY,
@@ -39,13 +43,13 @@ export const createCommitmentRequestParams = (
 };
 
 /**
- * Creates a commitment request to the given endpoint
+ * Sends a commitment request to the given endpoint.
  *
- * @param endpoint - The endpoint to be used for the commitment request
- * @param params - The parameters for the commitment request
- * @returns Array of commitment request promises
+ * @param endpoint - The endpoint to be used for the commitment request.
+ * @param params - The parameters for the commitment request.
+ * @returns The commitment responses.
  */
-export const createCommitmentRequest = async (
+export const sendCommitmentRequest = async (
   endpoint: string,
   params: CommitmentJRPCRequestParams,
 ): Promise<CommitmentJRPCResponse> => {
@@ -60,19 +64,17 @@ export const createCommitmentRequest = async (
    */
   const commitmentResponse = async (): Promise<CommitmentJRPCResponse> =>
     postJRPCRequest<CommitmentJRPCResponse>(endpoint, commitmentJRPCRequest);
-  return retryPromiseWithBackoff(commitmentResponse, 4);
+  return retryPromiseWithBackoff(commitmentResponse, COMMIT_RETRY_COUNT);
 };
 
 /**
- * Validates the commitment responses
+ * Validates the commitment responses.
  *
- * @param resultArr - The commitment request result
- * @param threeFourthsThreshold - The threshold for the number commitment responses to be valid
- * @returns The commitment request result
+ * @param resultArr - The commitment request result.
+ * @returns The commitment request result.
  */
 export const validateThresholdCommitmentResponses = async (
   resultArr: CommitmentJRPCResponse[],
-  threeFourthsThreshold: number,
 ): Promise<CommitmentRequestResult[]> => {
   const completedRequests = resultArr.filter(
     (res): res is CommitmentJRPCResponse => {
@@ -86,21 +88,16 @@ export const validateThresholdCommitmentResponses = async (
     },
   );
 
-  if (completedRequests.length >= threeFourthsThreshold) {
-    const requiredNodeResult = completedRequests.find(
-      (resp) => resp !== undefined && 'result' in resp,
+  if (completedRequests.length < COMMIT_RESPONSE_THRESHOLD) {
+    return Promise.reject(
+      new Error(
+        `Not enough completed requests. Expected: ${COMMIT_RESPONSE_THRESHOLD}, got: ${completedRequests.length}, ${JSON.stringify(resultArr)}`,
+      ),
     );
-    if (requiredNodeResult) {
-      const validResultArr = completedRequests.filter((res) => res.result);
-      return Promise.resolve(
-        validResultArr.map((res) => res.result as CommitmentRequestResult),
-      );
-    }
   }
-
-  return Promise.reject(
-    new Error(`invalid commitment results ${JSON.stringify(resultArr)}`),
-  );
+  return completedRequests
+    .filter((res) => res.result)
+    .map((res) => res.result as CommitmentRequestResult);
 };
 
 /**
@@ -112,22 +109,21 @@ export const validateThresholdCommitmentResponses = async (
  * @param params.sessionPubKeyX - The public key x to be used for the commitment request session.
  * @param params.sessionPubKeyY - The public key y to be used for the commitment request session.
  * @param params.endpoints - The endpoints to be used for the commitment request
- * @param params.indexes - The indexes to be used for the commitment request
  * @returns resultArr - The commitment request result, where each element is
  * a signed commitment data from a node.
  */
-export const commitmentRequest = async (params: {
+export const commitIdToken = async (params: {
   idToken: string;
   verifier: string;
   sessionPubKeyX: string;
   sessionPubKeyY: string;
   endpoints: string[];
-  indexes: number[];
 }): Promise<CommitmentRequestResult[]> => {
   const { idToken, endpoints, verifier, sessionPubKeyX, sessionPubKeyY } =
     params;
-  const threeFourthsThreshold = Math.floor((endpoints.length * 3) / 4) + 1;
-  const tokenCommitment = keccak256AndHexify(new TextEncoder().encode(idToken));
+  const tokenCommitment = keccak256AndHexify(
+    new TextEncoder().encode(idToken),
+  ).slice(2);
 
   const requestParams = createCommitmentRequestParams(
     tokenCommitment,
@@ -136,22 +132,19 @@ export const commitmentRequest = async (params: {
     sessionPubKeyY,
   );
   const promiseArr = endpoints.map(async (endpoint) =>
-    createCommitmentRequest(endpoint, requestParams),
+    sendCommitmentRequest(endpoint, requestParams),
   );
 
-  return new Promise<CommitmentRequestResult[]>((resolve, reject) => {
-    Some<CommitmentJRPCResponse, CommitmentRequestResult[]>(
-      promiseArr,
-      async (resultArr) =>
-        validateThresholdCommitmentResponses(resultArr, threeFourthsThreshold),
-    )
-      .then((resultArr: CommitmentRequestResult[] | void) => {
-        if (!resultArr || resultArr.length === 0) {
-          throw new Error('No commitment request results');
-        } else {
-          return resolve(resultArr);
-        }
-      })
-      .catch(reject);
-  });
+  const resultArr = await Some<
+    CommitmentJRPCResponse,
+    CommitmentRequestResult[]
+  >(promiseArr, async (results: CommitmentJRPCResponse[]) =>
+    validateThresholdCommitmentResponses(results),
+  );
+
+  if (!resultArr || resultArr.length === 0) {
+    throw new Error('No commitment request results');
+  }
+
+  return resultArr;
 };

@@ -1,9 +1,8 @@
 import {
-  getProxyCoordinatorEndpointIndex,
+  getProxyCoordinatorNodeIndex,
   pubKeyToSec1,
   toSnakeCaseKeys,
 } from '@metamask/auth-network-utils';
-import type { INodePub } from '@toruslabs/constants';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
 import { JRPC_METHODS } from './constants';
@@ -16,8 +15,7 @@ import type {
 import { generateShareImportItems, postJRPCRequest } from './utils';
 
 export type CreateStoreKeySharesRequestParamsInput = {
-  nodeIndexes: number[];
-  nodePubkeys: INodePub[];
+  nodeEndpointsMap: Record<number, string>;
   authTokens: NodeAuthTokens;
   keyIndex: number;
   verifier: string;
@@ -32,8 +30,7 @@ export type StoreKeySharesRequestParams =
  * Creates the parameters for the store key shares request
  *
  * @param params - The parameters for the store key shares request.
- * @param params.nodeIndexes - The node indexes to be used for the store key shares request.
- * @param params.nodePubkeys - The node pubkeys to be used for the store key shares request.
+ * @param params.nodeEndpointsMap - The map of node indexes to endpoints.
  * @param params.authTokens - The authTokens to be used for the store key shares request.
  * @param params.keyIndex - The key index to be used for the store key shares request.
  * KeyIndex should be 1 for the first key registration and derived from response of authenticate request for subsequent key registrations.
@@ -46,8 +43,7 @@ export const createStoreKeySharesRequestParams = async (
   params: CreateStoreKeySharesRequestParamsInput,
 ): Promise<StoreKeySharesJRPCRequestParams> => {
   const {
-    nodeIndexes,
-    nodePubkeys,
+    nodeEndpointsMap,
     authTokens,
     keyIndex,
     oprfKey,
@@ -56,8 +52,7 @@ export const createStoreKeySharesRequestParams = async (
     verifierId,
   } = params;
   const shareImportItems = await generateShareImportItems(
-    nodeIndexes,
-    nodePubkeys,
+    nodeEndpointsMap,
     authTokens,
     oprfKey,
     keyIndex,
@@ -71,13 +66,14 @@ export const createStoreKeySharesRequestParams = async (
 };
 
 /**
- * Creates a store key shares request to the given endpoint
+ * Sends a store key shares request to the given endpoint.
  *
- * @param endpoint - The endpoint to be used for the store key shares request
- * @param params - The parameters for the store key shares request
+ * @param endpoint - The endpoint to be used for the store key shares request.
+ * @param params - The parameters for the store key shares request.
+ *
  * @returns The store key shares request promise.
  */
-export const createStoreKeySharesRequest = async (
+export const sendStoreKeySharesRequest = async (
   endpoint: string,
   params: StoreKeySharesJRPCRequestParams,
 ): Promise<StoreKeySharesJRPCResponse> => {
@@ -85,25 +81,14 @@ export const createStoreKeySharesRequest = async (
     JRPC_METHODS.STORE_KEY_SHARES_REQUEST,
     toSnakeCaseKeys(params),
   ) as StoreKeySharesJRPCRequest;
-  /**
-   * Sends the store key shares request to the given endpoint and returns the store key shares response.
-   *
-   * @returns The store key shares response.
-   */
-  const storeKeySharesRequestPromise =
-    async (): Promise<StoreKeySharesJRPCResponse> =>
-      postJRPCRequest<StoreKeySharesJRPCResponse>(endpoint, authJRPCRequest);
-  return storeKeySharesRequestPromise();
+  return postJRPCRequest<StoreKeySharesJRPCResponse>(endpoint, authJRPCRequest);
 };
 
 /**
  * Stores the key shares for the given node endpoints
  *
- * @param nodeEndpoints - The node endpoints to be used for the store key shares request.
- *
  * @param params - The parameters for the store key shares request
- * @param params.nodeIndexes - The node indexes to be used for the store key shares request.
- * @param params.nodePubkeys - The node pubkeys to be used for the store key shares request.
+ * @param params.nodeEndpointsMap - The node endpoints map to be used for the store key shares request.
  * @param params.verifier - The verifier to be used for the store key shares request.
  * @param params.verifierId - The verifierId to be used for the store key shares request.
  * @param params.authTokens - The authTokens issued by the nodes on authenticating the user.
@@ -116,12 +101,10 @@ export const createStoreKeySharesRequest = async (
  * @returns The store key shares request promise.
  */
 export const storeKeyShares = async (
-  nodeEndpoints: string[],
   params: StoreKeySharesRequestParams,
 ): Promise<StoreKeySharesJRPCResponse> => {
   const {
-    nodeIndexes,
-    nodePubkeys,
+    nodeEndpointsMap,
     authTokens,
     keyIndex,
     oprfKey,
@@ -130,8 +113,7 @@ export const storeKeyShares = async (
     authPubKey,
   } = params;
   const requestParams = await createStoreKeySharesRequestParams({
-    nodeIndexes,
-    nodePubkeys,
+    nodeEndpointsMap,
     authTokens,
     keyIndex,
     authPubKey,
@@ -139,14 +121,13 @@ export const storeKeyShares = async (
     verifier,
     verifierId,
   });
-  const proxyNodeEndpointIndex = getProxyCoordinatorEndpointIndex(
-    nodeEndpoints,
+  const proxyNodeEndpointIndex = getProxyCoordinatorNodeIndex(
+    authTokens.map((token) => token.nodeIndex),
     verifier,
     verifierId,
   );
-  const proxyNodeEndpoint = nodeEndpoints[proxyNodeEndpointIndex];
-
-  const storeReqPromise = await createStoreKeySharesRequest(
+  const proxyNodeEndpoint = nodeEndpointsMap[proxyNodeEndpointIndex];
+  const storeReqPromise = await sendStoreKeySharesRequest(
     proxyNodeEndpoint,
     requestParams,
   );

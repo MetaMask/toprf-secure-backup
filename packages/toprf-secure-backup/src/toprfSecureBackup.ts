@@ -1,21 +1,23 @@
 import { getSecp256K1Curve, thresholdSame } from '@metamask/auth-network-utils';
+import { sha256 } from '@noble/hashes/sha256';
+import { toBytes } from '@noble/hashes/utils';
 import type {
   INodePub,
   TORUS_SAPPHIRE_NETWORK_TYPE,
 } from '@toruslabs/constants';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
-import { keccak256 } from 'ethereum-cryptography/keccak';
 
 import { authenticateUser } from './authenticateRequest';
-import { commitmentRequest } from './commitmentRequest';
+import { commitIdToken } from './commitRequest';
+import { EXISTING_USER_AUTHENTICATION_THRESHOLD } from './constants';
 import type {
   AuthenticateParams,
   AuthenticateResult,
+  IToprfSecureBackup,
   CreateEncryptionKeyParams,
   CreateEncryptionKeyResult,
-  IToprfSecureBackup,
-  RecoverEncryptionKeyParams,
   RecoverEncryptionKeyResult,
+  RecoverEncryptionKeyParams,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -40,8 +42,6 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   constructor(params: { network: TORUS_SAPPHIRE_NETWORK_TYPE }) {
     this.#nodeDetailManager = new NodeDetailManager({
       network: params.network,
-      keyType: 'secp256k1',
-      sigType: 'ecdsa-secp256k1',
     });
   }
 
@@ -58,47 +58,46 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @throws {Error} If idToken is older than 6 minutes.
    */
   async authenticate(params: AuthenticateParams): Promise<AuthenticateResult> {
-    const { nodeEndpoints, nodeIndexes } = await this.#getNodeDetails();
+    const { nodeEndpoints } = await this.#getNodeDetails();
     const curve = getSecp256K1Curve();
     const sessionKeyPair = curve.genKeyPair();
+    const sessionPrivKeyBuffer = sessionKeyPair.getPrivate().toBuffer();
     const sessionPubKey = sessionKeyPair.getPublic();
     const sessionPubKeyX = sessionPubKey.getX().toString('hex');
     const sessionPubKeyY = sessionPubKey.getY().toString('hex');
 
     // commit idToken to nodes
-    const commitmentResults = await commitmentRequest({
+    const commitmentResults = await commitIdToken({
       idToken: params.idTokens[0],
       verifier: params.verifier,
       sessionPubKeyX,
       sessionPubKeyY,
       endpoints: nodeEndpoints,
-      indexes: nodeIndexes,
     });
     // get auth tokens from nodes
     const authTokens = await authenticateUser({
       idToken: params.idTokens[0],
       verifier: params.verifier,
       verifierID: params.verifierID,
-      sessionPrivateKey: sessionKeyPair.getPrivate().toString('hex'),
+      sessionPrivateKey: sessionPrivKeyBuffer,
       endpoints: nodeEndpoints,
       commitmentSignatures: commitmentResults,
     });
-
     const hasValidEncKey = thresholdSame(
       authTokens.map((tokenData) => ({
         token: tokenData.authToken,
         keyIndex: tokenData.keyIndex,
       })),
-      nodeEndpoints.length / 2,
+      EXISTING_USER_AUTHENTICATION_THRESHOLD,
     );
-    return Promise.resolve({
+    return {
       nodeAuthTokens: authTokens.map((tokenData) => ({
         authToken: tokenData.authToken,
         nodeIndex: tokenData.nodeIndex,
         nodePubKey: tokenData.nodePubKey,
       })),
       hasValidEncKey: Boolean(hasValidEncKey),
-    });
+    };
   }
 
   /**
@@ -114,32 +113,30 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     params: CreateEncryptionKeyParams,
   ): Promise<CreateEncryptionKeyResult> {
     const { nodeAuthTokens, password, verifier, verifierId } = params;
-    const { nodeEndpoints, nodeIndexes, nodePubkeys } =
-      await this.#getNodeDetails();
-    const passwordBytes = new TextEncoder().encode(password);
-    const hashedInput = keccak256(passwordBytes);
-    const randomScalar = generateRandomScalar();
-    const seed = OPRF.localEval(randomScalar, hashedInput);
+    const { nodeEndpointsMap } = await this.#getNodeDetails();
+    const passwordBytes = toBytes(password);
+    const hashedInput = sha256(passwordBytes);
+    const oprfKey = generateRandomScalar();
+    const seed = OPRF.localEval(oprfKey, hashedInput);
     const authKeyPair = deriveAuthenticationKeyPair(seed);
 
-    await storeKeyShares(nodeEndpoints, {
-      nodeIndexes,
-      nodePubkeys,
+    await storeKeyShares({
+      nodeEndpointsMap,
       verifier,
       verifierId,
       authTokens: nodeAuthTokens,
       keyIndex: 1,
-      oprfKey: randomScalar,
+      oprfKey,
       authPubKey: authKeyPair.pk,
     });
-    const encKeyPair = deriveEncryptionKey(seed);
+    const encKey = deriveEncryptionKey(seed);
 
     return {
       authKeyPair: {
-        privKey: authKeyPair.sk,
-        pubKey: authKeyPair.pk,
+        sk: authKeyPair.sk,
+        pk: authKeyPair.pk,
       },
-      encKey: encKeyPair,
+      encKey,
     };
   }
 
@@ -159,18 +156,20 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   ): Promise<RecoverEncryptionKeyResult> {
     const { nodeAuthTokens, password, verifier, verifierId } = params;
     const { nodeEndpointsMap } = await this.#getNodeDetails();
+    const passwordBytes = toBytes(password);
+    const userPasswordHash = sha256(passwordBytes);
     const seed = await recoverTOPRFSeed({
       authTokens: nodeAuthTokens,
-      endpointsMap: nodeEndpointsMap,
+      nodeEndpointsMap,
       verifier,
       verifierId,
-      password,
+      userPasswordHash,
     });
     const authKeyPair = deriveAuthenticationKeyPair(seed);
     const encKeyPair = deriveEncryptionKey(seed);
     resetRateLimits({
       authTokens: nodeAuthTokens,
-      endpointsMap: nodeEndpointsMap,
+      nodeEndpointsMap,
       verifier,
       verifierId,
     }).catch((error) => {
@@ -178,8 +177,8 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     });
     return {
       authKeyPair: {
-        privKey: authKeyPair.sk,
-        pubKey: authKeyPair.pk,
+        sk: authKeyPair.sk,
+        pk: authKeyPair.pk,
       },
       encKey: encKeyPair,
     };
