@@ -27,7 +27,7 @@ import { storeKeyShares } from './storeSharesRequest';
 /**
  *
  */
-export class ToprfSecretBackup implements Partial<IToprfSecureBackup> {
+export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   readonly #nodeDetailManager: NodeDetailManager;
 
   /**
@@ -57,6 +57,7 @@ export class ToprfSecretBackup implements Partial<IToprfSecureBackup> {
     const { nodeEndpoints } = await this.#getNodeDetails();
     const curve = getSecp256K1Curve();
     const sessionKeyPair = curve.genKeyPair();
+    const sessionPrivKeyBuffer = sessionKeyPair.getPrivate().toBuffer();
     const sessionPubKey = sessionKeyPair.getPublic();
     const sessionPubKeyX = sessionPubKey.getX().toString('hex');
     const sessionPubKeyY = sessionPubKey.getY().toString('hex');
@@ -74,7 +75,7 @@ export class ToprfSecretBackup implements Partial<IToprfSecureBackup> {
       idToken: params.idTokens[0],
       verifier: params.verifier,
       verifierID: params.verifierID,
-      sessionPrivateKey: sessionKeyPair.getPrivate(),
+      sessionPrivateKey: sessionPrivKeyBuffer,
       endpoints: nodeEndpoints,
       commitmentSignatures: commitmentResults,
     });

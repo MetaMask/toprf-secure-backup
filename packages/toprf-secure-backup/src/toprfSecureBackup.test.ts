@@ -1,4 +1,4 @@
-import { ToprfSecretBackup } from './toprfSecretBackup';
+import { ToprfSecureBackup } from './toprfSecureBackup';
 import { generateIdToken } from '../tests/testHelpers';
 
 describe('toprf secret backup', function () {
@@ -6,11 +6,11 @@ describe('toprf secret backup', function () {
     const verifier = 'torus-test-health';
     const verifierID = 'test-verifier-id-xyz-123';
     const idToken = generateIdToken(verifierID, 'ES256');
-    const toprfSecretBackup = new ToprfSecretBackup({
+    const toprfSecureBackup = new ToprfSecureBackup({
       network: 'sapphire_devnet',
     });
 
-    const result = await toprfSecretBackup.authenticate({
+    const result = await toprfSecureBackup.authenticate({
       idTokens: [idToken],
       verifier,
       verifierID,
@@ -27,16 +27,16 @@ describe('toprf secret backup', function () {
     const verifier = 'torus-test-health';
     const verifierID = `test-verifier-id-${Math.random()}`;
     const idToken = generateIdToken(verifierID, 'ES256');
-    const toprfSecretBackup = new ToprfSecretBackup({
+    const toprfSecureBackup = new ToprfSecureBackup({
       network: 'sapphire_devnet',
     });
 
-    const result = await toprfSecretBackup.authenticate({
+    const result = await toprfSecureBackup.authenticate({
       idTokens: [idToken],
       verifier,
       verifierID,
     });
-    const encKey = await toprfSecretBackup.createEncKey({
+    const encKey = await toprfSecureBackup.createEncKey({
       nodeAuthTokens: result.nodeAuthTokens,
       password: 'test-password',
       verifier,
