@@ -53,7 +53,7 @@ describe('store shares request', function () {
       idToken,
       verifier,
       verifierID,
-      sessionPrivateKey: keyPair.getPrivate().toString('hex'),
+      sessionPrivateKey: keyPair.getPrivate(),
       endpoints: torusNodeSSSEndpoints,
       commitmentSignatures: commitmentResults,
     });

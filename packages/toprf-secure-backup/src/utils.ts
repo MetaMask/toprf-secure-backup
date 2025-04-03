@@ -75,13 +75,12 @@ export const postJRPCRequest = async <
  */
 export const decryptAuthToken = async (
   authToken: string,
-  sessionPrivateKey: string,
+  sessionPrivateKey: Uint8Array,
 ): Promise<string> => {
-  const decryptionKey = Buffer.from(sessionPrivateKey.padStart(64, '0'), 'hex');
   const authTokenData = JSON.parse(authToken) as EncryptedData;
   const metadata = encParamsHexToBuf(authTokenData.metadata);
 
-  const decryptedAuthToken = await decrypt(decryptionKey, {
+  const decryptedAuthToken = await decrypt(Buffer.from(sessionPrivateKey), {
     ...metadata,
     ciphertext: Buffer.from(authTokenData.data, 'hex'),
   });

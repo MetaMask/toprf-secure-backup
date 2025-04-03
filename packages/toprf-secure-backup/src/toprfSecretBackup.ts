@@ -74,7 +74,7 @@ export class ToprfSecretBackup implements Partial<IToprfSecureBackup> {
       idToken: params.idTokens[0],
       verifier: params.verifier,
       verifierID: params.verifierID,
-      sessionPrivateKey: sessionKeyPair.getPrivate().toString('hex'),
+      sessionPrivateKey: sessionKeyPair.getPrivate(),
       endpoints: nodeEndpoints,
       commitmentSignatures: commitmentResults,
     });
