@@ -47,11 +47,7 @@ describe('validateThresholdAuthenticateResponses', () => {
       createMockResponse({ ...mockAuthResult(3) }),
     ];
 
-    const result = await validateThresholdAuthenticateResponses(
-      responses,
-      5,
-      3,
-    );
+    const result = await validateThresholdAuthenticateResponses(responses);
     expect(result).toStrictEqual(responses.map((res) => res.result));
   });
 
@@ -64,11 +60,7 @@ describe('validateThresholdAuthenticateResponses', () => {
       createMockResponse({ ...mockAuthResult(5) }),
     ];
 
-    const result = await validateThresholdAuthenticateResponses(
-      responses,
-      5,
-      3,
-    );
+    const result = await validateThresholdAuthenticateResponses(responses);
     expect(result).toStrictEqual(responses.map((res) => res.result));
   });
 
@@ -79,7 +71,7 @@ describe('validateThresholdAuthenticateResponses', () => {
     ];
 
     await expect(
-      validateThresholdAuthenticateResponses(responses, 5, 3),
+      validateThresholdAuthenticateResponses(responses),
     ).rejects.toBeInstanceOf(TOPRFError);
   });
 
@@ -102,7 +94,7 @@ describe('validateThresholdAuthenticateResponses', () => {
     ];
 
     await expect(
-      validateThresholdAuthenticateResponses(responses, 5, 3),
+      validateThresholdAuthenticateResponses(responses),
     ).rejects.toBeInstanceOf(TOPRFError);
   });
 
@@ -116,7 +108,7 @@ describe('validateThresholdAuthenticateResponses', () => {
     ];
 
     await expect(
-      validateThresholdAuthenticateResponses(responses, 5, 3),
+      validateThresholdAuthenticateResponses(responses),
     ).rejects.toBeInstanceOf(TOPRFError);
   });
 
@@ -130,7 +122,7 @@ describe('validateThresholdAuthenticateResponses', () => {
     ];
 
     await expect(
-      validateThresholdAuthenticateResponses(responses, 5, 3),
+      validateThresholdAuthenticateResponses(responses),
     ).rejects.toBeInstanceOf(TOPRFError);
   });
 
@@ -142,11 +134,7 @@ describe('validateThresholdAuthenticateResponses', () => {
       createMockResponse({ ...mockAuthResult(3), nodeIndex: 4 }),
     ];
 
-    const result = await validateThresholdAuthenticateResponses(
-      responses,
-      5,
-      3,
-    );
+    const result = await validateThresholdAuthenticateResponses(responses);
     expect(result).toStrictEqual(
       responses.filter((res) => res.result).map((res) => res.result),
     );

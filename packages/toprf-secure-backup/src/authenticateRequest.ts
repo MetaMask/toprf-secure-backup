@@ -1,7 +1,11 @@
 import { Some, thresholdSame } from '@metamask/auth-network-utils';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
-import { JRPC_METHODS } from './constants';
+import {
+  EXISTING_USER_AUTHENTICATION_THRESHOLD,
+  JRPC_METHODS,
+  NEW_USER_AUTHENTICATION_THRESHOLD,
+} from './constants';
 import type {
   AuthJRPCRequest,
   AuthJRPCResponse,
@@ -63,14 +67,10 @@ const sendAuthenticateRequest = async (
  * Validates the authenticate responses
  *
  * @param resultArr - The authenticate request result
- * @param nodesCount - The number of nodes.
- * @param threshold - The threshold number of responses required for the authenticate request.
  * @returns The authenticate request result
  */
 export const validateThresholdAuthenticateResponses = async (
   resultArr: AuthJRPCResponse[],
-  nodesCount: number,
-  threshold: number,
 ): Promise<AuthRequestResult[]> => {
   const completedRequests = resultArr.filter((res): res is AuthJRPCResponse => {
     if (!res || typeof res !== 'object') {
@@ -81,10 +81,10 @@ export const validateThresholdAuthenticateResponses = async (
     }
     return true;
   });
-  if (completedRequests.length < threshold) {
+  if (completedRequests.length < EXISTING_USER_AUTHENTICATION_THRESHOLD) {
     return Promise.reject(
       TOPRFError.invalidAuthenticateResults(
-        `Not enough completed requests. Expected: ${threshold}, got: ${completedRequests.length}`,
+        `Not enough completed requests. Expected: ${EXISTING_USER_AUTHENTICATION_THRESHOLD}, got: ${completedRequests.length}`,
       ),
     );
   }
@@ -95,20 +95,24 @@ export const validateThresholdAuthenticateResponses = async (
       keyIndex: result.keyIndex,
     };
   });
-  const thresholdPubData = thresholdSame(pubData, threshold);
+  const thresholdPubData = thresholdSame(
+    pubData,
+    EXISTING_USER_AUTHENTICATION_THRESHOLD,
+  );
   if (!thresholdPubData) {
     throw TOPRFError.invalidAuthenticateResults(
       `Threshold pubKey not found for ${JSON.stringify(pubData)}`,
     );
   }
   const newUser = !thresholdPubData.pubKey;
-  const hasMaxResponses = completedRequests.length === nodesCount;
+  const hasMaxResponses =
+    completedRequests.length >= NEW_USER_AUTHENTICATION_THRESHOLD;
 
   // if it is new user then we need to wait for all the responses because we will need all nodes to be online
   // while storing shares of this new user.
   if (newUser && !hasMaxResponses) {
     throw TOPRFError.invalidAuthenticateResults(
-      `Not enough completed requests. Expected: ${nodesCount}, got: ${completedRequests.length}`,
+      `Not enough completed requests. Expected: ${NEW_USER_AUTHENTICATION_THRESHOLD}, got: ${completedRequests.length}`,
     );
   }
   return completedRequests.map((res) => res.result as AuthRequestResult);
@@ -154,15 +158,9 @@ export const authenticateUser = async (params: {
     sendAuthenticateRequest(endpoint, requestParams),
   );
 
-  const threshold = Math.floor(endpoints.length / 2) + 1;
   const results = await Some<AuthJRPCResponse, AuthRequestResult[]>(
     promiseArr,
-    async (responses) =>
-      validateThresholdAuthenticateResponses(
-        responses,
-        endpoints.length,
-        threshold,
-      ),
+    async (responses) => validateThresholdAuthenticateResponses(responses),
   );
 
   if (!results || results.length === 0) {
