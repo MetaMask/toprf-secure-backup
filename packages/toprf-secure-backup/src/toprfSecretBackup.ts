@@ -1,10 +1,11 @@
 import { getSecp256K1Curve, thresholdSame } from '@metamask/auth-network-utils';
+import { sha256 } from '@noble/hashes/sha256';
+import { toBytes } from '@noble/hashes/utils';
 import type {
   INodePub,
   TORUS_SAPPHIRE_NETWORK_TYPE,
 } from '@toruslabs/constants';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
-import { keccak256 } from 'ethereum-cryptography/keccak';
 
 import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
@@ -106,17 +107,15 @@ export class ToprfSecretBackup implements Partial<IToprfSecureBackup> {
     params: CreateEncryptionKeyParams,
   ): Promise<CreateEncryptionKeyResult> {
     const { nodeAuthTokens, password, verifier, verifierId } = params;
-    const { nodeEndpoints, nodeIndexes, nodePubkeys } =
-      await this.#getNodeDetails();
-    const passwordBytes = new TextEncoder().encode(password);
-    const hashedInput = keccak256(passwordBytes);
+    const { nodeEndpointsMap } = await this.#getNodeDetails();
+    const passwordBytes = toBytes(password);
+    const hashedInput = sha256(passwordBytes);
     const randomScalar = generateRandomScalar();
     const seed = OPRF.localEval(randomScalar, hashedInput);
     const authKeyPair = deriveAuthenticationKeyPair(seed);
 
-    await storeKeyShares(nodeEndpoints, {
-      nodeIndexes,
-      nodePubkeys,
+    await storeKeyShares({
+      nodeEndpointsMap,
       verifier,
       verifierId,
       authTokens: nodeAuthTokens,
@@ -142,6 +141,7 @@ export class ToprfSecretBackup implements Partial<IToprfSecureBackup> {
    */
   async #getNodeDetails(): Promise<{
     nodeEndpoints: string[];
+    nodeEndpointsMap: Record<number, string>;
     nodeIndexes: number[];
     nodePubkeys: INodePub[];
   }> {
@@ -157,6 +157,13 @@ export class ToprfSecretBackup implements Partial<IToprfSecureBackup> {
 
     return {
       nodeEndpoints: torusNodeSSSEndpoints,
+      nodeEndpointsMap: torusIndexes.reduce<Record<number, string>>(
+        (acc, index) => {
+          acc[index] = torusNodeSSSEndpoints[index - 1];
+          return acc;
+        },
+        {},
+      ),
       nodeIndexes: torusIndexes,
       nodePubkeys: torusNodePub,
     };
