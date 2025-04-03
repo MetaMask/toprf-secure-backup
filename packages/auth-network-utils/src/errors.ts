@@ -171,7 +171,7 @@ abstract class AbstractTOPRFError extends CustomError implements ITOPRFError {
 /**
  * T-OPRF error.
  */
-class TOPRFError extends AbstractTOPRFError {
+export class TOPRFError extends AbstractTOPRFError {
   protected static messages: { [key: number]: string } = {
     1000: 'Something went wrong.',
     1001: 'Invalid authenticate results.',
@@ -225,5 +225,3 @@ class TOPRFError extends AbstractTOPRFError {
     return TOPRFError.fromCode(1001, extraMessage);
   }
 }
-
-export default TOPRFError;
