@@ -12,10 +12,7 @@ import {
 
 import type {
   FetchSecretDataResult,
-  IBatchSetData,
-  IBatchSetSecretDataRequestBody,
   IGetSecretDataRequestBody,
-  IMetadataLockRequestBody,
   ISetSecretDataRequestBody,
   KeyPair,
   NodeAuthTokens,
@@ -26,16 +23,6 @@ export enum MetadataStorageLocation {
   METADATA_SERVER = 'metadata-server',
   // eslint-disable-next-line @typescript-eslint/naming-convention
   PROFILE_SYNC = 'profile-sync',
-}
-
-export type MetadataLock = {
-  id: string;
-  nodeIndex: number;
-}[];
-
-export enum MetadataLockStatus {
-  FAILED = 0,
-  SUCCESS = 1,
 }
 
 type MetadataStoreOptions = {
@@ -158,34 +145,6 @@ export class MetadataStore {
   }
 
   /**
-   * Encrypts the secret data and stores it in the metadata store.
-   *
-   * @param secretData - The array of secret data to be stored.
-   * @param encKey - The encryption key to be used for encrypting the secret data.
-   * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
-   * @returns A promise that resolves when the secret data is stored.
-   */
-  async storeSecretDataBatch(
-    secretData: string[],
-    encKey: Uint8Array,
-    authKeyPair: KeyPair,
-  ): Promise<void> {
-    await Promise.all(
-      // eslint-disable-next-line @typescript-eslint/promise-function-async
-      this.#metadataEndpoints.map((metadataEndpoint, index) => {
-        const nodeIndex = this.#nodeIndexes[index];
-        return this.#batchSetData({
-          secretData,
-          encKey,
-          authKeyPair,
-          metadataEndpoint,
-          nodeIndex,
-        });
-      }),
-    );
-  }
-
-  /**
    * Fetches the secret data from the metadata store and decrypts it.
    *
    * @param encKey - The encryption key to be used for decrypting the secret data.
@@ -215,72 +174,6 @@ export class MetadataStore {
   }
 
   /**
-   * Acquires a lock on the metadata store.
-   *
-   * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
-   * @returns A promise that resolves with the lock id.
-   */
-  async acquireMetadataLock(authKeyPair: KeyPair): Promise<MetadataLock> {
-    const lockResult = await Promise.all(
-      // eslint-disable-next-line @typescript-eslint/promise-function-async
-      this.#metadataEndpoints.map((metadataEndpoint) => {
-        return this.#acquireLock(metadataEndpoint, authKeyPair);
-      }),
-    );
-
-    const allLockAcquired = lockResult.every(
-      (result) => result.status === MetadataLockStatus.SUCCESS,
-    );
-
-    if (!allLockAcquired) {
-      throw new MetadataStoreError('Failed to acquire metadata lock');
-    }
-
-    const lock: MetadataLock = lockResult.map((result, idx) => {
-      if (!result.id) {
-        throw new MetadataStoreError(
-          'Failed to acquire metadata lock. Missing lock id',
-        );
-      }
-
-      return {
-        id: result.id,
-        nodeIndex: this.#nodeIndexes[idx],
-      };
-    });
-
-    return lock;
-  }
-
-  /**
-   * Releases the lock on the metadata store.
-   *
-   * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
-   * @param metadataLock - The lock to be released.
-   * @returns A promise that resolves with the lock status.
-   */
-  async releaseMetadataLock(
-    authKeyPair: KeyPair,
-    metadataLock: MetadataLock,
-  ): Promise<MetadataLockStatus> {
-    await Promise.all(
-      // eslint-disable-next-line @typescript-eslint/promise-function-async
-      this.#metadataEndpoints.map((metadataEndpoint, index) => {
-        const nodeIndex = this.#nodeIndexes[index];
-        const lockId = metadataLock.find(
-          (lock) => lock.nodeIndex === nodeIndex,
-        )?.id;
-        if (!lockId) {
-          throw new MetadataStoreError('Failed to release metadata lock');
-        }
-        return this.#releaseLock(metadataEndpoint, authKeyPair, lockId);
-      }),
-    );
-
-    return MetadataLockStatus.SUCCESS;
-  }
-
-  /**
    * Encrypts the secret data and inserts or updates it in the metadata store.
    *
    * @param params - The parameters for storing the secret data.
@@ -301,64 +194,11 @@ export class MetadataStore {
     try {
       const url = `${params.metadataEndpoint}/enc_account_data/set`;
       const encryptedData = this.#encryptData(params.secretData, params.encKey);
-      const payload =
-        this.#generatePayloadForSetOrBatchSetSecretDataRequest<string>(
-          encryptedData,
-          params.authKeyPair,
-          params.nodeIndex,
-        );
-
-      const response = await fetch(url, {
-        headers: {
-          // eslint-disable-next-line @typescript-eslint/naming-convention
-          'Content-Type': 'application/json',
-        },
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const responseBody = await response.json();
-        throw new Error(`HTTP error message: ${responseBody.error}`);
-      }
-    } catch (error: unknown) {
-      const errorMessage = (error as Error).message || 'Unknown error';
-      throw new MetadataStoreError(
-        `failed to upsert metadata: ${errorMessage}`,
+      const payload = this.#generatePayloadForSetOrBatchSetSecretDataRequest(
+        encryptedData,
+        params.authKeyPair,
+        params.nodeIndex,
       );
-    }
-  }
-
-  /**
-   * Encrypts the array of secret data and inserts them in the metadata store.
-   *
-   * @param params - The parameters for storing the secret data.
-   * @param params.secretData - The array of secret data to be stored.
-   * @param params.encKey - The encryption key to be used for encrypting the secret data.
-   * @param params.authKeyPair - The authentication key pair to be used for authenticating the secret data.
-   * @param params.metadataEndpoint - The metadata server endpoint to be used for storing the secret data.
-   * @param params.nodeIndex - The index of the metadata server to be used for storing the secret data.
-   * @returns A promise that resolves when the secret data is stored.
-   */
-  async #batchSetData(params: {
-    secretData: string[];
-    encKey: Uint8Array;
-    authKeyPair: KeyPair;
-    metadataEndpoint: string;
-    nodeIndex: number;
-  }): Promise<void> {
-    try {
-      const url = `${params.metadataEndpoint}/enc_account_data/batch_set`;
-      const encryptedDataArray = params.secretData.map((secret) => ({
-        data: this.#encryptData(secret, params.encKey),
-      }));
-
-      const payload =
-        this.#generatePayloadForSetOrBatchSetSecretDataRequest<IBatchSetData>(
-          encryptedDataArray,
-          params.authKeyPair,
-          params.nodeIndex,
-        );
 
       const response = await fetch(url, {
         headers: {
@@ -436,89 +276,6 @@ export class MetadataStore {
   }
 
   /**
-   * Acquires a lock on the metadata store.
-   *
-   * @param metadataEndpoint - The metadata server endpoint to be used for acquiring the lock.
-   * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
-   * @returns A promise that resolves when the lock is acquired.
-   */
-  async #acquireLock(
-    metadataEndpoint: string,
-    authKeyPair: KeyPair,
-  ): Promise<{ status: MetadataLockStatus; id?: string }> {
-    try {
-      const payload = this.#generatePayloadForLockRequests(authKeyPair);
-      const url = `${metadataEndpoint}/acquireLock`;
-
-      const response = await fetch(url, {
-        headers: {
-          // eslint-disable-next-line @typescript-eslint/naming-convention
-          'Content-Type': 'application/json',
-        },
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const responseBody = await response.json();
-        throw new Error(`HTTP error message: ${responseBody.error}`);
-      }
-
-      const jsonData = await response.json();
-      return {
-        status: jsonData.status,
-        id: jsonData.id,
-      };
-    } catch (error) {
-      const errorMessage = (error as Error).message || 'Unknown error';
-      throw new MetadataStoreError(
-        `failed to acquire metadata lock: ${errorMessage}`,
-      );
-    }
-  }
-
-  /**
-   * Releases the lock on the metadata store.
-   *
-   * @param metadataEndpoint - The metadata server endpoint to be used for releasing the lock.
-   * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
-   * @param lockId - The lock id to be released.
-   * @returns A promise that resolves with the lock status.
-   */
-  async #releaseLock(
-    metadataEndpoint: string,
-    authKeyPair: KeyPair,
-    lockId: string,
-  ): Promise<MetadataLockStatus> {
-    try {
-      const payload = this.#generatePayloadForLockRequests(authKeyPair, lockId);
-
-      const url = `${metadataEndpoint}/releaseLock`;
-      const response = await fetch(url, {
-        headers: {
-          // eslint-disable-next-line @typescript-eslint/naming-convention
-          'Content-Type': 'application/json',
-        },
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const responseBody = await response.json();
-        throw new Error(`HTTP error message: ${responseBody.error}`);
-      }
-
-      const jsonData = await response.json();
-      return jsonData.status;
-    } catch (error) {
-      const errorMessage = (error as Error).message || 'Unknown error';
-      throw new MetadataStoreError(
-        `failed to release metadata lock: ${errorMessage}`,
-      );
-    }
-  }
-
-  /**
    * Generate the payload for the set or batch set secret data request and get payload signature.
    *
    * @param data - The encrypted secret data to be stored.
@@ -526,15 +283,11 @@ export class MetadataStore {
    * @param nodeIndex - The index of the Auth Token to be used for authenticating the secret data.
    * @returns The payload for the batch set secret data request.
    */
-  #generatePayloadForSetOrBatchSetSecretDataRequest<
-    T extends string | IBatchSetData,
-  >(
-    data: T,
+  #generatePayloadForSetOrBatchSetSecretDataRequest(
+    data: string,
     authKeyPair: KeyPair,
     nodeIndex: number,
-  ): T extends string
-    ? ISetSecretDataRequestBody
-    : IBatchSetSecretDataRequestBody {
+  ): ISetSecretDataRequestBody {
     const timestamp = Date.now().toString();
     const feature = this.#feature;
     const authToken = this.#getAuthToken(nodeIndex);
@@ -554,9 +307,7 @@ export class MetadataStore {
       timestamp,
       authToken,
       pubKey,
-    } as T extends string
-      ? ISetSecretDataRequestBody
-      : IBatchSetSecretDataRequestBody;
+    };
   }
 
   /**
@@ -592,57 +343,19 @@ export class MetadataStore {
   }
 
   /**
-   * Generate the payload for the lock requests.
-   *
-   * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
-   * @param lockId - The lock id to be released.
-   * @returns The payload for the lock requests.
-   */
-  #generatePayloadForLockRequests(
-    authKeyPair: KeyPair,
-    lockId?: string,
-  ): IMetadataLockRequestBody {
-    const { pubKey: pubKeyRaw, privKey } = authKeyPair;
-    const data = { timestamp: Date.now() };
-    // metadata server expects der encoded signature for lock requests
-    const shouldDerEncoded = true;
-    const signature = this.#generatePayloadSignature(
-      data,
-      privKey,
-      shouldDerEncoded,
-    );
-    const key = bytesToHex(pubKeyRaw);
-
-    const payloadForLockRequest: IMetadataLockRequestBody = {
-      data,
-      signature,
-      key,
-      id: lockId,
-    };
-
-    return payloadForLockRequest;
-  }
-
-  /**
    * Generate the signature for the payload.
    *
    * @param payload - The payload to be signed.
    * @param privKey - The private key to sign the payload.
-   * @param shouldDerEncoded - Whether to return the signature in der encoded format.
    * @returns The signature hex string.
    */
   #generatePayloadSignature(
     payload: Record<string, unknown>,
     privKey: bigint,
-    shouldDerEncoded = false,
   ): string {
     const payloadString = safeStringify(payload);
     const hash = keccak256(payloadString);
     const signature = secp256k1.sign(hash, privKey);
-
-    if (shouldDerEncoded) {
-      return signature.toDERHex();
-    }
 
     return signature.toCompactHex();
   }
