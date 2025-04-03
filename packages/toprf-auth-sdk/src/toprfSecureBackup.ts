@@ -13,14 +13,18 @@ import type {
   AuthenticateResult,
   CreateEncryptionKeyParams,
   CreateEncryptionKeyResult,
+  FetchSecretDataParams,
+  FetchSecretDataResult,
   IToprfSecureBackup,
   RecoverEncryptionKeyParams,
   RecoverEncryptionKeyResult,
+  StoreSecretDataParams,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
   deriveEncryptionKey,
 } from './keyDerivation';
+import { MetadataStore } from './metadata';
 import { OPRF, generateRandomScalar } from './oprf';
 import { resetRateLimits } from './resetRateLimits';
 import { storeKeyShares } from './storeSharesRequest';
@@ -31,6 +35,8 @@ import { recoverTOPRFSeed } from './toprfEvalRequest';
  */
 export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   readonly #nodeDetailManager: NodeDetailManager;
+
+  #metadataStoreCache: MetadataStore | undefined;
 
   /**
    *
@@ -132,14 +138,14 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       oprfKey: randomScalar,
       authPubKey: authKeyPair.pk,
     });
-    const encKeyPair = deriveEncryptionKey(seed);
+    const encKey = deriveEncryptionKey(seed);
 
     return {
       authKeyPair: {
         privKey: authKeyPair.sk,
         pubKey: authKeyPair.pk,
       },
-      encKey: encKeyPair,
+      encKey,
     };
   }
 
@@ -186,6 +192,38 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   }
 
   /**
+   * This function encrypts the secret data using the encryption key and stores it nodes metadata store in encrypted form.
+   *
+   * @param params - The parameters for registering new secret data.
+   * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
+   * @param params.encKey - The encryption key which is used to encrypt the secret data before storing it.
+   * @param params.secretData - The array of secret data to be registered.
+   * @param params.authKeyPair - The authentication key pair which is used to authenticate the user to the storage service.
+   *
+   * @returns A promise that resolves when the secret data is stored.
+   */
+  async storeSecretData(params: StoreSecretDataParams): Promise<void> {
+    const metadataStore = await this.#getMetadataStore();
+    await metadataStore.storeSecretData(params);
+  }
+
+  /**
+   * This function decrypts the secret data using the decryption key and returns the decrypted secret data.
+   *
+   * @param params - The parameters for fetching the secret data.
+   * @param params.decKey - The decryption key to be used to decrypt the secret data.
+   * @param params.authKeyPair - The authentication key to be used to provide valid signature for fetching the secret data.
+   *
+   * @returns A promise that resolves with the decrypted secret data. Null if no secret data is found.
+   */
+  async fetchSecretData(
+    params: FetchSecretDataParams,
+  ): Promise<FetchSecretDataResult | null> {
+    const metadataStore = await this.#getMetadataStore();
+    return metadataStore.fetchSecretData(params.decKey, params.authKeyPair);
+  }
+
+  /**
    * Gets the node details.
    *
    * @returns The node details containing the node endpoints, indexes and pubkeys.
@@ -218,5 +256,45 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       nodeIndexes: torusIndexes,
       nodePubkeys: torusNodePub,
     };
+  }
+
+  /**
+   * Creates the metadata store instance.
+   *
+   * @returns The metadata store.
+   */
+  async #getMetadataStore(): Promise<MetadataStore> {
+    if (this.#metadataStoreCache) {
+      return this.#metadataStoreCache;
+    }
+
+    const { nodeEndpointsMap } = await this.#getNodeDetails();
+    const metadataEndpointsMap =
+      await this.#getMetadataEndpointsMap(nodeEndpointsMap);
+    const metadataStore = new MetadataStore({
+      nodeEndpointsMap: metadataEndpointsMap,
+    });
+
+    this.#metadataStoreCache = metadataStore;
+
+    return metadataStore;
+  }
+
+  /**
+   * Gets the metadata endpoints.
+   *
+   * @param nodeEndpointsMap - The node endpoints map.
+   *
+   * @returns The metadata endpoints map with node index as key and metadata endpoint as value.
+   */
+  async #getMetadataEndpointsMap(
+    nodeEndpointsMap: Record<number, string>,
+  ): Promise<Map<number, string>> {
+    const metadataEndpointsMap = new Map<number, string>();
+    Object.entries(nodeEndpointsMap).forEach(([key, value]) => {
+      const url = new URL(value);
+      metadataEndpointsMap.set(Number(key), `${url.origin}/metadata`);
+    });
+    return metadataEndpointsMap;
   }
 }
