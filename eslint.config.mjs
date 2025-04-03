@@ -119,6 +119,14 @@ const config = createConfig([
             match: false,
           },
         },
+        {
+          selector: 'objectLiteralProperty',
+          format: null, // no format requirements for numeric keys
+          filter: {
+            regex: '^[0-9]+$',
+            match: true,
+          },
+        },
         // This option is modified by the addition of a filter.
         {
           selector: 'objectLiteralProperty',
@@ -129,6 +137,7 @@ const config = createConfig([
             match: false,
           },
         },
+
         {
           selector: 'typeLike',
           format: ['PascalCase'],

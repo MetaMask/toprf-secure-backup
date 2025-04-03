@@ -13,8 +13,6 @@ import { decrypt } from '@toruslabs/eccrypto';
 import { post } from '@toruslabs/http-helpers';
 import BN from 'bn.js';
 
-import { NODE_URLS } from './constants';
-
 type EncryptedData = {
   data: string;
   metadata: Omit<EciesHex, 'ciphertext'>;
@@ -28,21 +26,6 @@ type EncryptedData = {
  */
 export const bigIntToBN = (value: bigint): BN => {
   return new BN(value.toString());
-};
-
-/**
- * Randomly selects a node URL from the available nodes
- *
- * @returns An object containing:
- * - url: The URL of the randomly selected node
- * - index: The 1-based index of the selected node
- */
-export const getRandomNode = (): { url: string; index: string } => {
-  const randomIndex = Math.floor(Math.random() * NODE_URLS.length);
-  return {
-    url: NODE_URLS[randomIndex],
-    index: String(randomIndex + 1),
-  };
 };
 
 /**

@@ -157,8 +157,6 @@ describe('authenticate request', function () {
   beforeAll(async function () {
     nodeDetailManager = new NodeDetailManager({
       network: 'sapphire_devnet',
-      keyType: 'secp256k1',
-      sigType: 'ecdsa-secp256k1',
     });
   });
 
