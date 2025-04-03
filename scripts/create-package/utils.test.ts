@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import execa from 'execa';
 import fs from 'fs';
 import path from 'path';

@@ -311,8 +311,8 @@ function getWarningCounts(results: ESLint.LintResult[]): WarningCounts {
   const sortedWarningCounts: WarningCounts = {};
   for (const filePath of Object.keys(unsortedWarningCounts).sort()) {
     // We can safely assume this property is present.
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const unsortedWarningCountsForFile = unsortedWarningCounts[filePath]!;
+
+    const unsortedWarningCountsForFile = unsortedWarningCounts[filePath];
     sortedWarningCounts[filePath] = Object.keys(unsortedWarningCountsForFile)
       .sort(sortRules)
       .reduce<Record<string, number>>((acc, ruleId) => {

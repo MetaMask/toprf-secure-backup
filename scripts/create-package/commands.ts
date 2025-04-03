@@ -23,6 +23,12 @@ export type CommandModule = YargsCommandModule<object, CreatePackageOptions> & {
 const defaultCommand: CommandModule = {
   command: '$0',
   describe: 'Create a new monorepo package.',
+  /**
+   *
+   * @param argv - The yargs arguments.
+   *
+   * @returns The final yargs arguments.
+   */
   builder: (argv: Argv<object>) => {
     argv
       .options({
@@ -62,6 +68,12 @@ const defaultCommand: CommandModule = {
 
     return argv as Argv<CreatePackageOptions>;
   },
+  /**
+   *
+   * @param args - The yargs arguments.
+   *
+   * @returns The promise of the handler.
+   */
   handler: async (args: Arguments<CreatePackageOptions>) =>
     await createPackageHandler(args),
 };

@@ -1,3 +1,6 @@
+/**
+ *
+ */
 export class SomeError<T> extends Error {
   errors: (Error | undefined)[];
 
@@ -5,6 +8,13 @@ export class SomeError<T> extends Error {
 
   predicate: string;
 
+  /**
+   *
+   * @param options0 - options.
+   * @param options0.errors - errors collected from promises.
+   * @param options0.responses - responses collected from promises.
+   * @param options0.predicate - predicate that failed.
+   */
   constructor({
     errors,
     responses,
@@ -28,14 +38,20 @@ export class SomeError<T> extends Error {
     this.predicate = predicate;
   }
 
-  get message() {
+  /**
+   * @returns - message with errors and responses from all promises.
+   */
+  get message(): string {
     return `${super.message}. errors: ${this.errors.map((x) => x?.message || x).join(', ')} and ${
       this.responses.length
     } responses: ${JSON.stringify(this.responses)},
       predicate error: ${this.predicate}`;
   }
 
-  toString() {
+  /**
+   * @returns - message with errors and responses from all promises.
+   */
+  toString(): string {
     return this.message;
   }
 }
