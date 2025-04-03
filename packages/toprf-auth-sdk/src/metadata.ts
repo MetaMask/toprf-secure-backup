@@ -21,8 +21,8 @@ import type {
 export enum MetadataStorageLocation {
   // eslint-disable-next-line @typescript-eslint/naming-convention
   METADATA_SERVER = 'metadata-server',
-  // eslint-disable-next-line @typescript-eslint/naming-convention
-  PROFILE_SYNC = 'profile-sync',
+  // TODO: add profile-sync storage location in the future
+  // PROFILE_SYNC = 'profile-sync',
 }
 
 type MetadataStoreOptions = {
@@ -84,24 +84,20 @@ export class MetadataStore {
     this.#storageLocation = storageLocation;
     this.#authTokens = authTokens;
 
-    if (storageLocation === MetadataStorageLocation.METADATA_SERVER) {
-      if (!nodeEndpoints || !nodeIndexes) {
-        throw new MetadataStoreError(
-          'nodeEndpoints and nodeIndexes are required for metadata server',
-        );
-      }
-
-      if (nodeEndpoints.length !== nodeIndexes.length) {
-        throw new MetadataStoreError(
-          'nodeEndpoints and nodeIndexes must have the same length',
-        );
-      }
-
-      this.#metadataEndpoints = nodeEndpoints;
-      this.#nodeIndexes = nodeIndexes;
-    } else {
-      // Otherwise, the Profile-Sync SDK will handle the storage url
+    if (!nodeEndpoints || !nodeIndexes) {
+      throw new MetadataStoreError(
+        'nodeEndpoints and nodeIndexes are required for metadata server',
+      );
     }
+
+    if (nodeEndpoints.length !== nodeIndexes.length) {
+      throw new MetadataStoreError(
+        'nodeEndpoints and nodeIndexes must have the same length',
+      );
+    }
+
+    this.#metadataEndpoints = nodeEndpoints;
+    this.#nodeIndexes = nodeIndexes;
   }
 
   /**
