@@ -25,10 +25,7 @@ import type {
 } from './interfaces';
 
 export enum MetadataStorageLocation {
-  // eslint-disable-next-line @typescript-eslint/naming-convention
-  METADATA_SERVER = 'metadata-server',
-  // TODO: add profile-sync storage location in the future
-  // PROFILE_SYNC = 'profile-sync',
+  MetadataServer = 'metadata-server',
 }
 
 type MetadataStoreOptions = {
@@ -78,7 +75,7 @@ export class MetadataStore {
   constructor(options?: MetadataStoreOptions) {
     const { nodeEndpointsMap, storageLocation } = options ?? {};
     this.#storageLocation =
-      storageLocation ?? MetadataStorageLocation.METADATA_SERVER;
+      storageLocation ?? MetadataStorageLocation.MetadataServer;
 
     if (!nodeEndpointsMap) {
       throw new MetadataStoreError(

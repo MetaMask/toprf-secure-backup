@@ -22,7 +22,7 @@ const NODE_ENDPOINTS_MAP = new Map([
  * @param nodeEndpointsMap - The map of node endpoints which includes node index as key and node endpoint as value.
  * @returns A mock MetadataStore instance.
  */
-function mockMetadataStoreFactory(
+function createMockMetadataStore(
   nodeEndpointsMap: Map<number, string> = NODE_ENDPOINTS_MAP,
 ): MetadataStore {
   return new MetadataStore({ nodeEndpointsMap });
@@ -62,7 +62,7 @@ describe('MetadataStore', () => {
 
     expect(metadataStore).toBeDefined();
     expect(metadataStore.metadataStorageLocation).toBe(
-      MetadataStorageLocation.METADATA_SERVER,
+      MetadataStorageLocation.MetadataServer,
     );
   });
 
@@ -82,7 +82,7 @@ describe('MetadataStore', () => {
   });
 
   it('should be able to store/fetch data', async () => {
-    const metadataStore = mockMetadataStoreFactory();
+    const metadataStore = createMockMetadataStore();
     const secretData = 'SECRET_DATA';
 
     await metadataStore.storeSecretData({
@@ -98,8 +98,8 @@ describe('MetadataStore', () => {
   });
 
   it('should be able to store/fetch data with different instances', async () => {
-    const metadataStore1 = mockMetadataStoreFactory();
-    const metadataStore2 = mockMetadataStoreFactory();
+    const metadataStore1 = createMockMetadataStore();
+    const metadataStore2 = createMockMetadataStore();
 
     const secretData = 'SECRET_DATA';
 
@@ -117,7 +117,7 @@ describe('MetadataStore', () => {
   });
 
   it('should get null if metadata key not found', async () => {
-    const metadataStore = mockMetadataStoreFactory();
+    const metadataStore = createMockMetadataStore();
 
     const randomSeed = randomBytes(32);
     const { sk, pk } = deriveAuthenticationKeyPair(randomSeed);
@@ -148,7 +148,7 @@ describe('MetadataStore', () => {
         } as Response);
       });
 
-    const metadataStore = mockMetadataStoreFactory();
+    const metadataStore = createMockMetadataStore();
 
     await expect(
       metadataStore.fetchSecretData(encKey, authKeyPair),
@@ -209,7 +209,7 @@ describe('MetadataStore', () => {
         } as Response);
       });
 
-    const metadataStore = mockMetadataStoreFactory();
+    const metadataStore = createMockMetadataStore();
 
     await expect(
       metadataStore.storeSecretData({
@@ -236,7 +236,7 @@ describe('MetadataStore', () => {
         throw new Error();
       });
 
-    const metadataStore = mockMetadataStoreFactory();
+    const metadataStore = createMockMetadataStore();
 
     await expect(
       metadataStore.storeSecretData({

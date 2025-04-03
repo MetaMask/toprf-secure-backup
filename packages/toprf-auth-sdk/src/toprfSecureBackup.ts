@@ -203,7 +203,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @returns A promise that resolves when the secret data is stored.
    */
   async storeSecretData(params: StoreSecretDataParams): Promise<void> {
-    const metadataStore = await this.#getMetadataStore();
+    const metadataStore = await this.#createMetadataStore();
     await metadataStore.storeSecretData(params);
   }
 
@@ -219,7 +219,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   async fetchSecretData(
     params: FetchSecretDataParams,
   ): Promise<FetchSecretDataResult | null> {
-    const metadataStore = await this.#getMetadataStore();
+    const metadataStore = await this.#createMetadataStore();
     return metadataStore.fetchSecretData(params.decKey, params.authKeyPair);
   }
 
@@ -259,11 +259,11 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   }
 
   /**
-   * Creates the metadata store instance.
+   * Creates and caches the metadata store instance.
    *
    * @returns The metadata store.
    */
-  async #getMetadataStore(): Promise<MetadataStore> {
+  async #createMetadataStore(): Promise<MetadataStore> {
     if (this.#metadataStoreCache) {
       return this.#metadataStoreCache;
     }
