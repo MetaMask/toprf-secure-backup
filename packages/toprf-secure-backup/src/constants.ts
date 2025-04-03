@@ -5,3 +5,6 @@ export const JRPC_METHODS = {
 };
 
 export const COMMIT_RETRY_COUNT = 4;
+export const COMMIT_RESPONSE_THRESHOLD = 4;
+export const NEW_USER_AUTHENTICATION_THRESHOLD = 4;
+export const EXISTING_USER_AUTHENTICATION_THRESHOLD = 3;

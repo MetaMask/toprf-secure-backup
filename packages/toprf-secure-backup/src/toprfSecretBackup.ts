@@ -9,6 +9,7 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
+import { EXISTING_USER_AUTHENTICATION_THRESHOLD } from './constants';
 import type {
   AuthenticateParams,
   AuthenticateResult,
@@ -82,7 +83,7 @@ export class ToprfSecretBackup implements Partial<IToprfSecureBackup> {
         token: tokenData.authToken,
         keyIndex: tokenData.keyIndex,
       })),
-      Math.floor(nodeEndpoints.length / 2) + 1,
+      EXISTING_USER_AUTHENTICATION_THRESHOLD,
     );
     return {
       nodeAuthTokens: authTokens.map((tokenData) => ({

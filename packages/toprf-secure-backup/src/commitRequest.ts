@@ -5,7 +5,11 @@ import {
 } from '@metamask/auth-network-utils';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
-import { COMMIT_RETRY_COUNT, JRPC_METHODS } from './constants';
+import {
+  COMMIT_RESPONSE_THRESHOLD,
+  COMMIT_RETRY_COUNT,
+  JRPC_METHODS,
+} from './constants';
 import type {
   CommitmentJRPCRequest,
   CommitmentJRPCRequestParams,
@@ -67,12 +71,10 @@ export const sendCommitmentRequest = async (
  * Validates the commitment responses.
  *
  * @param resultArr - The commitment request result.
- * @param threshold - The threshold for the number commitment responses to be valid.
  * @returns The commitment request result.
  */
 export const validateThresholdCommitmentResponses = async (
   resultArr: CommitmentJRPCResponse[],
-  threshold: number,
 ): Promise<CommitmentRequestResult[]> => {
   const completedRequests = resultArr.filter(
     (res): res is CommitmentJRPCResponse => {
@@ -86,10 +88,10 @@ export const validateThresholdCommitmentResponses = async (
     },
   );
 
-  if (completedRequests.length < threshold) {
+  if (completedRequests.length < COMMIT_RESPONSE_THRESHOLD) {
     return Promise.reject(
       new Error(
-        `Not enough completed requests. Expected: ${threshold}, got: ${completedRequests.length}, ${JSON.stringify(resultArr)}`,
+        `Not enough completed requests. Expected: ${COMMIT_RESPONSE_THRESHOLD}, got: ${completedRequests.length}, ${JSON.stringify(resultArr)}`,
       ),
     );
   }
@@ -119,7 +121,6 @@ export const commitIdToken = async (params: {
 }): Promise<CommitmentRequestResult[]> => {
   const { idToken, endpoints, verifier, sessionPubKeyX, sessionPubKeyY } =
     params;
-  const threshold = Math.floor((endpoints.length * 3) / 4) + 1;
   const tokenCommitment = keccak256AndHexify(
     new TextEncoder().encode(idToken),
   ).slice(2);
@@ -138,7 +139,7 @@ export const commitIdToken = async (params: {
     CommitmentJRPCResponse,
     CommitmentRequestResult[]
   >(promiseArr, async (results: CommitmentJRPCResponse[]) =>
-    validateThresholdCommitmentResponses(results, threshold),
+    validateThresholdCommitmentResponses(results),
   );
 
   if (!resultArr || resultArr.length === 0) {
