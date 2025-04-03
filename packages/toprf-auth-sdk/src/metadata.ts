@@ -4,10 +4,11 @@ import {
   safeStringify,
   thresholdSame,
 } from '@metamask/auth-network-utils';
-import { gcm } from '@noble/ciphers/aes';
+import { xchacha20poly1305 } from '@noble/ciphers/chacha';
+import { managedNonce } from '@noble/ciphers/webcrypto';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
-import { bytesToHex, concatBytes, randomBytes } from '@noble/hashes/utils';
+import { bytesToHex } from '@noble/hashes/utils';
 
 import type {
   FetchSecretDataResult,
@@ -48,9 +49,6 @@ export class MetadataStoreError extends Error {
  */
 export class MetadataStore {
   readonly #feature = 'srp-backup';
-
-  // Nonce size for AES-256-GCM
-  readonly #nonceSize = 24;
 
   readonly #nodeEndpointsMap: Map<number, string>;
 
@@ -240,9 +238,10 @@ export class MetadataStore {
         throw new MetadataStoreError('Failed to fetch metadata');
       }
 
-      const secretData = jsonData.data.map((data: string) =>
-        this.#decryptData(data, params.encKey),
-      );
+      const secretData = jsonData.data.map((data: string) => {
+        const rawData = new Uint8Array(Buffer.from(data, 'base64'));
+        return this.#decryptData(rawData, params.encKey);
+      });
       return secretData;
     } catch (error) {
       const errorMessage = (error as Error).message || 'Unknown error';
@@ -382,44 +381,30 @@ export class MetadataStore {
   }
 
   /**
-   * Derive AES-256 key from seed and encrypt the data using the key.
+   * Encrypt the data using the key with AEAD-chacha20poly1305.
    *
-   * We might not need it if we're using Profile-Sync SDK since encryption is handled in the SDK
+   * Here, we are using AEAD-chacha20poly1305 for the deterministic encryption.
    *
    * @param data - The secret data to be encrypted.
    * @param encryptionKey - The encryption key to encrypt the data.
    * @returns The encrypted data.
    */
   #encryptData(data: Uint8Array, encryptionKey: Uint8Array): Uint8Array {
-    const nonce = randomBytes(this.#nonceSize);
-
-    const aes = gcm(encryptionKey, nonce);
-    const ciphertext = aes.encrypt(data);
-
-    const cipherTextCombinedWithNonce = concatBytes(nonce, ciphertext);
-
-    return cipherTextCombinedWithNonce;
+    const chacha = managedNonce(xchacha20poly1305)(encryptionKey);
+    const ciphertext = chacha.encrypt(data);
+    return ciphertext;
   }
 
   /**
    * Decrypt the data using the encryption key.
    *
-   * @param cipherTextCombinedWithNonceString - The cipher text combined with nonce.
-   * @param encryptionKey - The encryption key to decrypt the data.
+   * @param cipherText - The cipher text, encrypted with AEAD-chacha20poly1305.
+   * @param decryptionKey - The encryption key to decrypt the data.
    * @returns The decrypted data.
    */
-  #decryptData(
-    cipherTextCombinedWithNonceString: string,
-    encryptionKey: Uint8Array,
-  ): Uint8Array {
-    const cipherTextCombinedWithNonce = new Uint8Array(
-      Buffer.from(cipherTextCombinedWithNonceString, 'base64'),
-    );
-    const nonce = cipherTextCombinedWithNonce.slice(0, this.#nonceSize);
-    const rawEncData = cipherTextCombinedWithNonce.slice(this.#nonceSize);
-
-    const aes = gcm(encryptionKey, nonce);
-    const decryptedData = aes.decrypt(rawEncData);
+  #decryptData(cipherText: Uint8Array, decryptionKey: Uint8Array): Uint8Array {
+    const chacha = managedNonce(xchacha20poly1305)(decryptionKey);
+    const decryptedData = chacha.decrypt(cipherText);
 
     return decryptedData;
   }
