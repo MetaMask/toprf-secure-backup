@@ -1,5 +1,5 @@
 import {
-  getProxyCoordinatorEndpointIndex,
+  getProxyCoordinatorNodeIndex,
   pubKeyToSec1,
   toSnakeCaseKeys,
 } from '@metamask/auth-network-utils';
@@ -81,7 +81,6 @@ export const createStoreKeySharesRequest = async (
     JRPC_METHODS.STORE_KEY_SHARES_REQUEST,
     toSnakeCaseKeys(params),
   ) as StoreKeySharesJRPCRequest;
-
   return postJRPCRequest<StoreKeySharesJRPCResponse>(endpoint, authJRPCRequest);
 };
 
@@ -122,13 +121,12 @@ export const storeKeyShares = async (
     verifier,
     verifierId,
   });
-  const proxyNodeEndpointIndex = getProxyCoordinatorEndpointIndex(
-    Object.values(nodeEndpointsMap),
+  const proxyNodeEndpointIndex = getProxyCoordinatorNodeIndex(
+    authTokens.map((token) => token.nodeIndex),
     verifier,
     verifierId,
   );
   const proxyNodeEndpoint = nodeEndpointsMap[proxyNodeEndpointIndex];
-
   const storeReqPromise = await createStoreKeySharesRequest(
     proxyNodeEndpoint,
     requestParams,

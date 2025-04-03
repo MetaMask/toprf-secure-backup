@@ -1,5 +1,7 @@
 import { getSecp256K1Curve } from '@metamask/auth-network-utils';
+import { toBytes } from '@noble/hashes/utils';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
+import { sha256 } from 'ethereum-cryptography/sha256';
 
 import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
@@ -57,23 +59,25 @@ describe('store shares request', function () {
     });
 
     expect(authTokens).toBeDefined();
+    const passwordBytes = toBytes('test-input');
+    const hashedInput = sha256(passwordBytes);
     const randomScalar = generateRandomScalar();
-    const seed = OPRF.localEval(
-      randomScalar,
-      new TextEncoder().encode('abcdefgh'),
-    );
+    const seed = OPRF.localEval(randomScalar, hashedInput);
     const authKeyPair = deriveAuthenticationKeyPair(seed);
 
-    const storeSharesResponse = await storeKeyShares(torusNodeSSSEndpoints, {
-      nodeIndexes: torusIndexes,
-      nodePubkeys: torusNodePub,
+    const nodeEndpointsMap = torusIndexes.reduce<Record<number, string>>(
+      (acc, index) => {
+        acc[index] = torusNodeSSSEndpoints[index - 1];
+        return acc;
+      },
+      {},
+    );
+
+    const storeSharesResponse = await storeKeyShares({
+      nodeEndpointsMap,
       verifier,
       verifierId: verifierID,
-      authTokens: authTokens.map((tokenData) => ({
-        authToken: tokenData.authToken,
-        nodeIndex: tokenData.nodeIndex,
-        nodePubKey: tokenData.nodePubKey,
-      })),
+      authTokens,
       keyIndex: 1,
       oprfKey: randomScalar,
       authPubKey: authKeyPair.pk,

@@ -12,6 +12,7 @@ import {
   toCamelCaseKeys,
   toSnakeCaseKeys,
 } from '@metamask/auth-network-utils';
+import { bytesToHex } from '@noble/curves/abstract/utils';
 import { decrypt, encrypt } from '@toruslabs/eccrypto';
 import { post } from '@toruslabs/http-helpers';
 import BN from 'bn.js';
@@ -144,15 +145,15 @@ const encryptData = async (
  */
 const createShareImportItem = async (
   encryptedShare: EncryptedData,
-  authToken: string,
   keyIndex: number,
+  authToken: string,
   nodePubKey: Buffer,
   nodeIndex: number,
   nodeEndpointsMap: Record<number, string>,
 ): Promise<ShareImportItem> => {
   const encryptedAuthToken = await encryptData(
-    nodePubKey,
     Buffer.from(authToken, 'base64'),
+    nodePubKey,
   );
 
   return {
@@ -206,15 +207,15 @@ export const generateShareImportItems = async (
 
   // Create share import items
   return Promise.all(
-    authTokens.map(async (tokenData, i) =>
-      createShareImportItem(
+    authTokens.map(async (tokenData, i) => {
+      return createShareImportItem(
         encryptedShares[i],
-        tokenData.authToken,
         keyIndex,
+        tokenData.authToken,
         Buffer.from(tokenData.nodePubKey, 'hex'),
         tokenData.nodeIndex,
         nodeEndpointsMap,
-      ),
-    ),
+      );
+    }),
   );
 };
