@@ -18,13 +18,8 @@ import type {
   ISetSecretDataRequestBody,
 } from './interfaces';
 
-export enum MetadataStorageLocation {
-  MetadataServer = 'metadata-server',
-}
-
 type MetadataStoreOptions = {
-  storageLocation?: MetadataStorageLocation;
-  nodeEndpointsMap?: Map<number, string>;
+  nodeEndpointsMap: Map<number, string>;
 };
 
 export type AuthTokenToMetadataEndpointsMap = Record<string, string>;
@@ -53,8 +48,6 @@ export class MetadataStoreError extends Error {
 export class MetadataStore {
   readonly #feature = 'srp-backup';
 
-  readonly #storageLocation: MetadataStorageLocation;
-
   // Nonce size for AES-256-GCM
   readonly #nonceSize = 24;
 
@@ -66,27 +59,8 @@ export class MetadataStore {
    * @param options.nodeEndpointsMap - The map of node endpoints which includes node index as key and node endpoint as value.
    * @param options.storageLocation - The storage location of the metadata.
    */
-  constructor(options?: MetadataStoreOptions) {
-    const { nodeEndpointsMap, storageLocation } = options ?? {};
-    this.#storageLocation =
-      storageLocation ?? MetadataStorageLocation.MetadataServer;
-
-    if (!nodeEndpointsMap) {
-      throw new MetadataStoreError(
-        'nodeEndpointsMap is required for metadata server',
-      );
-    }
-
-    this.#nodeEndpointsMap = nodeEndpointsMap;
-  }
-
-  /**
-   * Get the storage location of the metadata.
-   *
-   * @returns The storage location of the metadata.
-   */
-  get metadataStorageLocation(): MetadataStorageLocation {
-    return this.#storageLocation;
+  constructor(options: MetadataStoreOptions) {
+    this.#nodeEndpointsMap = options.nodeEndpointsMap;
   }
 
   /**

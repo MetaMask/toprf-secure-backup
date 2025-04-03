@@ -5,7 +5,7 @@ import {
   deriveAuthenticationKeyPair,
   deriveEncryptionKey,
 } from './keyDerivation';
-import { MetadataStorageLocation, MetadataStore } from './metadata';
+import { MetadataStore } from './metadata';
 import { generateMockAuthTokenForMetadataRequests } from '../tests/metadata-utils';
 
 const MOCK_SEED = randomBytes(32);
@@ -47,23 +47,6 @@ describe('MetadataStore', () => {
       privKey: authenticationKeyPair.sk,
       pubKey: authenticationKeyPair.pk,
     };
-  });
-
-  it('should throw an error if invalid nodeEndpointsMap is provided for metadata server', () => {
-    expect(() => new MetadataStore()).toThrow(
-      'nodeEndpointsMap is required for metadata server',
-    );
-  });
-
-  it('should be able to initialize with default storage location', () => {
-    const metadataStore = new MetadataStore({
-      nodeEndpointsMap: NODE_ENDPOINTS_MAP,
-    });
-
-    expect(metadataStore).toBeDefined();
-    expect(metadataStore.metadataStorageLocation).toBe(
-      MetadataStorageLocation.MetadataServer,
-    );
   });
 
   it('should throw an error if endpoint is not found for the node auth token', async () => {
