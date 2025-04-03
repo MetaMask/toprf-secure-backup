@@ -5,7 +5,6 @@ import type {
 } from '@metamask/auth-network-utils';
 import {
   encParamsHexToBuf,
-  getSecp256K1Curve,
   toCamelCaseKeys,
   toSnakeCaseKeys,
 } from '@metamask/auth-network-utils';
@@ -70,17 +69,13 @@ export const decryptAuthToken = async (
   authToken: string,
   sessionPrivateKey: string,
 ): Promise<string> => {
-  const ecCurve = getSecp256K1Curve();
-  const decryptionKey = ecCurve.keyFromPrivate(sessionPrivateKey);
+  const decryptionKey = Buffer.from(sessionPrivateKey, 'hex');
   const authTokenData = JSON.parse(authToken) as EncryptedData;
   const metadata = encParamsHexToBuf(authTokenData.metadata);
 
-  const decryptedAuthToken = await decrypt(
-    decryptionKey.getPrivate().toArrayLike(Buffer),
-    {
-      ...metadata,
-      ciphertext: Buffer.from(authTokenData.data, 'hex'),
-    },
-  );
+  const decryptedAuthToken = await decrypt(decryptionKey, {
+    ...metadata,
+    ciphertext: Buffer.from(authTokenData.data, 'hex'),
+  });
   return Buffer.from(decryptedAuthToken).toString('base64');
 };
