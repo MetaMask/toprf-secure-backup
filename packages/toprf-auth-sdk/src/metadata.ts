@@ -13,7 +13,7 @@ import type {
   FetchSecretDataResult,
   IGetSecretDataRequestBody,
   KeyPair,
-  StoreSecretDataParams,
+  AddSecretDataItemParams,
   NodeAuthTokens,
   ISetSecretDataRequestBody,
 } from './interfaces';
@@ -73,7 +73,7 @@ export class MetadataStore {
    * @param params.nodeAuthTokens - The array of auth tokens to be used for authenticating against the metadata server.
    * @returns A promise that resolves when the secret data is stored.
    */
-  async storeSecretData(params: StoreSecretDataParams): Promise<void> {
+  async addSecretDataItem(params: AddSecretDataItemParams): Promise<void> {
     try {
       const { secretData, encKey, nodeAuthTokens, authKeyPair } = params;
       const endPointToAuthTokenMap =
@@ -81,7 +81,7 @@ export class MetadataStore {
 
       const promises = Object.entries(endPointToAuthTokenMap).map(
         async ([endpoint, authToken]) => {
-          return this.#setData({
+          return this.#addData({
             secretData,
             encKey,
             authKeyPair,
@@ -112,14 +112,14 @@ export class MetadataStore {
    * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
    * @returns A promise that resolves with the decrypted secret data.
    */
-  async fetchSecretData(
+  async fetchAllSecretDataItems(
     encKey: Uint8Array,
     authKeyPair: KeyPair,
   ): Promise<FetchSecretDataResult> {
     try {
       const promises = Array.from(this.#nodeEndpointsMap.values()).map(
         async (metadataEndpoint) => {
-          return this.#getData({
+          return this.#getAllDataItems({
             encKey,
             authKeyPair,
             metadataEndpoint,
@@ -149,7 +149,7 @@ export class MetadataStore {
   }
 
   /**
-   * Encrypts the secret data and inserts or updates it in the metadata store.
+   * Encrypts the secret data and inserts or appends it in the metadata store.
    *
    * @param params - The parameters for storing the secret data.
    * @param params.secretData - The secret data to be stored.
@@ -159,7 +159,7 @@ export class MetadataStore {
    * @param params.authToken - The auth token to be used for authentication for the metadata server.
    * @returns A promise that resolves when the secret data is stored.
    */
-  async #setData(params: {
+  async #addData(params: {
     secretData: Uint8Array;
     encKey: Uint8Array;
     authKeyPair: KeyPair;
@@ -201,7 +201,7 @@ export class MetadataStore {
   }
 
   /**
-   * Fetches the secret data from the metadata store by provided public key and decrypts it.
+   * Fetches all the secret data from the metadata store by provided public key and decrypts it.
    *
    * @param params - The parameters for fetching the secret data.
    * @param params.encKey - The encryption key to be used for decrypting the secret data.
@@ -209,7 +209,7 @@ export class MetadataStore {
    * @param params.metadataEndpoint - The metadata server endpoint to be used for fetching the secret data.
    * @returns A promise that resolves with the decrypted secret data.
    */
-  async #getData(params: {
+  async #getAllDataItems(params: {
     encKey: Uint8Array;
     authKeyPair: KeyPair;
     metadataEndpoint: string;

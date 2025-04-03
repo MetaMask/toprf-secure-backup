@@ -13,12 +13,12 @@ import type {
   AuthenticateResult,
   CreateEncryptionKeyParams,
   CreateEncryptionKeyResult,
-  FetchSecretDataParams,
+  FetchAllSecretDataParams,
   FetchSecretDataResult,
   IToprfSecureBackup,
   RecoverEncryptionKeyParams,
   RecoverEncryptionKeyResult,
-  StoreSecretDataParams,
+  AddSecretDataItemParams,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -202,13 +202,14 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    *
    * @returns A promise that resolves when the secret data is stored.
    */
-  async storeSecretData(params: StoreSecretDataParams): Promise<void> {
+  async addSecretDataItem(params: AddSecretDataItemParams): Promise<void> {
     const metadataStore = await this.#createMetadataStore();
-    await metadataStore.storeSecretData(params);
+    await metadataStore.addSecretDataItem(params);
   }
 
   /**
-   * This function decrypts the secret data using the decryption key and returns the decrypted secret data.
+   * This function fetches all secret data items associated with the given
+   * auth pub key, decrypts, and returns them.
    *
    * @param params - The parameters for fetching the secret data.
    * @param params.decKey - The decryption key to be used to decrypt the secret data.
@@ -216,11 +217,14 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    *
    * @returns A promise that resolves with the decrypted secret data. Null if no secret data is found.
    */
-  async fetchSecretData(
-    params: FetchSecretDataParams,
+  async fetchAllSecretDataItems(
+    params: FetchAllSecretDataParams,
   ): Promise<FetchSecretDataResult | null> {
     const metadataStore = await this.#createMetadataStore();
-    return metadataStore.fetchSecretData(params.decKey, params.authKeyPair);
+    return metadataStore.fetchAllSecretDataItems(
+      params.decKey,
+      params.authKeyPair,
+    );
   }
 
   /**

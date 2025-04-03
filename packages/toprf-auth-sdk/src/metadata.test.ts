@@ -55,7 +55,7 @@ describe('MetadataStore', () => {
     });
 
     await expect(async () =>
-      metadataStore.storeSecretData({
+      metadataStore.addSecretDataItem({
         secretData: utf8ToBytes('SECRET_DATA'),
         encKey,
         authKeyPair,
@@ -68,14 +68,17 @@ describe('MetadataStore', () => {
     const metadataStore = createMockMetadataStore();
     const secretData = utf8ToBytes('SECRET_DATA');
 
-    await metadataStore.storeSecretData({
+    await metadataStore.addSecretDataItem({
       secretData,
       encKey,
       authKeyPair,
       nodeAuthTokens,
     });
 
-    const result = await metadataStore.fetchSecretData(encKey, authKeyPair);
+    const result = await metadataStore.fetchAllSecretDataItems(
+      encKey,
+      authKeyPair,
+    );
     expect(result).not.toBeNull();
     expect(result?.[0]).toStrictEqual(secretData);
   });
@@ -86,14 +89,17 @@ describe('MetadataStore', () => {
 
     const secretData = utf8ToBytes('SECRET_DATA');
 
-    await metadataStore1.storeSecretData({
+    await metadataStore1.addSecretDataItem({
       secretData,
       encKey,
       authKeyPair,
       nodeAuthTokens,
     });
 
-    const result = await metadataStore2.fetchSecretData(encKey, authKeyPair);
+    const result = await metadataStore2.fetchAllSecretDataItems(
+      encKey,
+      authKeyPair,
+    );
     expect(result).not.toBeNull();
     expect(result?.[0]).toStrictEqual(secretData);
   });
@@ -107,7 +113,7 @@ describe('MetadataStore', () => {
       privKey: sk,
       pubKey: pk,
     };
-    const result = await metadataStore.fetchSecretData(
+    const result = await metadataStore.fetchAllSecretDataItems(
       deriveEncryptionKey(randomSeed),
       randomAuthKeyPair,
     );
@@ -133,7 +139,7 @@ describe('MetadataStore', () => {
     const metadataStore = createMockMetadataStore();
 
     await expect(
-      metadataStore.fetchSecretData(encKey, authKeyPair),
+      metadataStore.fetchAllSecretDataItems(encKey, authKeyPair),
     ).rejects.toThrow('Threshold not resolved');
 
     expect(fetchSpy).toHaveBeenCalled();
@@ -168,7 +174,7 @@ describe('MetadataStore', () => {
       });
 
     await expect(
-      metadataStore.fetchSecretData(encKey, authKeyPair),
+      metadataStore.fetchAllSecretDataItems(encKey, authKeyPair),
     ).rejects.toThrow('Threshold not resolved');
 
     expect(fetchSpy).toHaveBeenCalledTimes(3);
@@ -194,7 +200,7 @@ describe('MetadataStore', () => {
     const metadataStore = createMockMetadataStore();
 
     await expect(
-      metadataStore.storeSecretData({
+      metadataStore.addSecretDataItem({
         secretData: utf8ToBytes('SECRET_DATA'),
         encKey,
         authKeyPair,
@@ -203,7 +209,7 @@ describe('MetadataStore', () => {
     ).rejects.toThrow('Threshold not resolved');
 
     await expect(
-      metadataStore.fetchSecretData(encKey, authKeyPair),
+      metadataStore.fetchAllSecretDataItems(encKey, authKeyPair),
     ).rejects.toThrow('Threshold not resolved');
 
     expect(fetchSpy).toHaveBeenCalled();
@@ -221,7 +227,7 @@ describe('MetadataStore', () => {
     const metadataStore = createMockMetadataStore();
 
     await expect(
-      metadataStore.storeSecretData({
+      metadataStore.addSecretDataItem({
         secretData: utf8ToBytes('SECRET_DATA'),
         encKey,
         authKeyPair,
@@ -230,7 +236,7 @@ describe('MetadataStore', () => {
     ).rejects.toThrow('Threshold not resolved');
 
     await expect(
-      metadataStore.fetchSecretData(encKey, authKeyPair),
+      metadataStore.fetchAllSecretDataItems(encKey, authKeyPair),
     ).rejects.toThrow('Threshold not resolved');
 
     expect(fetchSpy).toHaveBeenCalled();

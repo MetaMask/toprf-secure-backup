@@ -76,7 +76,7 @@ export type CreateEncryptionKeyResult = {
  *
  * secretData - The secret data to be registered.
  */
-export type StoreSecretDataParams = {
+export type AddSecretDataItemParams = {
   /**
    * The node auth tokens issued by the nodes on authenticating the user.
    */
@@ -141,7 +141,7 @@ export type ChangeEncryptionKeyResult = {
 /**
  * keyPair - The encryption/decryption key pair which is used to decrypt the secret data.
  */
-export type FetchSecretDataParams = {
+export type FetchAllSecretDataParams = {
   /**
    * The decryption key to be used to decrypt the secret data.
    */
@@ -196,10 +196,11 @@ export type IToprfSecureBackup = {
    *
    * @returns {void}
    */
-  storeSecretData: (params: StoreSecretDataParams) => Promise<void>;
+  addSecretDataItem: (params: AddSecretDataItemParams) => Promise<void>;
 
   /**
-   * This function decrypts the secret data using the decryption key and returns the decrypted secret data.
+   * This function fetches all secret data items associated with the given
+   * auth pub key, decrypts, and returns them.
    *
    * @param params - The parameters for fetching the secret data.
    * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
@@ -208,8 +209,8 @@ export type IToprfSecureBackup = {
    *
    * @returns {FetchSecretDataResult} A promise that resolves with the decrypted secret data. Null if no secret data is found.
    */
-  fetchSecretData: (
-    params: FetchSecretDataParams,
+  fetchAllSecretDataItems: (
+    params: FetchAllSecretDataParams,
   ) => Promise<FetchSecretDataResult | null>;
 };
 
