@@ -218,7 +218,7 @@ describe('MetadataStore', () => {
         authKeyPair,
         nodeAuthTokens,
       }),
-    ).rejects.toThrow('Something went wrong!');
+    ).rejects.toThrow('Threshold not resolved');
 
     await expect(
       metadataStore.fetchSecretData(encKey, authKeyPair),
@@ -245,7 +245,7 @@ describe('MetadataStore', () => {
         authKeyPair,
         nodeAuthTokens,
       }),
-    ).rejects.toThrow('Unknown error');
+    ).rejects.toThrow('Threshold not resolved');
 
     await expect(
       metadataStore.fetchSecretData(encKey, authKeyPair),

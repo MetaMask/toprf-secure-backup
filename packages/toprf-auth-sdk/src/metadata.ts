@@ -69,8 +69,6 @@ export class MetadataStore {
 
   readonly #nodeEndpointsMap: Map<number, string>;
 
-  readonly #thresholdCount: number;
-
   /**
    *
    * @param options - The initialization options for the metadata store.
@@ -89,8 +87,6 @@ export class MetadataStore {
     }
 
     this.#nodeEndpointsMap = nodeEndpointsMap;
-
-    this.#thresholdCount = Math.floor(this.#nodeEndpointsMap.size / 2) + 1;
   }
 
   /**
@@ -113,12 +109,12 @@ export class MetadataStore {
    * @returns A promise that resolves when the secret data is stored.
    */
   async storeSecretData(params: StoreSecretDataParams): Promise<void> {
-    const { secretData, encKey, nodeAuthTokens, authKeyPair } = params;
-    const endPointToAuthTokenMap =
-      this.#getAuthTokenToMetadataEndpointsMap(nodeAuthTokens);
+    try {
+      const { secretData, encKey, nodeAuthTokens, authKeyPair } = params;
+      const endPointToAuthTokenMap =
+        this.#getAuthTokenToMetadataEndpointsMap(nodeAuthTokens);
 
-    await Promise.all(
-      Object.entries(endPointToAuthTokenMap).map(
+      const promises = Object.entries(endPointToAuthTokenMap).map(
         async ([endpoint, authToken]) => {
           return this.#setData({
             secretData,
@@ -128,8 +124,20 @@ export class MetadataStore {
             authToken,
           });
         },
-      ),
-    );
+      );
+      const thresholdCount =
+        Math.floor(Object.keys(endPointToAuthTokenMap).length / 2) + 1;
+      await this.#thresholdCheck<boolean>(promises, thresholdCount);
+    } catch (error) {
+      if (error instanceof SomeError) {
+        throw new MetadataStoreError(
+          `failed to store metadata: ${error.predicate}`,
+        );
+      }
+      throw new MetadataStoreError(
+        `failed to fetch metadata: ${(error as Error).message}`,
+      );
+    }
   }
 
   /**
@@ -153,8 +161,11 @@ export class MetadataStore {
           });
         },
       );
-
-      const thresholdResult = await this.#thresholdCheck(promises);
+      const thresholdCount = Math.floor(this.#nodeEndpointsMap.size / 2) + 1;
+      const thresholdResult = await this.#thresholdCheck<string[]>(
+        promises,
+        thresholdCount,
+      );
       if (thresholdResult?.length === 0 || !thresholdResult) {
         return null;
       }
@@ -189,7 +200,7 @@ export class MetadataStore {
     authKeyPair: KeyPair;
     metadataEndpoint: string;
     authToken: string;
-  }): Promise<void> {
+  }): Promise<boolean> {
     try {
       const url = `${params.metadataEndpoint}/enc_account_data/set`;
       const encryptedData = this.#encryptData(params.secretData, params.encKey);
@@ -212,6 +223,8 @@ export class MetadataStore {
         const responseBody = await response.json();
         throw new Error(`HTTP error message: ${responseBody.error}`);
       }
+      const jsonData = await response.json();
+      return jsonData.success;
     } catch (error: unknown) {
       const errorMessage = (error as Error).message || 'Unknown error';
       throw new MetadataStoreError(
@@ -276,22 +289,21 @@ export class MetadataStore {
    * Out of n results, t items must share the same value.
    *
    * @param promises - The array of promises to be validated.
+   * @param thresholdCount - The threshold value to be used for the threshold check.
    * @returns The validated result which satisfies the threshold check.
    */
-  async #thresholdCheck(
-    promises: Promise<string[]>[],
-  ): Promise<string[] | null> {
-    const results = await Some<string[], string[]>(
-      promises,
-      async (resultArray) => {
-        const tResult = thresholdSame(resultArray, this.#thresholdCount);
-        if (tResult) {
-          return Promise.resolve(tResult);
-        }
+  async #thresholdCheck<T>(
+    promises: Promise<T>[],
+    thresholdCount: number,
+  ): Promise<T | null> {
+    const results = await Some<T, T>(promises, async (resultArray) => {
+      const tResult = thresholdSame(resultArray, thresholdCount);
+      if (tResult) {
+        return Promise.resolve(tResult);
+      }
 
-        return Promise.reject(new MetadataStoreError('Threshold not resolved'));
-      },
-    );
+      return Promise.reject(new MetadataStoreError('Threshold not resolved'));
+    });
 
     return results ?? null;
   }
