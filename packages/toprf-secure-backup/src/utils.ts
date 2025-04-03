@@ -69,7 +69,7 @@ export const decryptAuthToken = async (
   authToken: string,
   sessionPrivateKey: string,
 ): Promise<string> => {
-  const decryptionKey = Buffer.from(sessionPrivateKey, 'hex');
+  const decryptionKey = Buffer.from(sessionPrivateKey.padStart(64, '0'), 'hex');
   const authTokenData = JSON.parse(authToken) as EncryptedData;
   const metadata = encParamsHexToBuf(authTokenData.metadata);
 
