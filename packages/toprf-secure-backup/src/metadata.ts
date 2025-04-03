@@ -292,13 +292,13 @@ export class MetadataStore {
     const feature = this.#feature;
     const base64Data = Buffer.from(rawData).toString('base64');
 
-    const { pubKey: pubKeyRaw, privKey } = authKeyPair;
+    const { pk, sk } = authKeyPair;
     const signature = this.#generatePayloadSignature(
       { data: base64Data, timestamp, feature, authToken },
-      privKey,
+      sk,
     );
 
-    const pubKey = bytesToHex(pubKeyRaw);
+    const pubKey = bytesToHex(pk);
 
     return {
       data: base64Data,
@@ -321,14 +321,14 @@ export class MetadataStore {
   ): IGetSecretDataRequestBody {
     const timestamp = Date.now().toString();
     const feature = this.#feature;
-    const { pubKey: pubKeyRaw, privKey } = authKeyPair;
+    const { pk, sk } = authKeyPair;
 
     const signature = this.#generatePayloadSignature(
       { feature, timestamp },
-      privKey,
+      sk,
     );
 
-    const pubKey = bytesToHex(pubKeyRaw);
+    const pubKey = bytesToHex(pk);
 
     return {
       feature,

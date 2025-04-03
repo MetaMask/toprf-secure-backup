@@ -6,13 +6,13 @@
     "MetaMask",
     "Ethereum"
   ],
-  "homepage": "https://github.com/MetaMask/toprf-auth-sdk/tree/main/packages/auth-network-utils#readme",
+  "homepage": "https://github.com/MetaMask/toprf-secure-backup/tree/main/packages/auth-network-utils#readme",
   "bugs": {
-    "url": "https://github.com/MetaMask/toprf-auth-sdk/issues"
+    "url": "https://github.com/MetaMask/toprf-secure-backup/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/MetaMask/toprf-auth-sdk.git"
+    "url": "https://github.com/MetaMask/toprf-secure-backup.git"
   },
   "license": "MIT",
   "sideEffects": false,
@@ -48,7 +48,6 @@
   },
   "devDependencies": {
     "@metamask/auto-changelog": "^3.4.4",
-    "@noble/curves": "^1.8.1",
     "@types/bn.js": "^5",
     "@types/elliptic": "^6",
     "@types/jest": "^29.5.14",
@@ -67,6 +66,8 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
+    "@noble/curves": "^1.8.1",
+    "@noble/hashes": "^1.7.1",
     "@toruslabs/bs58": "^1.0.0",
     "@toruslabs/constants": "^15.0.0",
     "@toruslabs/eccrypto": "^6.0.2",

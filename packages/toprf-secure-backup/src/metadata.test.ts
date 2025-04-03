@@ -6,7 +6,7 @@ import {
   deriveEncryptionKey,
 } from './keyDerivation';
 import { MetadataStore } from './metadata';
-import { generateMockAuthTokenForMetadataRequests } from '../tests/metadata-utils';
+import { generateMockAuthTokenForMetadataRequests } from '../tests/testHelpers';
 
 const MOCK_SEED = randomBytes(32);
 const METADATA_SERVER_URL = 'http://localhost:5051';
@@ -42,11 +42,7 @@ describe('MetadataStore', () => {
       verifierId,
     });
     encKey = deriveEncryptionKey(MOCK_SEED);
-    const authenticationKeyPair = deriveAuthenticationKeyPair(MOCK_SEED);
-    authKeyPair = {
-      privKey: authenticationKeyPair.sk,
-      pubKey: authenticationKeyPair.pk,
-    };
+    authKeyPair = deriveAuthenticationKeyPair(MOCK_SEED);
   });
 
   it('should throw an error if endpoint is not found for the node auth token', async () => {
@@ -108,11 +104,7 @@ describe('MetadataStore', () => {
     const metadataStore = createMockMetadataStore();
 
     const randomSeed = randomBytes(32);
-    const { sk, pk } = deriveAuthenticationKeyPair(randomSeed);
-    const randomAuthKeyPair = {
-      privKey: sk,
-      pubKey: pk,
-    };
+    const randomAuthKeyPair = deriveAuthenticationKeyPair(randomSeed);
     const result = await metadataStore.fetchAllSecretDataItems(
       deriveEncryptionKey(randomSeed),
       randomAuthKeyPair,

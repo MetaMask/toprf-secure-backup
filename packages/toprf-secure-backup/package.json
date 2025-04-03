@@ -1,18 +1,18 @@
 {
-  "name": "@metamask/toprf-auth-sdk",
+  "name": "@metamask/toprf-secure-backup",
   "version": "0.0.0",
   "description": "The MetaMask Node module template",
   "keywords": [
     "MetaMask",
     "Ethereum"
   ],
-  "homepage": "https://github.com/MetaMask/toprf-auth-sdk/tree/main/packages/toprf-auth-sdk#readme",
+  "homepage": "https://github.com/MetaMask/toprf-secure-backup/tree/main/packages/toprf-secure-backup#readme",
   "bugs": {
-    "url": "https://github.com/MetaMask/toprf-auth-sdk/issues"
+    "url": "https://github.com/MetaMask/toprf-secure-backup/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/MetaMask/toprf-auth-sdk.git"
+    "url": "https://github.com/MetaMask/toprf-secure-backup.git"
   },
   "license": "MIT",
   "sideEffects": false,
@@ -37,8 +37,8 @@
   "scripts": {
     "build": "ts-bridge --project tsconfig.build.json --verbose --clean --no-references",
     "build:docs": "typedoc",
-    "changelog:update": "../../scripts/update-changelog.sh @metamask/toprf-auth-sdk",
-    "changelog:validate": "../../scripts/validate-changelog.sh @metamask/toprf-auth-sdk",
+    "changelog:update": "../../scripts/update-changelog.sh @metamask/toprf-secure-backup",
+    "changelog:validate": "../../scripts/validate-changelog.sh @metamask/toprf-secure-backup",
     "publish:preview": "yarn npm publish --tag preview",
     "since-latest-release": "../../scripts/since-latest-release.sh",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --reporters=jest-silent-reporter",
@@ -51,6 +51,7 @@
     "@noble/ciphers": "^1.2.1",
     "@noble/curves": "^1.8.1",
     "@noble/hashes": "^1.7.1",
+    "@sentry/core": "^9.10.0",
     "@toruslabs/constants": "^15.0.0",
     "@toruslabs/eccrypto": "^6.0.2",
     "@toruslabs/fetch-node-details": "^15.0.0",
@@ -72,9 +73,6 @@
     "typedoc": "^0.24.8",
     "typedoc-plugin-missing-exports": "^2.0.0",
     "typescript": "~5.2.2"
-  },
-  "resolutions": {
-    "@metamask/auth-network-utils@0.0.0": "file:../auth-network-utils/packages/auth-network-utils"
   },
   "engines": {
     "node": "^18.18 || >=20"

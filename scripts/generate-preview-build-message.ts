@@ -30,7 +30,7 @@ async function main(): Promise<void> {
   }
 
   const previewBuildMessage = `
-Preview builds have been published. [See these instructions](https://github.com/MetaMask/toprf-auth-sdk/blob/main/docs/contributing.md#using-packages-in-other-projects-during-developmenttesting) for more information about preview builds.
+Preview builds have been published. [See these instructions](https://github.com/MetaMask/toprf-secure-backup/blob/main/docs/contributing.md#using-packages-in-other-projects-during-developmenttesting) for more information about preview builds.
 
 <details>
 

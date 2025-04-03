@@ -4,13 +4,22 @@ import type { ec as EC } from 'elliptic';
 import type { BNString } from './interfaces';
 
 /**
- *
+ * Represents a point on an elliptic curve.
  */
 class Point {
+  /**
+   * x coordinate of the point.
+   */
   xCoordinate: BN;
 
+  /**
+   * y coordinate of the point.
+   */
   yCoordinate: BN;
 
+  /**
+   * elliptic curve instance.
+   */
   ecCurve: EC;
 
   /**

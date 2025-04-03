@@ -16,3 +16,7 @@ export const NODE_URLS = [
 
 export const DEFAULT_METADATA_SERVER_URL =
   'https://node-2.dev-node.web3auth.io/metadata';
+export const COMMIT_RETRY_COUNT = 4;
+export const COMMIT_RESPONSE_THRESHOLD = 4;
+export const NEW_USER_AUTHENTICATION_THRESHOLD = 4;
+export const EXISTING_USER_AUTHENTICATION_THRESHOLD = 3;

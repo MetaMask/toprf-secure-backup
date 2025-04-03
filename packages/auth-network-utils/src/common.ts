@@ -92,25 +92,25 @@ export function kCombinations(s: number | number[], k: number): number[][] {
 
 /**
  *
- * @param endpoints - The endpoints to choose from
+ * @param indexes - The indexes to choose from.
  * @param verifier - The verifier to use to generate the index
  * @param verifierId - The verifier id to use to generate the index
- * @returns The index of the proxy coordinator endpoint
+ * @returns The node index of the proxy coordinator endpoint.
  */
-export function getProxyCoordinatorEndpointIndex(
-  endpoints: string[],
+export const getProxyCoordinatorNodeIndex = (
+  indexes: number[],
   verifier: string,
   verifierId: string,
-) {
+): number => {
   const verifierIdStr = `${verifier}${verifierId}`;
   const hashedVerifierId = keccak256AndHexify(
     Buffer.from(verifierIdStr, 'utf8'),
   ).slice(2);
   const proxyEndpointNum = new BN(hashedVerifierId, 'hex')
-    .mod(new BN(endpoints.length))
+    .mod(new BN(indexes.length))
     .toNumber();
-  return proxyEndpointNum;
-}
+  return indexes[proxyEndpointNum];
+};
 
 /**
  *
@@ -263,7 +263,7 @@ export async function Some<K, T>(
   callbackFn: (resultArr: K[], params?: { resolved: boolean }) => Promise<T>,
 ): Promise<T | void> {
   let predicateError: Error | undefined; // to keep track of the latest error thrown by the callbackFn
-
+  let finishedCount = 0;
   const resultArr: K[] = new Array(promises.length).fill(undefined);
   const errorArr: Error[] = new Array(promises.length).fill(undefined);
 
@@ -281,12 +281,15 @@ export async function Some<K, T>(
       }
     } catch (e: unknown) {
       predicateError = e as Error;
+    } finally {
+      finishedCount += 1;
     }
   }
-
-  // handle error if the output of the callbackFn cannot be determined
-  // after all promises are settled
-  handleSomeCallBackFnError(errorArr, resultArr, predicateError);
+  if (finishedCount === promises.length) {
+    // handle error if the output of the callbackFn cannot be determined
+    // after all promises are settled
+    handleSomeCallBackFnError(errorArr, resultArr, predicateError);
+  }
 }
 
 export type Primitive = string | number | boolean | null;
