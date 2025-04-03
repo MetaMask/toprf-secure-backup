@@ -81,15 +81,6 @@ describe('MetadataStore', () => {
     );
   });
 
-  it('should be able to initialize with profile-sync storage location', () => {
-    const metadataStore = new MetadataStore({
-      authTokens,
-      storageLocation: MetadataStorageLocation.PROFILE_SYNC,
-    });
-    expect(metadataStore).toBeDefined();
-    expect(metadataStore.metadataStorageLocation).toBe('profile-sync');
-  });
-
   it('should throw an error if valid `authToken` cannot be found with the given nodeIndex', async () => {
     const metadataStore = new MetadataStore({
       authTokens,

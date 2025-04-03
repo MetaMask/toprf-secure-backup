@@ -213,10 +213,12 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   }
 
   /**
-   * This function decrypts the secret data using the encryption key and returns the decrypted secret data.
+   * This function decrypts the secret data using the decryption key and returns the decrypted secret data.
    *
    * @param params - The parameters for fetching the secret data.
-   * @param params.keyPair - The encryption/decryption key pair which is used to decrypt the secret data.
+   * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
+   * @param params.decKey - The decryption key to be used to decrypt the secret data.
+   * @param params.authKeyPair - The authentication key to be used to provide valid signature for fetching the secret data.
    *
    * @returns A promise that resolves with the decrypted secret data. Null if no secret data is found.
    */
@@ -224,7 +226,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     params: FetchSecretDataParams,
   ): Promise<FetchSecretDataResult | null> {
     const metadataStore = await this.#getMetadataStore(params.nodeAuthTokens);
-    return metadataStore.fetchSecretData(params.encKey, params.authKeyPair);
+    return metadataStore.fetchSecretData(params.decKey, params.authKeyPair);
   }
 
   /**

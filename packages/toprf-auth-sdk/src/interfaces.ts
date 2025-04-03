@@ -148,9 +148,9 @@ export type FetchSecretDataParams = {
   nodeAuthTokens: NodeAuthTokens;
 
   /**
-   * The encryption key to be used to decrypt the secret data.
+   * The decryption key to be used to decrypt the secret data.
    */
-  encKey: Uint8Array;
+  decKey: Uint8Array;
 
   /**
    * The authentication key to be used to provide valid signature for fetching the secret data.
@@ -203,10 +203,12 @@ export type IToprfSecureBackup = {
   storeSecretData: (params: StoreSecretDataParams) => Promise<void>;
 
   /**
-   * This function decrypts the secret data using the encryption key and returns the decrypted secret data.
+   * This function decrypts the secret data using the decryption key and returns the decrypted secret data.
    *
    * @param params - The parameters for fetching the secret data.
-   * @param params.keyPair - The encryption/decryption key pair which is used to decrypt the secret data.
+   * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
+   * @param params.decKey - The decryption key to be used to decrypt the secret data.
+   * @param params.authKeyPair - The authentication key to be used to provide valid signature for fetching the secret data.
    *
    * @returns {FetchSecretDataResult} A promise that resolves with the decrypted secret data. Null if no secret data is found.
    */
@@ -289,31 +291,4 @@ export type IGetSecretDataRequestBody = IBaseMetadataRequestBody & {
    * Sample signature: sign(keccak256(feature, authToken, timestamp))
    */
   signature: string;
-};
-
-/**
- * Payload structure for acquiring/releasing the metadata lock
- */
-export type IMetadataLockRequestBody = {
-  /**
-   * The public key of the user
-   */
-  key: string;
-  /**
-   * The Unix timestamp when the request payload is created along with the signature.
-   *
-   */
-  data: {
-    timestamp: number;
-  };
-  /**
-   * The signature produced by signing the payload (without pubKey field) using the user's private key.
-   *
-   * Sample signature: sign(keccak256(feature, authToken, timestamp))
-   */
-  signature: string;
-  /**
-   * The lock id to be released.
-   */
-  id?: string | undefined;
 };
