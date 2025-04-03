@@ -5,7 +5,7 @@
   "description": "Toprf Auth Sdk",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MetaMask/toprf-secret-backup.git"
+    "url": "https://github.com/MetaMask/toprf-secure-backup.git"
   },
   "files": [],
   "workspaces": [

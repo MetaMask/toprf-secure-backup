@@ -1470,9 +1470,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@metamask/toprf-secret-backup@workspace:packages/toprf-secret-backup":
+"@metamask/toprf-secure-backup@workspace:packages/toprf-secure-backup":
   version: 0.0.0-use.local
-  resolution: "@metamask/toprf-secret-backup@workspace:packages/toprf-secret-backup"
+  resolution: "@metamask/toprf-secure-backup@workspace:packages/toprf-secure-backup"
   dependencies:
     "@metamask/auto-changelog": "npm:^3.4.4"
     "@types/jest": "npm:^29.5.14"
