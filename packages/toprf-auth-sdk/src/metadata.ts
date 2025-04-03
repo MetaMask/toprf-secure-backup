@@ -18,9 +18,10 @@ import {
 import type {
   FetchSecretDataResult,
   IGetSecretDataRequestBody,
-  ISetSecretDataRequestBody,
   KeyPair,
+  StoreSecretDataParams,
   NodeAuthTokens,
+  ISetSecretDataRequestBody,
 } from './interfaces';
 
 export enum MetadataStorageLocation {
@@ -31,11 +32,11 @@ export enum MetadataStorageLocation {
 }
 
 type MetadataStoreOptions = {
-  authTokens: NodeAuthTokens;
   storageLocation?: MetadataStorageLocation;
-  nodeEndpoints?: string[];
-  nodeIndexes?: number[];
+  nodeEndpointsMap?: Map<number, string>;
 };
+
+export type AuthTokenToMetadataEndpointsMap = Record<string, string>;
 
 /**
  * Error class for metadata store.
@@ -66,47 +67,30 @@ export class MetadataStore {
   // Nonce size for AES-256-GCM
   readonly #nonceSize = 24;
 
-  readonly #authTokens: NodeAuthTokens;
-
-  readonly #metadataEndpoints: string[] = [];
-
-  readonly #nodeIndexes: number[] = [];
+  readonly #nodeEndpointsMap: Map<number, string>;
 
   readonly #thresholdCount: number;
 
   /**
    *
    * @param options - The initialization options for the metadata store.
-   * @param options.authTokens - The array of auth tokens to be used for authenticating requests to the metadata service.
+   * @param options.nodeEndpointsMap - The map of node endpoints which includes node index as key and node endpoint as value.
    * @param options.storageLocation - The storage location of the metadata.
-   * @param options.nodeEndpoints - The array of node endpoints to be used for authenticating requests to the metadata service.
-   * @param options.nodeIndexes - The array of node indexes to be used for authenticating requests to the metadata service.
    */
-  constructor({
-    authTokens,
-    nodeEndpoints,
-    nodeIndexes,
-    storageLocation = MetadataStorageLocation.METADATA_SERVER,
-  }: MetadataStoreOptions) {
-    this.#storageLocation = storageLocation;
-    this.#authTokens = authTokens;
+  constructor(options?: MetadataStoreOptions) {
+    const { nodeEndpointsMap, storageLocation } = options ?? {};
+    this.#storageLocation =
+      storageLocation ?? MetadataStorageLocation.METADATA_SERVER;
 
-    if (!nodeEndpoints || !nodeIndexes) {
+    if (!nodeEndpointsMap) {
       throw new MetadataStoreError(
-        'nodeEndpoints and nodeIndexes are required for metadata server',
+        'nodeEndpointsMap is required for metadata server',
       );
     }
 
-    if (nodeEndpoints.length !== nodeIndexes.length) {
-      throw new MetadataStoreError(
-        'nodeEndpoints and nodeIndexes must have the same length',
-      );
-    }
+    this.#nodeEndpointsMap = nodeEndpointsMap;
 
-    this.#metadataEndpoints = nodeEndpoints;
-    this.#nodeIndexes = nodeIndexes;
-
-    this.#thresholdCount = Math.floor(this.#metadataEndpoints.length / 2) + 1;
+    this.#thresholdCount = Math.floor(this.#nodeEndpointsMap.size / 2) + 1;
   }
 
   /**
@@ -121,28 +105,30 @@ export class MetadataStore {
   /**
    * Encrypts the secret data and stores it in the metadata store.
    *
-   * @param secretData - The secret data to be stored.
-   * @param encKey - The encryption key to be used for encrypting the secret data.
-   * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
+   * @param params - The parameters for storing the secret data.
+   * @param params.secretData - The secret data to be stored.
+   * @param params.encKey - The encryption key to be used for encrypting the secret data.
+   * @param params.authKeyPair - The authentication key pair to be used for authenticating the secret data.
+   * @param params.nodeAuthTokens - The array of auth tokens to be used for authenticating against the metadata server.
    * @returns A promise that resolves when the secret data is stored.
    */
-  async storeSecretData(
-    secretData: string,
-    encKey: Uint8Array,
-    authKeyPair: KeyPair,
-  ): Promise<void> {
+  async storeSecretData(params: StoreSecretDataParams): Promise<void> {
+    const { secretData, encKey, nodeAuthTokens, authKeyPair } = params;
+    const endPointToAuthTokenMap =
+      this.#getAuthTokenToMetadataEndpointsMap(nodeAuthTokens);
+
     await Promise.all(
-      // eslint-disable-next-line @typescript-eslint/promise-function-async
-      this.#metadataEndpoints.map((endpoint, index) => {
-        const nodeIndex = this.#nodeIndexes[index];
-        return this.#setData({
-          secretData,
-          encKey,
-          authKeyPair,
-          metadataEndpoint: endpoint,
-          nodeIndex,
-        });
-      }),
+      Object.entries(endPointToAuthTokenMap).map(
+        async ([endpoint, authToken]) => {
+          return this.#setData({
+            secretData,
+            encKey,
+            authKeyPair,
+            metadataEndpoint: endpoint,
+            authToken,
+          });
+        },
+      ),
     );
   }
 
@@ -158,13 +144,11 @@ export class MetadataStore {
     authKeyPair: KeyPair,
   ): Promise<FetchSecretDataResult | null> {
     try {
-      const promises = this.#metadataEndpoints.map(
-        async (metadataEndpoint, index) => {
-          const nodeIndex = this.#nodeIndexes[index];
+      const promises = Array.from(this.#nodeEndpointsMap.values()).map(
+        async (metadataEndpoint) => {
           return this.#getData({
             encKey,
             authKeyPair,
-            nodeIndex,
             metadataEndpoint,
           });
         },
@@ -196,7 +180,7 @@ export class MetadataStore {
    * @param params.encKey - The encryption key to be used for encrypting the secret data.
    * @param params.authKeyPair - The authentication key pair to be used for authenticating the secret data.
    * @param params.metadataEndpoint - The metadata server endpoint to be used for storing the secret data.
-   * @param params.nodeIndex - The index of the metadata server to be used for storing the secret data.
+   * @param params.authToken - The auth token to be used for authentication for the metadata server.
    * @returns A promise that resolves when the secret data is stored.
    */
   async #setData(params: {
@@ -204,7 +188,7 @@ export class MetadataStore {
     encKey: Uint8Array;
     authKeyPair: KeyPair;
     metadataEndpoint: string;
-    nodeIndex: number;
+    authToken: string;
   }): Promise<void> {
     try {
       const url = `${params.metadataEndpoint}/enc_account_data/set`;
@@ -212,7 +196,7 @@ export class MetadataStore {
       const payload = this.#generatePayloadForSetOrBatchSetSecretDataRequest(
         encryptedData,
         params.authKeyPair,
-        params.nodeIndex,
+        params.authToken,
       );
 
       const response = await fetch(url, {
@@ -242,21 +226,18 @@ export class MetadataStore {
    * @param params - The parameters for fetching the secret data.
    * @param params.encKey - The encryption key to be used for decrypting the secret data.
    * @param params.authKeyPair - The authentication key pair to be used for authenticating the secret data.
-   * @param params.nodeIndex - The index of the Auth Token to be used for authenticating the secret data.
    * @param params.metadataEndpoint - The metadata server endpoint to be used for fetching the secret data.
    * @returns A promise that resolves with the decrypted secret data.
    */
   async #getData(params: {
     encKey: Uint8Array;
     authKeyPair: KeyPair;
-    nodeIndex: number;
     metadataEndpoint: string;
   }): Promise<string[]> {
     try {
       const url = `${params.metadataEndpoint}/enc_account_data/get`;
       const payload = this.#generatePayloadForGetSecretDataRequest(
         params.authKeyPair,
-        params.nodeIndex,
       );
 
       const response = await fetch(url, {
@@ -320,17 +301,16 @@ export class MetadataStore {
    *
    * @param data - The encrypted secret data to be stored.
    * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
-   * @param nodeIndex - The index of the Auth Token to be used for authenticating the secret data.
+   * @param authToken - The auth token to be used for authentication for the metadata server.
    * @returns The payload for the batch set secret data request.
    */
   #generatePayloadForSetOrBatchSetSecretDataRequest(
     data: string,
     authKeyPair: KeyPair,
-    nodeIndex: number,
+    authToken: string,
   ): ISetSecretDataRequestBody {
     const timestamp = Date.now().toString();
     const feature = this.#feature;
-    const authToken = this.#getAuthToken(nodeIndex);
 
     const { pubKey: pubKeyRaw, privKey } = authKeyPair;
     const signature = this.#generatePayloadSignature(
@@ -354,20 +334,17 @@ export class MetadataStore {
    * Generate the payload for the get secret data request and get payload signature.
    *
    * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
-   * @param nodeIndex - The index of the Auth Token to be used for authenticating the secret data.
    * @returns The payload for the get secret data request.
    */
   #generatePayloadForGetSecretDataRequest(
     authKeyPair: KeyPair,
-    nodeIndex: number,
   ): IGetSecretDataRequestBody {
     const timestamp = Date.now().toString();
     const feature = this.#feature;
-    const authToken = this.#getAuthToken(nodeIndex);
     const { pubKey: pubKeyRaw, privKey } = authKeyPair;
 
     const signature = this.#generatePayloadSignature(
-      { feature, timestamp, authToken },
+      { feature, timestamp },
       privKey,
     );
 
@@ -377,7 +354,6 @@ export class MetadataStore {
       feature,
       pubKey,
       timestamp,
-      authToken,
       signature,
     };
   }
@@ -401,23 +377,27 @@ export class MetadataStore {
   }
 
   /**
-   * Get the auth token for the given node index.
+   * Get the auth token to metadata endpoints map.
    *
-   * @param nodeIndex - The index of the Auth Token to be used for authenticating the secret data.
-   * @returns The auth token.
+   * @param nodeAuthTokens - The node auth tokens.
+   * @returns The auth token to metadata endpoints map.
    */
-  #getAuthToken(nodeIndex: number): string {
-    const authToken = this.#authTokens.find(
-      (authTokenObj) => authTokenObj.nodeIndex === nodeIndex,
-    );
+  #getAuthTokenToMetadataEndpointsMap(
+    nodeAuthTokens: NodeAuthTokens,
+  ): AuthTokenToMetadataEndpointsMap {
+    const endPointToAuthTokenMap: AuthTokenToMetadataEndpointsMap = {};
+    nodeAuthTokens.forEach(({ nodeIndex, authToken }) => {
+      const endpoint = this.#nodeEndpointsMap.get(nodeIndex);
+      if (!endpoint) {
+        throw new MetadataStoreError(
+          `Endpoint not found for node index: ${nodeIndex}`,
+        );
+      }
 
-    if (!authToken) {
-      throw new MetadataStoreError(
-        `Auth token not found for node index: ${nodeIndex}`,
-      );
-    }
+      endPointToAuthTokenMap[endpoint] = authToken;
+    });
 
-    return authToken.authToken;
+    return endPointToAuthTokenMap;
   }
 
   /**

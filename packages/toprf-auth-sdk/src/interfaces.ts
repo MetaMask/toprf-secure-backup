@@ -143,11 +143,6 @@ export type ChangeEncryptionKeyResult = {
  */
 export type FetchSecretDataParams = {
   /**
-   * The node auth tokens issued by the nodes on authenticating the user.
-   */
-  nodeAuthTokens: NodeAuthTokens;
-
-  /**
    * The decryption key to be used to decrypt the secret data.
    */
   decKey: Uint8Array;
@@ -226,10 +221,6 @@ export type IBaseMetadataRequestBody = {
    */
   feature: string;
   /**
-   * The authentication token of the user issued by the SSS services
-   */
-  authToken: string;
-  /**
    * The public key of the user
    */
   pubKey: string;
@@ -244,6 +235,10 @@ export type IBaseMetadataRequestBody = {
  * Payload structure for storing secret data
  */
 export type IBaseSetSecretDataRequestBody<T> = IBaseMetadataRequestBody & {
+  /**
+   * The authentication token of the user issued by the SSS services
+   */
+  authToken: string;
   /**
    * The secret data to be stored
    */
