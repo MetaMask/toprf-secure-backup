@@ -5,7 +5,7 @@
   },
   "references": [
     { "path": "./packages/auth-network-utils" },
-    { "path": "./packages/toprf-secret-backup" }
+    { "path": "./packages/toprf-secure-backup" }
   ],
   "files": [],
   "include": ["./scripts", "./types"]

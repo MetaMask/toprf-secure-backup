@@ -1485,9 +1485,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@metamask/toprf-secret-backup@workspace:packages/toprf-secret-backup":
+"@metamask/toprf-secure-backup@workspace:packages/toprf-secure-backup":
   version: 0.0.0-use.local
-  resolution: "@metamask/toprf-secret-backup@workspace:packages/toprf-secret-backup"
+  resolution: "@metamask/toprf-secure-backup@workspace:packages/toprf-secure-backup"
   dependencies:
     "@babel/runtime": "npm:^7.26.10"
     "@metamask/auth-network-utils": "npm:^0.0.0"
