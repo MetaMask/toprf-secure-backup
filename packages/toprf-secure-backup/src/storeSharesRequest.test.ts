@@ -61,8 +61,8 @@ describe('store shares request', function () {
     expect(authTokens).toBeDefined();
     const passwordBytes = toBytes('test-input');
     const hashedInput = sha256(passwordBytes);
-    const randomScalar = generateRandomScalar();
-    const seed = OPRF.localEval(randomScalar, hashedInput);
+    const oprfKey = generateRandomScalar();
+    const seed = OPRF.localEval(oprfKey, hashedInput);
     const authKeyPair = deriveAuthenticationKeyPair(seed);
 
     const nodeEndpointsMap = torusIndexes.reduce<Record<number, string>>(
@@ -79,7 +79,7 @@ describe('store shares request', function () {
       verifierId: verifierID,
       authTokens,
       keyIndex: 1,
-      oprfKey: randomScalar,
+      oprfKey,
       authPubKey: authKeyPair.pk,
     });
 

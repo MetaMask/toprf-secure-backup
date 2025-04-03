@@ -111,8 +111,8 @@ export class ToprfSecretBackup implements Partial<IToprfSecureBackup> {
     const { nodeEndpointsMap } = await this.#getNodeDetails();
     const passwordBytes = toBytes(password);
     const hashedInput = sha256(passwordBytes);
-    const randomScalar = generateRandomScalar();
-    const seed = OPRF.localEval(randomScalar, hashedInput);
+    const oprfKey = generateRandomScalar();
+    const seed = OPRF.localEval(oprfKey, hashedInput);
     const authKeyPair = deriveAuthenticationKeyPair(seed);
 
     await storeKeyShares({
@@ -121,17 +121,17 @@ export class ToprfSecretBackup implements Partial<IToprfSecureBackup> {
       verifierId,
       authTokens: nodeAuthTokens,
       keyIndex: 1,
-      oprfKey: randomScalar,
+      oprfKey,
       authPubKey: authKeyPair.pk,
     });
-    const encKeyPair = deriveEncryptionKey(seed);
+    const encKey = deriveEncryptionKey(seed);
 
     return {
       authKeyPair: {
-        privKey: authKeyPair.sk,
-        pubKey: authKeyPair.pk,
+        sk: authKeyPair.sk,
+        pk: authKeyPair.pk,
       },
-      encKey: encKeyPair,
+      encKey,
     };
   }
 

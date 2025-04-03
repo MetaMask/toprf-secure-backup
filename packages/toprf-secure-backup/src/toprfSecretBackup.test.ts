@@ -44,8 +44,8 @@ describe('toprf secret backup', function () {
     });
     expect(encKey).toBeDefined();
     expect(encKey.authKeyPair).toBeDefined();
-    expect(encKey.authKeyPair.privKey).toBeDefined();
-    expect(encKey.authKeyPair.pubKey).toBeDefined();
+    expect(encKey.authKeyPair.sk).toBeDefined();
+    expect(encKey.authKeyPair.pk).toBeDefined();
     expect(encKey.encKey).toBeDefined();
   });
 });

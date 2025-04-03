@@ -3,6 +3,8 @@ import { secp256k1 } from '@noble/curves/secp256k1';
 import { hkdf } from '@noble/hashes/hkdf';
 import { sha256 } from '@noble/hashes/sha2';
 
+import type { KeyPair } from './interfaces';
+
 const HKDF_AUTHENTICATION_KEY_INFO = 'authentication-key';
 const HKDF_ENCRYPTION_KEY_INFO = 'encryption-key';
 
@@ -12,10 +14,7 @@ const HKDF_ENCRYPTION_KEY_INFO = 'encryption-key';
  * @param seed The input seed from which the output key is derived from.
  * @returns The derived keypair.
  */
-export function deriveAuthenticationKeyPair(seed: Uint8Array): {
-  sk: bigint;
-  pk: Uint8Array;
-} {
+export function deriveAuthenticationKeyPair(seed: Uint8Array): KeyPair {
   const info = HKDF_AUTHENTICATION_KEY_INFO;
   const k = hkdf(sha256, seed, undefined, info, 32); // Derive 256 bit key.
 

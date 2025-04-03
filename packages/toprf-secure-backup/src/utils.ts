@@ -12,7 +12,6 @@ import {
   toCamelCaseKeys,
   toSnakeCaseKeys,
 } from '@metamask/auth-network-utils';
-import { bytesToHex } from '@noble/curves/abstract/utils';
 import { decrypt, encrypt } from '@toruslabs/eccrypto';
 import { post } from '@toruslabs/http-helpers';
 import BN from 'bn.js';
@@ -136,8 +135,8 @@ const encryptData = async (
  * Creates a share import item for a node
  *
  * @param encryptedShare - The encrypted share to be used for the share import item.
- * @param authToken - The auth token of the node required for validating the user on backend.
  * @param keyIndex - The key index to be used for the share import item.
+ * @param authToken - The auth token of the node required for validating the user on backend.
  * @param nodePubKey - The public key of the node to be used for the share import item.
  * @param nodeIndex - The node index to be used for the share import item.
  * @param nodeEndpointsMap - Map of node indexes to endpoints.
