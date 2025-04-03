@@ -36,6 +36,7 @@ export class MetadataStoreError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'MetadataStoreError';
+    Object.setPrototypeOf(this, MetadataStoreError.prototype);
   }
 }
 
