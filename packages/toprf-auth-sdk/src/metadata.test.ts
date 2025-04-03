@@ -5,16 +5,12 @@ import {
   deriveAuthenticationKeyPair,
   deriveEncryptionKey,
 } from './keyDerivation';
-import {
-  MetadataLockStatus,
-  MetadataStorageLocation,
-  MetadataStore,
-} from './metadata';
+import { MetadataStorageLocation, MetadataStore } from './metadata';
 import { generateMockAuthTokenForMetadataRequests } from '../tests/metadata-utils';
 
 const MOCK_SEED = randomBytes(32);
 const METADATA_SERVER_URL = 'http://localhost:5051';
-const NODE_INDEXES = [1];
+const NODE_INDEXES = [1, 2, 3];
 
 /**
  * Creates a mock MetadataStore instance.
@@ -26,7 +22,11 @@ const NODE_INDEXES = [1];
  */
 function mockMetadataStoreFactory(
   authTokens: NodeAuthTokens,
-  nodeEndpoints = [METADATA_SERVER_URL],
+  nodeEndpoints = [
+    METADATA_SERVER_URL,
+    METADATA_SERVER_URL,
+    METADATA_SERVER_URL,
+  ],
   nodeIndexes = NODE_INDEXES,
 ): MetadataStore {
   return new MetadataStore({ authTokens, nodeEndpoints, nodeIndexes });
@@ -94,12 +94,12 @@ describe('MetadataStore', () => {
     const metadataStore = new MetadataStore({
       authTokens,
       nodeEndpoints: [METADATA_SERVER_URL],
-      nodeIndexes: [2],
+      nodeIndexes: [4],
     });
 
     await expect(async () =>
       metadataStore.storeSecretData('SECRET_DATA', encKey, authKeyPair),
-    ).rejects.toThrow('Auth token not found for node index: 2');
+    ).rejects.toThrow('Auth token not found for node index: 4');
   });
 
   it('should be able to store/fetch data', async () => {
@@ -127,104 +127,7 @@ describe('MetadataStore', () => {
     expect(result?.secretData[0]).toBe(secretData);
   });
 
-  it('should be able to store secret data in batch', async () => {
-    const metadataStore = mockMetadataStoreFactory(authTokens);
-
-    const newMockSeed = randomBytes(32);
-    const newEncKey = deriveEncryptionKey(newMockSeed);
-    const newAuthenticationKeyPair = deriveAuthenticationKeyPair(newMockSeed);
-    const newAuthKeyPair = {
-      privKey: newAuthenticationKeyPair.sk,
-      pubKey: newAuthenticationKeyPair.pk,
-    };
-    const secretDataArray = ['SECRET_DATA_1', 'SECRET_DATA_2'].sort();
-
-    const metadataLock =
-      await metadataStore.acquireMetadataLock(newAuthKeyPair);
-    expect(metadataLock).toBeDefined();
-    expect(metadataLock).toHaveLength(1);
-
-    await metadataStore.storeSecretDataBatch(
-      secretDataArray,
-      newEncKey,
-      newAuthKeyPair,
-    );
-
-    const result = await metadataStore.fetchSecretData(
-      newEncKey,
-      newAuthKeyPair,
-    );
-    expect(result).not.toBeNull();
-    expect(result?.secretData.length).toBe(2);
-
-    const sortedResult = result?.secretData.sort();
-
-    expect(sortedResult?.[0]).toBe(secretDataArray[0]);
-    expect(sortedResult?.[1]).toBe(secretDataArray[1]);
-
-    await metadataStore.releaseMetadataLock(newAuthKeyPair, metadataLock);
-  });
-
-  it('should be able to acquire/release lock', async () => {
-    const metadataStore = mockMetadataStoreFactory(authTokens);
-
-    const metadataLock = await metadataStore.acquireMetadataLock(authKeyPair);
-    expect(metadataLock).toBeDefined();
-    expect(metadataLock).toHaveLength(NODE_INDEXES.length);
-
-    const lockStatus = await metadataStore.releaseMetadataLock(
-      authKeyPair,
-      metadataLock,
-    );
-    expect(lockStatus).toBe(MetadataLockStatus.SUCCESS);
-  });
-
-  it('should fail to acquire lock if it is already acquired', async () => {
-    const metadataStore = mockMetadataStoreFactory(authTokens);
-
-    const metadataLock = await metadataStore.acquireMetadataLock(authKeyPair);
-    expect(metadataLock).toBeDefined();
-    expect(metadataLock).toHaveLength(NODE_INDEXES.length);
-
-    await expect(
-      metadataStore.acquireMetadataLock(authKeyPair),
-    ).rejects.toThrow('Failed to acquire metadata lock');
-
-    // release the lock
-    const lockStatus = await metadataStore.releaseMetadataLock(
-      authKeyPair,
-      metadataLock,
-    );
-    expect(lockStatus).toBe(MetadataLockStatus.SUCCESS);
-  });
-
-  it('should throw an error if lockId is missing in the response', async () => {
-    const fetchSpy = jest
-      .spyOn(global, 'fetch')
-      .mockImplementation(async () => {
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          statusText: 'OK',
-          /**
-           * @returns json object
-           */
-          json: async () => Promise.resolve({ status: 1 }),
-          // eslint-disable-next-line no-restricted-globals
-        } as Response);
-      });
-
-    const metadataStore = mockMetadataStoreFactory(authTokens);
-
-    await expect(
-      metadataStore.acquireMetadataLock(authKeyPair),
-    ).rejects.toThrow('Failed to acquire metadata lock. Missing lock id');
-
-    expect(fetchSpy).toHaveBeenCalled();
-    jest.restoreAllMocks();
-  });
-
-  it('should get empty array if metadata key not found', async () => {
+  it('should get null if metadata key not found', async () => {
     const metadataStore = mockMetadataStoreFactory(authTokens);
 
     const randomSeed = randomBytes(32);
@@ -237,10 +140,10 @@ describe('MetadataStore', () => {
       deriveEncryptionKey(randomSeed),
       randomAuthKeyPair,
     );
-    expect(result?.secretData.length).toBe(0);
+    expect(result).toBeNull();
   });
 
-  it('should return `null` if the data is not present in the metadata response', async () => {
+  it('should an error if the data is not present in the metadata response', async () => {
     const fetchSpy = jest
       .spyOn(global, 'fetch')
       .mockImplementation(async () => {
@@ -258,11 +161,52 @@ describe('MetadataStore', () => {
 
     const metadataStore = mockMetadataStoreFactory(authTokens);
 
-    const result = await metadataStore.fetchSecretData(encKey, authKeyPair);
+    await expect(
+      metadataStore.fetchSecretData(encKey, authKeyPair),
+    ).rejects.toThrow('Threshold not resolved');
 
     expect(fetchSpy).toHaveBeenCalled();
-    expect(result).toBeNull();
 
+    jest.restoreAllMocks();
+  });
+
+  it('should throw an error if the threshold is not met', async () => {
+    const metadataStore = new MetadataStore({
+      authTokens,
+      nodeEndpoints: [
+        'https://metadata-server.toprf.xyz/node-1',
+        'https://metadata-server.toprf.xyz/node-2',
+        'https://metadata-server.toprf.xyz/node-3',
+      ],
+      nodeIndexes: [1, 2, 3],
+    });
+
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(async (input) => {
+        const url = new URL(input as string);
+        const nodeIndex = url.pathname.split('/')[1];
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          /**
+           * @returns json object
+           */
+          json: async () =>
+            Promise.resolve({
+              data: [`SECRET_DATA_${nodeIndex}`],
+              success: true,
+            }),
+          // eslint-disable-next-line no-restricted-globals
+        } as Response);
+      });
+
+    await expect(
+      metadataStore.fetchSecretData(encKey, authKeyPair),
+    ).rejects.toThrow('Threshold not resolved');
+
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
     jest.restoreAllMocks();
   });
 
@@ -289,38 +233,12 @@ describe('MetadataStore', () => {
     ).rejects.toThrow('Something went wrong!');
 
     await expect(
-      metadataStore.storeSecretDataBatch(
-        ['SECRET_DATA_1', 'SECRET_DATA_2'],
-        encKey,
-        authKeyPair,
-      ),
-    ).rejects.toThrow('Something went wrong!');
-
-    await expect(
       metadataStore.fetchSecretData(encKey, authKeyPair),
-    ).rejects.toThrow('Something went wrong!');
+    ).rejects.toThrow('Threshold not resolved');
 
-    await expect(
-      metadataStore.acquireMetadataLock(authKeyPair),
-    ).rejects.toThrow('Something went wrong!');
-
-    await expect(
-      metadataStore.releaseMetadataLock(authKeyPair, [
-        { id: 'LOCK_ID', nodeIndex: 1 },
-      ]),
-    ).rejects.toThrow('Something went wrong!');
-
-    expect(fetchSpy).toHaveBeenCalledTimes(5);
+    expect(fetchSpy).toHaveBeenCalledTimes(2 * NODE_INDEXES.length);
 
     jest.restoreAllMocks();
-  });
-
-  it('should throw an error if invalid metadata lock is provided for release', async () => {
-    const metadataStore = mockMetadataStoreFactory(authTokens);
-
-    await expect(
-      metadataStore.releaseMetadataLock(authKeyPair, []),
-    ).rejects.toThrow('Failed to release metadata lock');
   });
 
   it('should handle if it fails to read the http error response', async () => {
@@ -337,28 +255,10 @@ describe('MetadataStore', () => {
     ).rejects.toThrow('Unknown error');
 
     await expect(
-      metadataStore.storeSecretDataBatch(
-        ['SECRET_DATA_1', 'SECRET_DATA_2'],
-        encKey,
-        authKeyPair,
-      ),
-    ).rejects.toThrow('Unknown error');
-
-    await expect(
       metadataStore.fetchSecretData(encKey, authKeyPair),
-    ).rejects.toThrow('Unknown error');
+    ).rejects.toThrow('Threshold not resolved');
 
-    await expect(
-      metadataStore.acquireMetadataLock(authKeyPair),
-    ).rejects.toThrow('Unknown error');
-
-    await expect(
-      metadataStore.releaseMetadataLock(authKeyPair, [
-        { id: 'LOCK_ID', nodeIndex: 1 },
-      ]),
-    ).rejects.toThrow('Unknown error');
-
-    expect(fetchSpy).toHaveBeenCalledTimes(5);
+    expect(fetchSpy).toHaveBeenCalledTimes(2 * NODE_INDEXES.length);
 
     jest.restoreAllMocks();
   });

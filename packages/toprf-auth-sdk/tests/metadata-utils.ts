@@ -64,6 +64,16 @@ export function generateMockAuthTokenForMetadataRequests(params: {
       nodeIndex: 1,
       nodePubKey,
     },
+    {
+      authToken: b64EncodedAuthSig,
+      nodeIndex: 2,
+      nodePubKey,
+    },
+    {
+      authToken: b64EncodedAuthSig,
+      nodeIndex: 3,
+      nodePubKey,
+    },
   ];
 
   return nodeAuthTokens;
