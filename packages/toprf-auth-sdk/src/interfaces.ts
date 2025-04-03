@@ -85,7 +85,7 @@ export type StoreSecretDataParams = {
   /**
    * The secret data to be stored.
    */
-  secretData: string;
+  secretData: Uint8Array;
 
   /**
    * The encryption key to be used to encrypt the secret data.
@@ -154,11 +154,12 @@ export type FetchSecretDataParams = {
 };
 
 /**
- * secretData - The secret data in decrypted form.
+ * Result from fetching the secret data from the metadata store.
+ *
+ * null - If no secret data is found.
+ * Uint8Array - The secret data in decrypted form.
  */
-export type FetchSecretDataResult = {
-  secretData: string[];
-};
+export type FetchSecretDataResult = Uint8Array[] | null;
 
 export type IToprfSecureBackup = {
   authenticate: (params: AuthenticateParams) => Promise<AuthenticateResult>;
@@ -232,6 +233,20 @@ export type IBaseMetadataRequestBody = {
 };
 
 /**
+ * The array of secret data to be stored in batch request
+ */
+export type IBatchSetData = {
+  /**
+   * The base64-encoded string of the secret data
+   */
+  data: string;
+  /**
+   * The version of the Metadata Store
+   */
+  version?: string;
+}[];
+
+/**
  * Payload structure for storing secret data
  */
 export type IBaseSetSecretDataRequestBody<T> = IBaseMetadataRequestBody & {
@@ -240,7 +255,24 @@ export type IBaseSetSecretDataRequestBody<T> = IBaseMetadataRequestBody & {
    */
   authToken: string;
   /**
-   * The secret data to be stored
+   * The secret data to be stored.
+   *
+   * For storing the single secret data, the data should be base64-encoded string.
+   *
+   * @example
+   * ```ts
+   * const data = Buffer.from('SECRET_DATA').toString('base64');
+   * ```
+   *
+   * For storing the batch of secret data, the data should be an array of `IBatchSetData`.
+   *
+   * @example
+   * ```ts
+   * const data = [
+   *   { data: Buffer.from('SECRET_DATA_1').toString('base64') },
+   *   { data: Buffer.from('SECRET_DATA_2').toString('base64') },
+   * ];
+   * ```
    */
   data: T;
   /**
@@ -261,14 +293,6 @@ export type ISetSecretDataRequestBody =
      */
     version?: string;
   };
-
-/**
- * The array of secret data to be stored in batch request
- */
-export type IBatchSetData = {
-  data: string;
-  version?: string;
-}[];
 
 /**
  * Payload structure for storing secret data in batch request

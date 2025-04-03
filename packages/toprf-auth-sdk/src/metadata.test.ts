@@ -1,4 +1,4 @@
-import { randomBytes } from '@noble/hashes/utils';
+import { randomBytes, utf8ToBytes } from '@noble/hashes/utils';
 
 import type { KeyPair, NodeAuthTokens } from './interfaces';
 import {
@@ -73,7 +73,7 @@ describe('MetadataStore', () => {
 
     await expect(async () =>
       metadataStore.storeSecretData({
-        secretData: 'SECRET_DATA',
+        secretData: utf8ToBytes('SECRET_DATA'),
         encKey,
         authKeyPair,
         nodeAuthTokens,
@@ -83,7 +83,7 @@ describe('MetadataStore', () => {
 
   it('should be able to store/fetch data', async () => {
     const metadataStore = createMockMetadataStore();
-    const secretData = 'SECRET_DATA';
+    const secretData = utf8ToBytes('SECRET_DATA');
 
     await metadataStore.storeSecretData({
       secretData,
@@ -94,14 +94,14 @@ describe('MetadataStore', () => {
 
     const result = await metadataStore.fetchSecretData(encKey, authKeyPair);
     expect(result).not.toBeNull();
-    expect(result?.secretData[0]).toBe(secretData);
+    expect(result?.[0]).toStrictEqual(secretData);
   });
 
   it('should be able to store/fetch data with different instances', async () => {
     const metadataStore1 = createMockMetadataStore();
     const metadataStore2 = createMockMetadataStore();
 
-    const secretData = 'SECRET_DATA';
+    const secretData = utf8ToBytes('SECRET_DATA');
 
     await metadataStore1.storeSecretData({
       secretData,
@@ -111,9 +111,8 @@ describe('MetadataStore', () => {
     });
 
     const result = await metadataStore2.fetchSecretData(encKey, authKeyPair);
-
     expect(result).not.toBeNull();
-    expect(result?.secretData[0]).toBe(secretData);
+    expect(result?.[0]).toStrictEqual(secretData);
   });
 
   it('should get null if metadata key not found', async () => {
@@ -213,7 +212,7 @@ describe('MetadataStore', () => {
 
     await expect(
       metadataStore.storeSecretData({
-        secretData: 'SECRET_DATA',
+        secretData: utf8ToBytes('SECRET_DATA'),
         encKey,
         authKeyPair,
         nodeAuthTokens,
@@ -240,7 +239,7 @@ describe('MetadataStore', () => {
 
     await expect(
       metadataStore.storeSecretData({
-        secretData: 'SECRET_DATA',
+        secretData: utf8ToBytes('SECRET_DATA'),
         encKey,
         authKeyPair,
         nodeAuthTokens,

@@ -5,15 +5,9 @@ import {
   thresholdSame,
 } from '@metamask/auth-network-utils';
 import { gcm } from '@noble/ciphers/aes';
-import { bytesToUtf8 } from '@noble/ciphers/utils';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
-import {
-  bytesToHex,
-  concatBytes,
-  randomBytes,
-  utf8ToBytes,
-} from '@noble/hashes/utils';
+import { bytesToHex, concatBytes, randomBytes } from '@noble/hashes/utils';
 
 import type {
   FetchSecretDataResult,
@@ -147,7 +141,7 @@ export class MetadataStore {
   async fetchSecretData(
     encKey: Uint8Array,
     authKeyPair: KeyPair,
-  ): Promise<FetchSecretDataResult | null> {
+  ): Promise<FetchSecretDataResult> {
     try {
       const promises = Array.from(this.#nodeEndpointsMap.values()).map(
         async (metadataEndpoint) => {
@@ -159,7 +153,7 @@ export class MetadataStore {
         },
       );
       const thresholdCount = Math.floor(this.#nodeEndpointsMap.size / 2) + 1;
-      const thresholdResult = await this.#thresholdCheck<string[]>(
+      const thresholdResult = await this.#thresholdCheck<Uint8Array[]>(
         promises,
         thresholdCount,
       );
@@ -167,7 +161,7 @@ export class MetadataStore {
         return null;
       }
 
-      return { secretData: thresholdResult };
+      return thresholdResult;
     } catch (error) {
       if (error instanceof SomeError) {
         throw new MetadataStoreError(
@@ -192,7 +186,7 @@ export class MetadataStore {
    * @returns A promise that resolves when the secret data is stored.
    */
   async #setData(params: {
-    secretData: string;
+    secretData: Uint8Array;
     encKey: Uint8Array;
     authKeyPair: KeyPair;
     metadataEndpoint: string;
@@ -207,13 +201,15 @@ export class MetadataStore {
         params.authToken,
       );
 
+      const requestBody = JSON.stringify(payload);
+
       const response = await fetch(url, {
         headers: {
           // eslint-disable-next-line @typescript-eslint/naming-convention
           'Content-Type': 'application/json',
         },
         method: 'POST',
-        body: JSON.stringify(payload),
+        body: requestBody,
       });
 
       if (!response.ok) {
@@ -243,7 +239,7 @@ export class MetadataStore {
     encKey: Uint8Array;
     authKeyPair: KeyPair;
     metadataEndpoint: string;
-  }): Promise<string[]> {
+  }): Promise<Uint8Array[]> {
     try {
       const url = `${params.metadataEndpoint}/enc_account_data/get`;
       const payload = this.#generatePayloadForGetSecretDataRequest(
@@ -308,29 +304,30 @@ export class MetadataStore {
   /**
    * Generate the payload for the set or batch set secret data request and get payload signature.
    *
-   * @param data - The encrypted secret data to be stored.
+   * @param rawData - The encrypted secret data to be stored.
    * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
    * @param authToken - The auth token to be used for authentication for the metadata server.
    * @returns The payload for the batch set secret data request.
    */
   #generatePayloadForSetOrBatchSetSecretDataRequest(
-    data: string,
+    rawData: Uint8Array,
     authKeyPair: KeyPair,
     authToken: string,
   ): ISetSecretDataRequestBody {
     const timestamp = Date.now().toString();
     const feature = this.#feature;
+    const base64Data = Buffer.from(rawData).toString('base64');
 
     const { pubKey: pubKeyRaw, privKey } = authKeyPair;
     const signature = this.#generatePayloadSignature(
-      { data, timestamp, feature, authToken },
+      { data: base64Data, timestamp, feature, authToken },
       privKey,
     );
 
     const pubKey = bytesToHex(pubKeyRaw);
 
     return {
-      data,
+      data: base64Data,
       signature,
       feature,
       timestamp,
@@ -418,16 +415,15 @@ export class MetadataStore {
    * @param encryptionKey - The encryption key to encrypt the data.
    * @returns The encrypted data.
    */
-  #encryptData(data: string, encryptionKey: Uint8Array): string {
+  #encryptData(data: Uint8Array, encryptionKey: Uint8Array): Uint8Array {
     const nonce = randomBytes(this.#nonceSize);
-    const rawData = utf8ToBytes(data);
 
     const aes = gcm(encryptionKey, nonce);
-    const ciphertext = aes.encrypt(rawData);
+    const ciphertext = aes.encrypt(data);
 
     const cipherTextCombinedWithNonce = concatBytes(nonce, ciphertext);
 
-    return Buffer.from(cipherTextCombinedWithNonce).toString('base64');
+    return cipherTextCombinedWithNonce;
   }
 
   /**
@@ -440,7 +436,7 @@ export class MetadataStore {
   #decryptData(
     cipherTextCombinedWithNonceString: string,
     encryptionKey: Uint8Array,
-  ): string {
+  ): Uint8Array {
     const cipherTextCombinedWithNonce = new Uint8Array(
       Buffer.from(cipherTextCombinedWithNonceString, 'base64'),
     );
@@ -448,8 +444,8 @@ export class MetadataStore {
     const rawEncData = cipherTextCombinedWithNonce.slice(this.#nonceSize);
 
     const aes = gcm(encryptionKey, nonce);
-    const rawData = aes.decrypt(rawEncData);
+    const decryptedData = aes.decrypt(rawEncData);
 
-    return bytesToUtf8(rawData);
+    return decryptedData;
   }
 }
