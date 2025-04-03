@@ -16,7 +16,6 @@ import type {
   FetchSecretDataParams,
   FetchSecretDataResult,
   IToprfSecureBackup,
-  NodeAuthTokens,
   RecoverEncryptionKeyParams,
   RecoverEncryptionKeyResult,
   StoreSecretDataParams,
@@ -36,6 +35,8 @@ import { recoverTOPRFSeed } from './toprfEvalRequest';
  */
 export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   readonly #nodeDetailManager: NodeDetailManager;
+
+  #metadataStoreCache: MetadataStore | undefined;
 
   /**
    *
@@ -202,21 +203,14 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @returns A promise that resolves when the secret data is stored.
    */
   async storeSecretData(params: StoreSecretDataParams): Promise<void> {
-    const { nodeAuthTokens } = params;
-
-    const metadataStore = await this.#getMetadataStore(nodeAuthTokens);
-    await metadataStore.storeSecretData(
-      params.secretData,
-      params.encKey,
-      params.authKeyPair,
-    );
+    const metadataStore = await this.#getMetadataStore();
+    await metadataStore.storeSecretData(params);
   }
 
   /**
    * This function decrypts the secret data using the decryption key and returns the decrypted secret data.
    *
    * @param params - The parameters for fetching the secret data.
-   * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
    * @param params.decKey - The decryption key to be used to decrypt the secret data.
    * @param params.authKeyPair - The authentication key to be used to provide valid signature for fetching the secret data.
    *
@@ -225,7 +219,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   async fetchSecretData(
     params: FetchSecretDataParams,
   ): Promise<FetchSecretDataResult | null> {
-    const metadataStore = await this.#getMetadataStore(params.nodeAuthTokens);
+    const metadataStore = await this.#getMetadataStore();
     return metadataStore.fetchSecretData(params.decKey, params.authKeyPair);
   }
 
@@ -267,20 +261,21 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   /**
    * Creates the metadata store instance.
    *
-   * @param nodeAuthTokens - The node auth tokens from the authenticate function.
-   *
    * @returns The metadata store.
    */
-  async #getMetadataStore(
-    nodeAuthTokens: NodeAuthTokens,
-  ): Promise<MetadataStore> {
-    const { nodeIndexes, nodeEndpoints } = await this.#getNodeDetails();
-    const metadataEndpoints = await this.#getMetadataEndpoints(nodeEndpoints);
+  async #getMetadataStore(): Promise<MetadataStore> {
+    if (this.#metadataStoreCache) {
+      return this.#metadataStoreCache;
+    }
+
+    const { nodeEndpointsMap } = await this.#getNodeDetails();
+    const metadataEndpointsMap =
+      await this.#getMetadataEndpointsMap(nodeEndpointsMap);
     const metadataStore = new MetadataStore({
-      authTokens: nodeAuthTokens,
-      nodeEndpoints: metadataEndpoints,
-      nodeIndexes,
+      nodeEndpointsMap: metadataEndpointsMap,
     });
+
+    this.#metadataStoreCache = metadataStore;
 
     return metadataStore;
   }
@@ -288,14 +283,18 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   /**
    * Gets the metadata endpoints.
    *
-   * @param nodeEndpoints - The node endpoints.
+   * @param nodeEndpointsMap - The node endpoints map.
    *
-   * @returns The metadata endpoints.
+   * @returns The metadata endpoints map with node index as key and metadata endpoint as value.
    */
-  async #getMetadataEndpoints(nodeEndpoints: string[]): Promise<string[]> {
-    return nodeEndpoints.map((endpoint) => {
-      const url = new URL(endpoint);
-      return `${url.origin}/metadata`;
+  async #getMetadataEndpointsMap(
+    nodeEndpointsMap: Record<number, string>,
+  ): Promise<Map<number, string>> {
+    const metadataEndpointsMap = new Map<number, string>();
+    Object.entries(nodeEndpointsMap).forEach(([key, value]) => {
+      const url = new URL(value);
+      metadataEndpointsMap.set(Number(key), `${url.origin}/metadata`);
     });
+    return metadataEndpointsMap;
   }
 }

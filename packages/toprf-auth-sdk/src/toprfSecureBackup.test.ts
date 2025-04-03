@@ -125,7 +125,6 @@ describe('toprf secure backup', function () {
     });
 
     const fetchedSecretData = await toprfSecureBackup.fetchSecretData({
-      nodeAuthTokens: result.nodeAuthTokens,
       decKey: encKeyResult.encKey,
       authKeyPair: encKeyResult.authKeyPair,
     });

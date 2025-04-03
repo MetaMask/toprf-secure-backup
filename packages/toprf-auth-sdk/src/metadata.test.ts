@@ -10,26 +10,26 @@ import { generateMockAuthTokenForMetadataRequests } from '../tests/metadata-util
 
 const MOCK_SEED = randomBytes(32);
 const METADATA_SERVER_URL = 'http://localhost:5051';
-const NODE_INDEXES = [1];
+const NODE_ENDPOINTS_MAP = new Map([
+  [1, METADATA_SERVER_URL],
+  [2, METADATA_SERVER_URL],
+  [3, METADATA_SERVER_URL],
+]);
 
 /**
  * Creates a mock MetadataStore instance.
  *
- * @param authTokens - The authentication tokens for the metadata store.
- * @param nodeEndpoints - The endpoints of the nodes for the metadata store.
- * @param nodeIndexes - The indexes of the nodes for the metadata store.
+ * @param nodeEndpointsMap - The map of node endpoints which includes node index as key and node endpoint as value.
  * @returns A mock MetadataStore instance.
  */
 function mockMetadataStoreFactory(
-  authTokens: NodeAuthTokens,
-  nodeEndpoints = [METADATA_SERVER_URL],
-  nodeIndexes = NODE_INDEXES,
+  nodeEndpointsMap: Map<number, string> = NODE_ENDPOINTS_MAP,
 ): MetadataStore {
-  return new MetadataStore({ authTokens, nodeEndpoints, nodeIndexes });
+  return new MetadataStore({ nodeEndpointsMap });
 }
 
 describe('MetadataStore', () => {
-  let authTokens: NodeAuthTokens;
+  let nodeAuthTokens: NodeAuthTokens;
   let encKey: Uint8Array;
   let authKeyPair: KeyPair;
   const verifier = 'torus-test-health';
@@ -37,7 +37,7 @@ describe('MetadataStore', () => {
 
   beforeAll(async () => {
     // TODO: get from the `authenticateRequest` function instead of using the mock
-    authTokens = generateMockAuthTokenForMetadataRequests({
+    nodeAuthTokens = generateMockAuthTokenForMetadataRequests({
       verifier,
       verifierId,
     });
@@ -49,26 +49,15 @@ describe('MetadataStore', () => {
     };
   });
 
-  it('should throw an error if invalid nodeEndpoints and nodeIndexes are provided for metadata server', () => {
-    expect(() => new MetadataStore({ authTokens })).toThrow(
-      'nodeEndpoints and nodeIndexes are required for metadata server',
+  it('should throw an error if invalid nodeEndpointsMap is provided for metadata server', () => {
+    expect(() => new MetadataStore()).toThrow(
+      'nodeEndpointsMap is required for metadata server',
     );
-
-    expect(
-      () =>
-        new MetadataStore({
-          authTokens,
-          nodeEndpoints: [METADATA_SERVER_URL],
-          nodeIndexes: [],
-        }),
-    ).toThrow('nodeEndpoints and nodeIndexes must have the same length');
   });
 
   it('should be able to initialize with default storage location', () => {
     const metadataStore = new MetadataStore({
-      authTokens,
-      nodeEndpoints: [METADATA_SERVER_URL],
-      nodeIndexes: [0],
+      nodeEndpointsMap: NODE_ENDPOINTS_MAP,
     });
 
     expect(metadataStore).toBeDefined();
@@ -77,23 +66,31 @@ describe('MetadataStore', () => {
     );
   });
 
-  it('should throw an error if valid `authToken` cannot be found with the given nodeIndex', async () => {
+  it('should throw an error if endpoint is not found for the node auth token', async () => {
     const metadataStore = new MetadataStore({
-      authTokens,
-      nodeEndpoints: [METADATA_SERVER_URL],
-      nodeIndexes: [2],
+      nodeEndpointsMap: new Map([[3, 'http://localhost:5051']]),
     });
 
     await expect(async () =>
-      metadataStore.storeSecretData('SECRET_DATA', encKey, authKeyPair),
-    ).rejects.toThrow('Auth token not found for node index: 2');
+      metadataStore.storeSecretData({
+        secretData: 'SECRET_DATA',
+        encKey,
+        authKeyPair,
+        nodeAuthTokens,
+      }),
+    ).rejects.toThrow('Endpoint not found for node index: 1');
   });
 
   it('should be able to store/fetch data', async () => {
-    const metadataStore = mockMetadataStoreFactory(authTokens);
+    const metadataStore = mockMetadataStoreFactory();
     const secretData = 'SECRET_DATA';
 
-    await metadataStore.storeSecretData(secretData, encKey, authKeyPair);
+    await metadataStore.storeSecretData({
+      secretData,
+      encKey,
+      authKeyPair,
+      nodeAuthTokens,
+    });
 
     const result = await metadataStore.fetchSecretData(encKey, authKeyPair);
     expect(result).not.toBeNull();
@@ -101,12 +98,17 @@ describe('MetadataStore', () => {
   });
 
   it('should be able to store/fetch data with different instances', async () => {
-    const metadataStore1 = mockMetadataStoreFactory(authTokens);
-    const metadataStore2 = mockMetadataStoreFactory(authTokens);
+    const metadataStore1 = mockMetadataStoreFactory();
+    const metadataStore2 = mockMetadataStoreFactory();
 
     const secretData = 'SECRET_DATA';
 
-    await metadataStore1.storeSecretData(secretData, encKey, authKeyPair);
+    await metadataStore1.storeSecretData({
+      secretData,
+      encKey,
+      authKeyPair,
+      nodeAuthTokens,
+    });
 
     const result = await metadataStore2.fetchSecretData(encKey, authKeyPair);
 
@@ -114,8 +116,8 @@ describe('MetadataStore', () => {
     expect(result?.secretData[0]).toBe(secretData);
   });
 
-  it('should get empty array if metadata key not found', async () => {
-    const metadataStore = mockMetadataStoreFactory(authTokens);
+  it('should get null if metadata key not found', async () => {
+    const metadataStore = mockMetadataStoreFactory();
 
     const randomSeed = randomBytes(32);
     const { sk, pk } = deriveAuthenticationKeyPair(randomSeed);
@@ -127,10 +129,10 @@ describe('MetadataStore', () => {
       deriveEncryptionKey(randomSeed),
       randomAuthKeyPair,
     );
-    expect(result?.secretData.length).toBe(0);
+    expect(result).toBeNull();
   });
 
-  it('should return `null` if the data is not present in the metadata response', async () => {
+  it('should an error if the data is not present in the metadata response', async () => {
     const fetchSpy = jest
       .spyOn(global, 'fetch')
       .mockImplementation(async () => {
@@ -146,13 +148,48 @@ describe('MetadataStore', () => {
         } as Response);
       });
 
-    const metadataStore = mockMetadataStoreFactory(authTokens);
+    const metadataStore = mockMetadataStoreFactory();
 
-    const result = await metadataStore.fetchSecretData(encKey, authKeyPair);
+    await expect(
+      metadataStore.fetchSecretData(encKey, authKeyPair),
+    ).rejects.toThrow('Threshold not resolved');
 
     expect(fetchSpy).toHaveBeenCalled();
-    expect(result).toBeNull();
 
+    jest.restoreAllMocks();
+  });
+
+  it('should throw an error if the threshold is not met', async () => {
+    const metadataStore = new MetadataStore({
+      nodeEndpointsMap: NODE_ENDPOINTS_MAP,
+    });
+
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(async (input) => {
+        const url = new URL(input as string);
+        const nodeIndex = url.pathname.split('/')[1];
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          /**
+           * @returns json object
+           */
+          json: async () =>
+            Promise.resolve({
+              data: [`SECRET_DATA_${nodeIndex}`],
+              success: true,
+            }),
+          // eslint-disable-next-line no-restricted-globals
+        } as Response);
+      });
+
+    await expect(
+      metadataStore.fetchSecretData(encKey, authKeyPair),
+    ).rejects.toThrow('Threshold not resolved');
+
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
     jest.restoreAllMocks();
   });
 
@@ -172,17 +209,22 @@ describe('MetadataStore', () => {
         } as Response);
       });
 
-    const metadataStore = mockMetadataStoreFactory(authTokens);
+    const metadataStore = mockMetadataStoreFactory();
 
     await expect(
-      metadataStore.storeSecretData('SECRET_DATA', encKey, authKeyPair),
+      metadataStore.storeSecretData({
+        secretData: 'SECRET_DATA',
+        encKey,
+        authKeyPair,
+        nodeAuthTokens,
+      }),
     ).rejects.toThrow('Something went wrong!');
 
     await expect(
       metadataStore.fetchSecretData(encKey, authKeyPair),
-    ).rejects.toThrow('Something went wrong!');
+    ).rejects.toThrow('Threshold not resolved');
 
-    expect(fetchSpy).toHaveBeenCalledTimes(2 * NODE_INDEXES.length);
+    expect(fetchSpy).toHaveBeenCalled();
 
     jest.restoreAllMocks();
   });
@@ -194,17 +236,22 @@ describe('MetadataStore', () => {
         throw new Error();
       });
 
-    const metadataStore = mockMetadataStoreFactory(authTokens);
+    const metadataStore = mockMetadataStoreFactory();
 
     await expect(
-      metadataStore.storeSecretData('SECRET_DATA', encKey, authKeyPair),
+      metadataStore.storeSecretData({
+        secretData: 'SECRET_DATA',
+        encKey,
+        authKeyPair,
+        nodeAuthTokens,
+      }),
     ).rejects.toThrow('Unknown error');
 
     await expect(
       metadataStore.fetchSecretData(encKey, authKeyPair),
-    ).rejects.toThrow('Unknown error');
+    ).rejects.toThrow('Threshold not resolved');
 
-    expect(fetchSpy).toHaveBeenCalledTimes(2 * NODE_INDEXES.length);
+    expect(fetchSpy).toHaveBeenCalled();
 
     jest.restoreAllMocks();
   });
