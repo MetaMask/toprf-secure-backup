@@ -97,9 +97,7 @@ export class MetadataStore {
         );
       }
 
-      const metadataEndpoints = nodeEndpoints;
-
-      this.#metadataEndpoints = metadataEndpoints;
+      this.#metadataEndpoints = nodeEndpoints;
       this.#nodeIndexes = nodeIndexes;
     } else {
       // Otherwise, the Profile-Sync SDK will handle the storage url
