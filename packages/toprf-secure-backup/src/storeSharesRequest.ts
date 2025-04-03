@@ -66,14 +66,14 @@ export const createStoreKeySharesRequestParams = async (
 };
 
 /**
- * Creates a store key shares request to the given endpoint.
+ * Sends a store key shares request to the given endpoint.
  *
  * @param endpoint - The endpoint to be used for the store key shares request.
  * @param params - The parameters for the store key shares request.
  *
  * @returns The store key shares request promise.
  */
-export const createStoreKeySharesRequest = async (
+export const sendStoreKeySharesRequest = async (
   endpoint: string,
   params: StoreKeySharesJRPCRequestParams,
 ): Promise<StoreKeySharesJRPCResponse> => {
@@ -127,7 +127,7 @@ export const storeKeyShares = async (
     verifierId,
   );
   const proxyNodeEndpoint = nodeEndpointsMap[proxyNodeEndpointIndex];
-  const storeReqPromise = await createStoreKeySharesRequest(
+  const storeReqPromise = await sendStoreKeySharesRequest(
     proxyNodeEndpoint,
     requestParams,
   );
