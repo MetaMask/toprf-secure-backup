@@ -9,8 +9,6 @@ describe('commitment request', function () {
   beforeAll(async function () {
     nodeDetailManager = new NodeDetailManager({
       network: 'sapphire_devnet',
-      keyType: 'secp256k1',
-      sigType: 'ecdsa-secp256k1',
     });
   });
   it('should create a commitment request', async function () {

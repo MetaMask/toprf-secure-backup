@@ -28,7 +28,7 @@ export class SomeError<TResponse> extends Error {
     // as data is always encrypted with temp key
     // temp key should not be logged anywhere
     const message = `Unable to resolve enough promises. 
-      errors: ${errors.map((x) => x?.message || x).join(', ')}, 
+      errors: ${errors.map((er: Error | undefined) => er?.message ?? er).join(', ')}, 
       predicate error: ${predicate},
       ${responses.length} responses,
       responses: ${JSON.stringify(responses)}`;
@@ -42,7 +42,7 @@ export class SomeError<TResponse> extends Error {
    * @returns - message with errors and responses from all promises.
    */
   get message(): string {
-    return `${super.message}. errors: ${this.errors.map((x) => x?.message || x).join(', ')} and ${
+    return `${super.message}. errors: ${this.errors.map((er: Error | undefined) => er?.message ?? er).join(', ')} and ${
       this.responses.length
     } responses: ${JSON.stringify(this.responses)},
       predicate error: ${this.predicate}`;
@@ -146,7 +146,7 @@ abstract class AbstractTOPRFError extends CustomError implements ITOPRFError {
     this.code = code;
     this.message = message || '';
     // Set name explicitly as minification can mangle class names
-    Object.defineProperty(this, 'name', { value: 'TkeyError' });
+    Object.defineProperty(this, 'name', { value: 'TOPRFSecureBackupError' });
   }
 
   /**
@@ -173,6 +173,7 @@ abstract class AbstractTOPRFError extends CustomError implements ITOPRFError {
  */
 class TOPRFError extends AbstractTOPRFError {
   protected static messages: { [key: number]: string } = {
+    1000: 'Something went wrong.',
     1001: 'Invalid authenticate results.',
   };
 
@@ -193,7 +194,17 @@ class TOPRFError extends AbstractTOPRFError {
    * @returns - The error for the given code.
    */
   public static fromCode(code: number, extraMessage = ''): ITOPRFError {
-    return new TOPRFError(code, `${TOPRFError.messages[code]} ${extraMessage}`);
+    const extendedMessage = extraMessage ? ` ${extraMessage}` : '';
+    if (!TOPRFError.messages[code]) {
+      return new TOPRFError(
+        1000,
+        `${TOPRFError.messages[1000]}${extendedMessage}`,
+      );
+    }
+    return new TOPRFError(
+      code,
+      `${TOPRFError.messages[code]}${extendedMessage}`,
+    );
   }
 
   /**

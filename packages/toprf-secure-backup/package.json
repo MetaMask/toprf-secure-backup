@@ -72,9 +72,6 @@
     "typedoc-plugin-missing-exports": "^2.0.0",
     "typescript": "~5.2.2"
   },
-  "resolutions": {
-    "@metamask/auth-network-utils@0.0.0": "file:../auth-network-utils/packages/auth-network-utils"
-  },
   "engines": {
     "node": "^18.18 || >=20"
   },

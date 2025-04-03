@@ -5,7 +5,7 @@ import {
 } from '@metamask/auth-network-utils';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
-import { JRPC_METHODS } from './constants';
+import { COMMIT_RETRY_COUNT, JRPC_METHODS } from './constants';
 import type {
   CommitmentJRPCRequest,
   CommitmentJRPCRequestParams,
@@ -15,7 +15,7 @@ import type {
 import { postJRPCRequest } from './utils';
 
 /**
- * Creates the parameters for the commitment request
+ * Creates the parameters for the commitment request.
  *
  * @param tokenCommitment - The token commitment, hash of the idToken (without 0x prefix).
  * @param verifier - The verifier
@@ -39,7 +39,7 @@ export const createCommitmentRequestParams = (
 };
 
 /**
- * Sends a commitment request to the given endpoint
+ * Sends a commitment request to the given endpoint.
  *
  * @param endpoint - The endpoint to be used for the commitment request.
  * @param params - The parameters for the commitment request.
@@ -60,15 +60,15 @@ export const sendCommitmentRequest = async (
    */
   const commitmentResponse = async (): Promise<CommitmentJRPCResponse> =>
     postJRPCRequest<CommitmentJRPCResponse>(endpoint, commitmentJRPCRequest);
-  return retryPromiseWithBackoff(commitmentResponse, 4);
+  return retryPromiseWithBackoff(commitmentResponse, COMMIT_RETRY_COUNT);
 };
 
 /**
- * Validates the commitment responses
+ * Validates the commitment responses.
  *
- * @param resultArr - The commitment request result
- * @param threshold - The threshold for the number commitment responses to be valid
- * @returns The commitment request result
+ * @param resultArr - The commitment request result.
+ * @param threshold - The threshold for the number commitment responses to be valid.
+ * @returns The commitment request result.
  */
 export const validateThresholdCommitmentResponses = async (
   resultArr: CommitmentJRPCResponse[],
@@ -86,19 +86,16 @@ export const validateThresholdCommitmentResponses = async (
     },
   );
 
-  if (completedRequests.length >= threshold) {
-    const requiredNodeResult = completedRequests.find(
-      (resp) => resp !== undefined && 'result' in resp,
+  if (completedRequests.length < threshold) {
+    return Promise.reject(
+      new Error(
+        `Not enough completed requests. Expected: ${threshold}, got: ${completedRequests.length}, ${JSON.stringify(resultArr)}`,
+      ),
     );
-    if (requiredNodeResult) {
-      const validResultArr = completedRequests.filter((res) => res.result);
-      return validResultArr.map((res) => res.result as CommitmentRequestResult);
-    }
   }
-
-  return Promise.reject(
-    new Error(`invalid commitment results ${JSON.stringify(resultArr)}`),
-  );
+  return completedRequests
+    .filter((res) => res.result)
+    .map((res) => res.result as CommitmentRequestResult);
 };
 
 /**

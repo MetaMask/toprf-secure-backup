@@ -81,37 +81,37 @@ export const validateThresholdAuthenticateResponses = async (
     }
     return true;
   });
-  if (completedRequests.length >= threshold) {
-    const pubData = completedRequests.map((res: AuthJRPCResponse) => {
-      const result = res.result as AuthRequestResult;
-      return {
-        pubKey: result.pubKey,
-        keyIndex: result.keyIndex,
-      };
-    });
-    const thresholdPubData = thresholdSame(pubData, threshold);
-    if (!thresholdPubData) {
-      throw TOPRFError.invalidAuthenticateResults(
-        `Threshold pubKey not found for ${JSON.stringify(pubData)}`,
-      );
-    }
-    const isExistingUser = Boolean(thresholdPubData?.pubKey);
-    const hasThresholdResponses = completedRequests.length >= threshold;
-    const hasMaxResponses = completedRequests.length === nodesCount;
-
-    // if it is old user thn we can return the result, as soon as we get the threshold number of responses.
-    if (isExistingUser && hasThresholdResponses) {
-      return completedRequests.map((res) => res.result as AuthRequestResult);
-    } else if (!isExistingUser && hasMaxResponses) {
-      // if it is new user then we need to wait for all the responses because we will need all nodes to be online
-      // while storing shares of this new user.
-      return completedRequests.map((res) => res.result as AuthRequestResult);
-    }
+  if (completedRequests.length < threshold) {
+    return Promise.reject(
+      TOPRFError.invalidAuthenticateResults(
+        `Not enough completed requests. Expected: ${threshold}, got: ${completedRequests.length}`,
+      ),
+    );
   }
+  const pubData = completedRequests.map((res: AuthJRPCResponse) => {
+    const result = res.result as AuthRequestResult;
+    return {
+      pubKey: result.pubKey,
+      keyIndex: result.keyIndex,
+    };
+  });
+  const thresholdPubData = thresholdSame(pubData, threshold);
+  if (!thresholdPubData) {
+    throw TOPRFError.invalidAuthenticateResults(
+      `Threshold pubKey not found for ${JSON.stringify(pubData)}`,
+    );
+  }
+  const newUser = !thresholdPubData.pubKey;
+  const hasMaxResponses = completedRequests.length === nodesCount;
 
-  return Promise.reject(
-    TOPRFError.invalidAuthenticateResults(`${JSON.stringify(resultArr)}`),
-  );
+  // if it is new user then we need to wait for all the responses because we will need all nodes to be online
+  // while storing shares of this new user.
+  if (newUser && !hasMaxResponses) {
+    throw TOPRFError.invalidAuthenticateResults(
+      `Not enough completed requests. Expected: ${nodesCount}, got: ${completedRequests.length}`,
+    );
+  }
+  return completedRequests.map((res) => res.result as AuthRequestResult);
 };
 
 /**
@@ -155,23 +155,19 @@ export const authenticateUser = async (params: {
   );
 
   const threshold = Math.floor(endpoints.length / 2) + 1;
-  const results = await new Promise<AuthRequestResult[]>((resolve, reject) => {
-    Some<AuthJRPCResponse, AuthRequestResult[]>(promiseArr, async (resultArr) =>
+  const results = await Some<AuthJRPCResponse, AuthRequestResult[]>(
+    promiseArr,
+    async (responses) =>
       validateThresholdAuthenticateResponses(
-        resultArr,
+        responses,
         endpoints.length,
         threshold,
       ),
-    )
-      .then((resultArr: AuthRequestResult[] | void) => {
-        if (!resultArr || resultArr.length === 0) {
-          throw new Error('Invalid authenticate request results');
-        } else {
-          return resolve(resultArr);
-        }
-      })
-      .catch(reject);
-  });
+  );
+
+  if (!results || results.length === 0) {
+    throw new Error('Invalid authenticate request results');
+  }
   const decryptedAuthResults = await Promise.all(
     results.map(async (result) => {
       const { authToken, nodeIndex, nodePubKey, pubKey, keyIndex } = result;

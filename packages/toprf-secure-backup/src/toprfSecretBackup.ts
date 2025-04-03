@@ -36,8 +36,6 @@ export class ToprfSecretBackup implements Partial<IToprfSecureBackup> {
   constructor(params: { network: TORUS_SAPPHIRE_NETWORK_TYPE }) {
     this.#nodeDetailManager = new NodeDetailManager({
       network: params.network,
-      keyType: 'secp256k1',
-      sigType: 'ecdsa-secp256k1',
     });
   }
 
