@@ -1,1 +1,5 @@
-{}
+{
+  "packages/toprf-secure-backup/src/interfaces.ts": {
+    "@typescript-eslint/naming-convention": 1
+  }
+}

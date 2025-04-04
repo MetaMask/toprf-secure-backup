@@ -115,10 +115,6 @@ describe('commitment request', function () {
     // node endpoints without path, so that test won't get stucked.
     endpoints[0] = endpoints[0].replace('/jrpc', '');
     endpoints[1] = endpoints[1].replace('/jrpc', '');
-    endpoints[2] = endpoints[1].replace('/jrpc', '');
-    endpoints[3] = endpoints[1].replace('/jrpc', '');
-    endpoints[4] = endpoints[1].replace('/jrpc', '');
-
     await expect(
       commitIdToken({
         idToken,

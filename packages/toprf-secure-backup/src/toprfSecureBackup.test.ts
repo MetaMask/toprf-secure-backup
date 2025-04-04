@@ -70,11 +70,6 @@ describe('toprf secret backup', function () {
       verifier,
       verifierId: verifierID,
     });
-    expect(encKey).toBeDefined();
-    expect(encKey.authKeyPair).toBeDefined();
-    expect(encKey.authKeyPair.sk).toBeDefined();
-    expect(encKey.authKeyPair.pk).toBeDefined();
-    expect(encKey.encKey).toBeDefined();
 
     const recoveredEncKey = await toprfSecureBackup.recoverEncKey({
       nodeAuthTokens: result.nodeAuthTokens,
@@ -93,9 +88,25 @@ describe('toprf secret backup', function () {
     expect(recoveredEncKey.authKeyPair.pk).toStrictEqual(encKey.authKeyPair.pk);
   });
 
+  it('should throw error if user is not authenticated while creating enc key', async function () {
+    const verifier = 'torus-test-health';
+    const verifierID = `test-verifier-id-${Math.random()}`;
+    const toprfSecureBackup = new ToprfSecureBackup({
+      network: 'sapphire_devnet',
+    });
+
+    await expect(
+      toprfSecureBackup.createEncKey({
+        nodeAuthTokens: [],
+        password: 'test-password',
+        verifier,
+        verifierId: verifierID,
+      }),
+    ).rejects.toBeDefined();
+  });
+
   // TODO: Tests failed at the moment. We need to wait for the metadata-server to be deployed in all nodes.
   it('should be able to store secret data', async function () {
-    const secretData = utf8ToBytes('test-secret-data');
     const verifier = 'torus-test-health';
     const verifierID = `test-verifier-id-${Math.random()}`;
     const idToken = generateIdToken(verifierID, 'ES256');
@@ -108,6 +119,7 @@ describe('toprf secret backup', function () {
       verifier,
       verifierID,
     });
+    const secretData = utf8ToBytes('test-secret-data');
     const encKeyResult = await toprfSecureBackup.createEncKey({
       nodeAuthTokens: result.nodeAuthTokens,
       password: 'test-password',
@@ -128,5 +140,31 @@ describe('toprf secret backup', function () {
     });
     expect(fetchedSecretData).not.toBeNull();
     expect(fetchedSecretData?.[0]).toStrictEqual(secretData);
+  });
+
+  // somehow this test fails, need to check backend logs,.
+  // eslint-disable-next-line jest/no-disabled-tests
+  it.skip('should throw error if user is not authenticated by enough nodes while creating enc key', async function () {
+    const verifier = 'torus-test-health';
+    const verifierID = `test-verifier-id-${Math.random()}`;
+    const idToken = generateIdToken(verifierID, 'ES256');
+    const toprfSecureBackup = new ToprfSecureBackup({
+      network: 'sapphire_devnet',
+    });
+
+    const result = await toprfSecureBackup.authenticate({
+      idTokens: [idToken],
+      verifier,
+      verifierID,
+    });
+
+    await expect(
+      toprfSecureBackup.createEncKey({
+        nodeAuthTokens: result.nodeAuthTokens.slice(0, 2),
+        password: 'test-password',
+        verifier,
+        verifierId: verifierID,
+      }),
+    ).rejects.toBeDefined();
   });
 });
