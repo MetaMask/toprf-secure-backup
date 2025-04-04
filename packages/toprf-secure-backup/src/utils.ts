@@ -16,8 +16,10 @@ import { decrypt, encrypt } from '@toruslabs/eccrypto';
 import { post } from '@toruslabs/http-helpers';
 import BN from 'bn.js';
 import type * as EC from 'elliptic';
+import { keccak256 } from 'ethereum-cryptography/keccak';
+import { secp256k1 } from 'ethereum-cryptography/secp256k1';
 
-import type { NodeAuthTokens } from './interfaces';
+import type { NodeAuthTokens, KeyChangeProof } from './interfaces';
 import type { ShareImportItem } from './jrpcInterfaces';
 
 type EncryptedData = {
@@ -131,36 +133,170 @@ const encryptData = async (
 };
 
 /**
- * Creates a share import item for a node
+ * Prepares shares for the given nodes, calculating threshold and converting parameters
  *
- * @param encryptedShare - The encrypted share to be used for the share import item.
- * @param keyIndex - The key index to be used for the share import item.
- * @param authToken - The auth token of the node required for validating the user on backend.
- * @param nodePubKey - The public key of the node to be used for the share import item.
- * @param nodeIndex - The node index to be used for the share import item.
- * @param nodeEndpointsMap - Map of node indexes to endpoints.
- * @returns The share import item containing the encrypted share, the key index, the node index, and the sss endpoint.
+ * @param nodeEndpointsMap - Map of node indexes to endpoints
+ * @param privKey - Private key to use for shares
+ * @returns The prepared shares and node indexes
  */
-const createShareImportItem = async (
-  encryptedShare: EncryptedData,
-  keyIndex: number,
-  authToken: string,
-  nodePubKey: Buffer,
-  nodeIndex: number,
+export const prepareNodeShares = (
   nodeEndpointsMap: Record<number, string>,
-): Promise<ShareImportItem> => {
-  const encryptedAuthToken = await encryptData(
-    Buffer.from(authToken, 'base64'),
-    nodePubKey,
+  privKey: bigint,
+): { shares: ShareMap; nodeIndexes: number[] } => {
+  const privKeyBN = bigIntToBN(privKey);
+  const ecCurve = getSecp256K1Curve();
+  const allNodeIndexes = Object.keys(nodeEndpointsMap).map((val: string) =>
+    parseInt(val, 10),
   );
+  const threshold = Math.floor(allNodeIndexes.length / 2) + 1;
+  const shares = generateShares(ecCurve, allNodeIndexes, privKeyBN, threshold);
 
-  return {
-    encryptedShare: JSON.stringify(encryptedShare),
-    encryptedAuthToken: JSON.stringify(encryptedAuthToken),
+  return { shares, nodeIndexes: allNodeIndexes };
+};
+
+/**
+ * Creates a signature for key change using the share and old private key
+ *
+ * @param shareValue - The raw share value to sign
+ * @param keyIndex - The key index for the share
+ * @param nodeIndex - The node index
+ * @param oldAuthPrivKey - The old auth private key for signing
+ * @returns The signature and timestamp as a KeyChangeProof
+ */
+export const createKeyChangeProof = (
+  shareValue: BN,
+  keyIndex: number,
+  nodeIndex: number,
+  oldAuthPrivKey: bigint,
+): KeyChangeProof => {
+  const timestamp = Date.now();
+  const shareData = Buffer.from(shareValue.toString(16), 'hex');
+
+  const dataToSign = toSnakeCaseKeys({
+    shareData: shareData.toString('hex'),
     shareKeyIndex: keyIndex,
     nodeIndex,
-    sssEndpoint: nodeEndpointsMap[nodeIndex],
+    timestamp,
+  });
+  const jsonData = JSON.stringify(dataToSign);
+  const dataHash = keccak256(Buffer.from(jsonData));
+
+  // Sign the hash with the old private key
+  const privateKeyBytes = Buffer.from(oldAuthPrivKey.toString(16), 'hex');
+  const signature = secp256k1.sign(dataHash, privateKeyBytes);
+
+  return {
+    oldKeySignature: Buffer.from(signature.toDERRawBytes()).toString('hex'),
+    signatureTimestamp: timestamp,
   };
+};
+
+/**
+ * Generate standard share import items without key change proof
+ *
+ * @param shares - The raw shares generated for each node
+ * @param nodeEndpointsMap - Map of node indexes to endpoints
+ * @param authTokens - Auth tokens for each node
+ * @param keyIndex - Key index for the shares
+ * @returns Share import items for standard flow
+ */
+export const createStandardShareImportItems = async (
+  shares: ShareMap,
+  nodeEndpointsMap: Record<number, string>,
+  authTokens: NodeAuthTokens,
+  keyIndex: number,
+): Promise<ShareImportItem[]> => {
+  return Promise.all(
+    authTokens.map(async (tokenData) => {
+      const { nodePubKey, nodeIndex, authToken } = tokenData;
+
+      // Get the raw share for this node
+      const shareKey = new BN(nodeIndex).toString('hex', 64);
+      const share = shares[shareKey];
+      const shareJson = share.toJSON() as Record<string, string>;
+
+      // Encrypt the share
+      const encryptedShare = await encryptData(
+        Buffer.from(shareJson.share, 'hex'),
+        Buffer.from(nodePubKey, 'hex'),
+      );
+
+      // Encrypt the auth token
+      const encryptedAuthToken = await encryptData(
+        Buffer.from(authToken, 'base64'),
+        Buffer.from(nodePubKey, 'hex'),
+      );
+
+      // Return the standard share import item
+      return {
+        encryptedShare: JSON.stringify(encryptedShare),
+        encryptedAuthToken: JSON.stringify(encryptedAuthToken),
+        shareKeyIndex: keyIndex,
+        nodeIndex,
+        sssEndpoint: nodeEndpointsMap[nodeIndex],
+      };
+    }),
+  );
+};
+
+/**
+ * Generate key change share import items with proofs
+ *
+ * @param shares - The raw shares generated for each node
+ * @param nodeEndpointsMap - Map of node indexes to endpoints
+ * @param authTokens - Auth tokens for each node
+ * @param keyIndex - Key index for the shares
+ * @param oldAuthPrivKey - Old private key for signing
+ * @returns Share import items for key change flow
+ */
+export const createKeyChangeShareImportItems = async (
+  shares: ShareMap,
+  nodeEndpointsMap: Record<number, string>,
+  authTokens: NodeAuthTokens,
+  keyIndex: number,
+  oldAuthPrivKey: bigint,
+): Promise<ShareImportItem<'keyChange'>[]> => {
+  return Promise.all(
+    authTokens.map(async (tokenData) => {
+      const { nodePubKey, nodeIndex, authToken } = tokenData;
+
+      // Get the raw share for this node
+      const shareKey = new BN(nodeIndex).toString('hex', 64);
+      const share = shares[shareKey];
+      const shareJson = share.toJSON() as Record<string, string>;
+
+      // Create key change proof
+      const shareValue = new BN(shareJson.share, 16);
+      const keyChangeProof = createKeyChangeProof(
+        shareValue,
+        keyIndex,
+        nodeIndex,
+        oldAuthPrivKey,
+      );
+
+      // Encrypt the share
+      const encryptedShare = await encryptData(
+        Buffer.from(shareJson.share, 'hex'),
+        Buffer.from(nodePubKey, 'hex'),
+      );
+
+      // Encrypt the auth token
+      const encryptedAuthToken = await encryptData(
+        Buffer.from(authToken, 'base64'),
+        Buffer.from(nodePubKey, 'hex'),
+      );
+
+      // Return the key change share import item
+      return {
+        encryptedShare: JSON.stringify(encryptedShare),
+        encryptedAuthToken: JSON.stringify(encryptedAuthToken),
+        shareKeyIndex: keyIndex,
+        nodeIndex,
+        sssEndpoint: nodeEndpointsMap[nodeIndex],
+        ...keyChangeProof,
+      };
+    }),
+  );
 };
 
 /**
@@ -170,50 +306,42 @@ const createShareImportItem = async (
  * @param authTokens - The auth tokens issued by the nodes on authenticating the user.
  * @param privKey - The private key to be used for the share import items.
  * @param keyIndex - The key index to be used for the share import items.
+ * @param args - Additional arguments based on ShareType.
+ * When ShareType is 'keyChange', this must include the old auth private key for signing.
  *
- * @returns The share import items containing the encrypted shares, the key index, the node index, and the sss endpoint.
+ * @returns The share import items containing the encrypted shares. Will be type
+ * ShareImportItem<'standard'> when using standard flow or
+ * ShareImportItem<'keyChange'> when using key change flow.
  */
-export const generateShareImportItems = async (
+export const generateShareImportItems = async <
+  ShareType extends 'standard' | 'keyChange' = 'standard',
+>(
   nodeEndpointsMap: Record<number, string>,
   authTokens: NodeAuthTokens,
   privKey: bigint,
   keyIndex: number,
-): Promise<ShareImportItem[]> => {
-  const privKeyBN = bigIntToBN(privKey);
-  const ecCurve = getSecp256K1Curve();
-  const threshold = Math.floor(Object.values(nodeEndpointsMap).length / 2) + 1;
-  const allNodeIndexes = Object.keys(nodeEndpointsMap).map((val: string) =>
-    parseInt(val, 10),
-  );
-  // Generate shares for each node
-  const shares = generateShares(ecCurve, allNodeIndexes, privKeyBN, threshold);
+  ...args: ShareType extends 'keyChange' ? [oldAuthPrivKey: bigint] : []
+): Promise<ShareImportItem<ShareType>[]> => {
+  // First prepare the shares for all nodes
+  const { shares } = prepareNodeShares(nodeEndpointsMap, privKey);
 
-  // Encrypt shares for each node
-  const encryptionPromises = authTokens.map(async (authTokenData) => {
-    const { nodePubKey, nodeIndex } = authTokenData;
+  const oldAuthPrivKey = args[0];
 
-    const share = shares[new BN(nodeIndex).toString('hex', 64)];
+  // Generate appropriate share import items based on whether it's a key change
+  if (oldAuthPrivKey !== undefined) {
+    return createKeyChangeShareImportItems(
+      shares,
+      nodeEndpointsMap,
+      authTokens,
+      keyIndex,
+      oldAuthPrivKey,
+    ) as unknown as ShareImportItem<ShareType>[];
+  }
 
-    const shareJson = share.toJSON() as Record<string, string>;
-    return encryptData(
-      Buffer.from(shareJson.share.padStart(64, '0'), 'hex'),
-      Buffer.from(nodePubKey, 'hex'),
-    );
-  });
-
-  const encryptedShares = await Promise.all(encryptionPromises);
-
-  // Create share import items
-  return Promise.all(
-    authTokens.map(async (tokenData, i) => {
-      return createShareImportItem(
-        encryptedShares[i],
-        keyIndex,
-        tokenData.authToken,
-        Buffer.from(tokenData.nodePubKey, 'hex'),
-        tokenData.nodeIndex,
-        nodeEndpointsMap,
-      );
-    }),
-  );
+  return createStandardShareImportItems(
+    shares,
+    nodeEndpointsMap,
+    authTokens,
+    keyIndex,
+  ) as unknown as ShareImportItem<ShareType>[];
 };

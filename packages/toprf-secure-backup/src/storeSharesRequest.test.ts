@@ -7,10 +7,10 @@ import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
 import { deriveAuthenticationKeyPair } from './keyDerivation';
 import { OPRF, generateRandomScalar } from './oprf';
-import { storeKeyShares } from './storeSharesRequest';
+import { storeKeyShares, changeKey } from './storeSharesRequest';
 import { generateIdToken } from '../tests/testHelpers';
 
-describe('store shares request', function () {
+describe('secure backup operations', function () {
   let nodeDetailManager: NodeDetailManager;
   beforeAll(async function () {
     nodeDetailManager = new NodeDetailManager({
@@ -85,5 +85,98 @@ describe('store shares request', function () {
 
     expect(storeSharesResponse).toBeDefined();
     expect(storeSharesResponse.error).toBeUndefined();
+  });
+
+  it('should be able to change key after storing shares', async function () {
+    const curve = getSecp256K1Curve();
+    const keyPair = curve.genKeyPair();
+    const pubPoint = keyPair.getPublic();
+    const verifier = 'torus-test-health';
+    const verifierID = `test-verifier-id-${Math.random()}`;
+
+    const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
+      await nodeDetailManager.getNodeDetails({
+        verifier,
+        verifierId: verifierID,
+      });
+
+    if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
+      throw new Error('Failed to get node details');
+    }
+
+    const idToken = generateIdToken(verifierID, 'ES256');
+    const sessionPubKeyX = pubPoint.getX().toString('hex');
+    const sessionPubKeyY = pubPoint.getY().toString('hex');
+
+    const commitmentResults = await commitIdToken({
+      idToken,
+      verifier,
+      sessionPubKeyX,
+      sessionPubKeyY,
+      endpoints: torusNodeSSSEndpoints,
+    });
+
+    const authTokens = await authenticateUser({
+      idToken,
+      verifier,
+      verifierID,
+      sessionPrivateKey: keyPair.getPrivate().toBuffer(),
+      endpoints: torusNodeSSSEndpoints,
+      commitmentSignatures: commitmentResults,
+    });
+
+    expect(authTokens).toBeDefined();
+
+    // Original password setup
+    const originalPasswordBytes = toBytes('original-password');
+    const hashedOriginalInput = sha256(originalPasswordBytes);
+    const oprfKey = generateRandomScalar();
+    const originalSeed = OPRF.localEval(oprfKey, hashedOriginalInput);
+    const originalAuthKeyPair = deriveAuthenticationKeyPair(originalSeed);
+
+    const nodeEndpointsMap = torusIndexes.reduce<Record<number, string>>(
+      (acc, index) => {
+        acc[index] = torusNodeSSSEndpoints[index - 1];
+        return acc;
+      },
+      {},
+    );
+
+    // Store shares with original password
+    const storeSharesResponse = await storeKeyShares({
+      nodeEndpointsMap,
+      verifier,
+      verifierId: verifierID,
+      authTokens,
+      keyIndex: 1,
+      oprfKey,
+      authPubKey: originalAuthKeyPair.pk,
+    });
+
+    expect(storeSharesResponse).toBeDefined();
+    expect(storeSharesResponse.error).toBeUndefined();
+
+    // Key change flow - new password setup
+    const newPasswordBytes = toBytes('new-password');
+    const hashedNewInput = sha256(newPasswordBytes);
+    const newOprfKey = generateRandomScalar();
+    const newSeed = OPRF.localEval(newOprfKey, hashedNewInput);
+    const newAuthKeyPair = deriveAuthenticationKeyPair(newSeed);
+
+    const keyChangeResponse = await changeKey({
+      nodeEndpointsMap,
+      verifier,
+      verifierId: verifierID,
+      authTokens,
+      oldAuthPrivKey: originalAuthKeyPair.sk,
+      keyIndex: 1, // From first registration
+      newOprfKey,
+      newAuthPubKey: newAuthKeyPair.pk,
+    });
+
+    console.log('zzzz keyChangeResponse', keyChangeResponse);
+
+    expect(keyChangeResponse).toBeDefined();
+    expect(keyChangeResponse.error).toBeUndefined();
   });
 });

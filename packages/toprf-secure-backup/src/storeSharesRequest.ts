@@ -9,8 +9,8 @@ import { JRPC_METHODS } from './constants';
 import type { NodeAuthTokens } from './interfaces';
 import type {
   StoreKeySharesJRPCRequestParams,
-  StoreKeySharesJRPCRequest,
   StoreKeySharesJRPCResponse,
+  StoreKeySharesJRPCRequest,
 } from './jrpcInterfaces';
 import { generateShareImportItems, postJRPCRequest } from './utils';
 
@@ -132,4 +132,117 @@ export const storeKeyShares = async (
     requestParams,
   );
   return storeReqPromise;
+};
+
+export type CreateKeyChangeRequestParamsInput = {
+  nodeEndpointsMap: Record<number, string>;
+  authTokens: NodeAuthTokens;
+  keyIndex: number;
+  verifier: string;
+  verifierId: string;
+  newOprfKey: bigint;
+  newAuthPubKey: Uint8Array;
+  oldAuthPrivKey: bigint;
+};
+
+export type KeyChangeRequestParams = CreateKeyChangeRequestParamsInput;
+
+/**
+ * Creates the parameters for the key change request
+ *
+ * @param params - The parameters for the key change request.
+ * @param params.nodeEndpointsMap - The map of node indexes to endpoints.
+ * @param params.authTokens - The authTokens to be used for the key change request.
+ * @param params.keyIndex - The key index to be used for the key change request.
+ * @param params.newOprfKey - The new oprfKey to be used for the key change request.
+ * @param params.newAuthPubKey - The new auth pubkey for the updated authentication.
+ * @param params.oldAuthPrivKey - The old auth private key used to sign the key change request.
+ *
+ * @returns The parameters for the key change request
+ */
+export const createKeyChangeRequestParams = async (
+  params: CreateKeyChangeRequestParamsInput,
+): Promise<StoreKeySharesJRPCRequestParams> => {
+  const {
+    nodeEndpointsMap,
+    authTokens,
+    keyIndex,
+    newOprfKey,
+    newAuthPubKey,
+    oldAuthPrivKey,
+    verifier,
+    verifierId,
+  } = params;
+
+  // Generate share import items with the old auth private key for signing
+  const shareImportItems = await generateShareImportItems<'keyChange'>(
+    nodeEndpointsMap,
+    authTokens,
+    newOprfKey,
+    keyIndex,
+    oldAuthPrivKey,
+  );
+
+  return {
+    pubKey: pubKeyToSec1(newAuthPubKey),
+    shareImportItems,
+    verifier,
+    verifierId,
+  };
+};
+
+/**
+ * Changes the key for the given node endpoints
+ *
+ * @param params - The parameters for the key change request
+ * @param params.nodeEndpointsMap - The node endpoints map to be used for the key change request.
+ * @param params.verifier - The verifier to be used for the key change request.
+ * @param params.verifierId - The verifierId to be used for the key change request.
+ * @param params.authTokens - The authTokens issued by the nodes on authenticating the user.
+ * @param params.keyIndex - The key index to be used for the key change request.
+ * @param params.newOprfKey - The new oprfKey to be used for the key change request.
+ * @param params.newAuthPubKey - The new auth pubkey for the updated authentication.
+ * @param params.oldAuthPrivKey - The old auth private key used to sign the key change request.
+ *
+ * @returns The key change request promise.
+ */
+export const changeKey = async (
+  params: KeyChangeRequestParams,
+): Promise<StoreKeySharesJRPCResponse> => {
+  const {
+    nodeEndpointsMap,
+    authTokens,
+    keyIndex,
+    newOprfKey,
+    newAuthPubKey,
+    oldAuthPrivKey,
+    verifier,
+    verifierId,
+  } = params;
+
+  const requestParams = await createKeyChangeRequestParams({
+    nodeEndpointsMap,
+    authTokens,
+    keyIndex,
+    newOprfKey,
+    newAuthPubKey,
+    oldAuthPrivKey,
+    verifier,
+    verifierId,
+  });
+
+  const proxyNodeEndpointIndex = getProxyCoordinatorNodeIndex(
+    authTokens.map((token) => token.nodeIndex),
+    verifier,
+    verifierId,
+  );
+  const proxyNodeEndpoint = nodeEndpointsMap[proxyNodeEndpointIndex];
+
+  // Use the same JRPC method as store shares but with the key change parameters
+  const keyChangeReqPromise = await sendStoreKeySharesRequest(
+    proxyNodeEndpoint,
+    requestParams,
+  );
+
+  return keyChangeReqPromise;
 };
