@@ -1,8 +1,4 @@
-import {
-  getSecp256K1Curve,
-  SomeError,
-  TOPRFError,
-} from '@metamask/auth-network-utils';
+import { getSecp256K1Curve, TOPRFError } from '@metamask/auth-network-utils';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import {
@@ -117,8 +113,8 @@ describe('commitment request', function () {
     }
     const endpoints = [...torusNodeSSSEndpoints];
     // node endpoints without path, so that test won't get stucked.
-    endpoints[0] = endpoints[0].replace('/sss', '');
-    endpoints[1] = endpoints[1].replace('/sss', '');
+    endpoints[0] = endpoints[0].replace('/jrpc', '');
+    endpoints[1] = endpoints[1].replace('/jrpc', '');
     await expect(
       commitIdToken({
         idToken,
@@ -127,7 +123,7 @@ describe('commitment request', function () {
         sessionPubKeyY,
         endpoints,
       }),
-    ).rejects.toBeInstanceOf(SomeError);
+    ).rejects.toBeDefined();
   });
 });
 

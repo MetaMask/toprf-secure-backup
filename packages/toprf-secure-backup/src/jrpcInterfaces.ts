@@ -1,7 +1,6 @@
 import type { JRPCResponse, JRPCRequest } from '@metamask/auth-network-utils';
 
 export type CommitmentJRPCRequestParams = {
-  messagePrefix: string;
   tokenCommitment: string;
   verifier: string;
   tempPubKeyX: string;
