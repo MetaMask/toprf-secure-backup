@@ -113,7 +113,7 @@ export class MetadataStore {
     } catch (error) {
       if (error instanceof SomeError) {
         throw new MetadataStoreError(
-          `failed to add metadata: ${error.predicate}`,
+          `failed to add metadata: ${(error as SomeError<boolean>).predicate}`,
         );
       }
       throw new MetadataStoreError(
@@ -194,7 +194,7 @@ export class MetadataStore {
     } catch (error) {
       if (error instanceof SomeError) {
         throw new MetadataStoreError(
-          `failed to fetch metadata: ${error.predicate}`,
+          `failed to fetch metadata: ${(error as SomeError<Uint8Array[]>).predicate}`,
         );
       }
       throw new MetadataStoreError(
@@ -535,18 +535,21 @@ export class MetadataStore {
    * @param thresholdCount - The threshold value to be used for the threshold check.
    * @returns The validated result which satisfies the threshold check.
    */
-  async #thresholdCheck<T>(
-    promises: Promise<T>[],
+  async #thresholdCheck<DataType>(
+    promises: Promise<DataType>[],
     thresholdCount: number,
-  ): Promise<T | null> {
-    const results = await Some<T, T>(promises, async (resultArray) => {
-      const tResult = thresholdSame(resultArray, thresholdCount);
-      if (tResult) {
-        return Promise.resolve(tResult);
-      }
+  ): Promise<DataType | null> {
+    const results = await Some<DataType, DataType>(
+      promises,
+      async (resultArray: DataType[]) => {
+        const tResult = thresholdSame(resultArray, thresholdCount);
+        if (tResult) {
+          return Promise.resolve(tResult);
+        }
 
-      return Promise.reject(new MetadataStoreError('Threshold not resolved'));
-    });
+        return Promise.reject(new MetadataStoreError('Threshold not resolved'));
+      },
+    );
 
     return results ?? null;
   }
