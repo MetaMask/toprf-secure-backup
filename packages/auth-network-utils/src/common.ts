@@ -262,7 +262,6 @@ export async function Some<Input, Output>(
   ) => Promise<Output>,
 ): Promise<Output> {
   let predicateError: Error | undefined; // to keep track of the latest error thrown by the callbackFn
-  let finishedCount = 0;
   const resultArr: Input[] = new Array(promises.length).fill(undefined);
   const errorArr: Error[] = new Array(promises.length).fill(undefined);
 
@@ -280,19 +279,13 @@ export async function Some<Input, Output>(
       }
     } catch (error: unknown) {
       predicateError = error as Error;
-    } finally {
-      finishedCount += 1;
-    }
-    // Check if we've processed all promises
-    if (finishedCount === promises.length) {
-      // If we still don't have a result, handle the error
-      handleSomeCallBackFnError(errorArr, resultArr, predicateError);
-      // If handleSomeCallBackFnError doesn't throw, throw a generic error
-      throw new Error('Some function failed to produce a valid result');
     }
   }
-  // This should never be reached due to the finishedCount check above
-  throw new Error('Unexpected end of Some function');
+
+  // If we still don't have a result, handle the error
+  handleSomeCallBackFnError(errorArr, resultArr, predicateError);
+  // If handleSomeCallBackFnError doesn't throw, throw a generic error
+  throw new Error('Some function failed to produce a valid result');
 }
 
 export type Primitive = string | number | boolean | null;
