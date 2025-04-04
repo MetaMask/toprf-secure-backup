@@ -1,14 +1,1 @@
-{
-  "packages/auth-network-utils/src/common.test.ts": {
-    "@typescript-eslint/explicit-function-return-type": 1
-  },
-  "packages/auth-network-utils/src/common.ts": {
-    "@typescript-eslint/explicit-function-return-type": 3,
-    "@typescript-eslint/naming-convention": 5,
-    "@typescript-eslint/prefer-optional-chain": 1,
-    "id-length": 5
-  },
-  "packages/auth-network-utils/src/cryptoUtils.ts": {
-    "id-denylist": 1
-  }
-}
+{}

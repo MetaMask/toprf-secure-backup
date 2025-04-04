@@ -51,7 +51,8 @@ describe('common utils', function () {
      * @returns The callback function.
      */
     const callbackFnFactory =
-      (threshold: number) => async (resultArr: { data: string }[]) => {
+      (threshold: number) =>
+      async (resultArr: { data: string }[]): Promise<string[]> => {
         const completedResult = resultArr.filter((result) =>
           Boolean(result?.data),
         );
