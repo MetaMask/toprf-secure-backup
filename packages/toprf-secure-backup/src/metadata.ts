@@ -70,6 +70,17 @@ export class MetadataStore {
 
   readonly #nodeEndpointsMap: Map<number, string>;
 
+  readonly #thresholdValues: { [operation: string]: number } = {
+    /**
+     * Minimum number of nodes required to satisfy the threshold check for adding secret data.
+     */
+    addSecretDataItem: 4,
+    /**
+     * Minimum number of nodes required to satisfy the threshold check for fetching all secret data items.
+     */
+    fetchAllSecretDataItems: 3,
+  };
+
   /**
    *
    * @param options - The initialization options for the metadata store.
@@ -107,8 +118,7 @@ export class MetadataStore {
           });
         },
       );
-      const thresholdCount =
-        Math.floor(Object.keys(endPointToAuthTokenMap).length / 2) + 1;
+      const thresholdCount = this.#thresholdValues.addSecretDataItem;
       await this.#thresholdCheck<boolean>(promises, thresholdCount);
     } catch (error) {
       if (error instanceof SomeError) {
@@ -181,7 +191,7 @@ export class MetadataStore {
           });
         },
       );
-      const thresholdCount = Math.floor(this.#nodeEndpointsMap.size / 2) + 1;
+      const thresholdCount = this.#thresholdValues.fetchAllSecretDataItems;
       const thresholdResult = await this.#thresholdCheck<Uint8Array[]>(
         promises,
         thresholdCount,
@@ -541,7 +551,7 @@ export class MetadataStore {
   ): Promise<DataType | null> {
     const results = await Some<DataType, DataType>(
       promises,
-      async (resultArray: DataType[]) => {
+      async (resultArray) => {
         const tResult = thresholdSame(resultArray, thresholdCount);
         if (tResult) {
           return Promise.resolve(tResult);
