@@ -4,7 +4,7 @@ import {
   safeStringify,
   thresholdSame,
 } from '@metamask/auth-network-utils';
-import { xchacha20poly1305 } from '@noble/ciphers/chacha';
+import { gcm } from '@noble/ciphers/aes';
 import { managedNonce } from '@noble/ciphers/webcrypto';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
@@ -19,13 +19,29 @@ import type {
   ISetSecretDataRequestBody,
   IBatchSetSecretDataRequestBody,
   BatchAddSecretDataItemParams,
+  IMetadataLockRequestBody,
+  NodeAuthToken,
 } from './interfaces';
 
 type MetadataStoreOptions = {
   nodeEndpointsMap: Map<number, string>;
 };
 
-export type AuthTokenToMetadataEndpointsMap = Record<string, string>;
+export type MetadataLock = {
+  id: string;
+  nodeIndex: number;
+}[];
+
+export enum MetadataLockStatus {
+  FAILED = 0,
+  SUCCESS = 1,
+}
+
+export type LockAcquiredResponse = { status: MetadataLockStatus; id?: string };
+
+export type AuthTokenToMetadataEndpointsMap = {
+  [endpoint: string]: NodeAuthToken;
+};
 
 /**
  * Error class for metadata store.
@@ -81,7 +97,7 @@ export class MetadataStore {
         this.#getAuthTokenToMetadataEndpointsMap(nodeAuthTokens);
 
       const promises = Object.entries(endPointToAuthTokenMap).map(
-        async ([endpoint, authToken]) => {
+        async ([endpoint, { authToken }]) => {
           return this.#addData({
             secretData,
             encKey,
@@ -123,26 +139,21 @@ export class MetadataStore {
       const { secretData, encKey, nodeAuthTokens, authKeyPair } = params;
       const endPointToAuthTokenMap =
         this.#getAuthTokenToMetadataEndpointsMap(nodeAuthTokens);
-      const promises = Object.entries(endPointToAuthTokenMap).map(
-        async ([endpoint, authToken]) => {
-          return this.#batchAddData({
-            secretData,
-            encKey,
-            authKeyPair,
-            metadataEndpoint: endpoint,
-            authToken,
-          });
-        },
+
+      await Promise.all(
+        Object.entries(endPointToAuthTokenMap).map(
+          async ([endpoint, { authToken }]) => {
+            return this.#batchAddData({
+              secretData,
+              encKey,
+              authKeyPair,
+              metadataEndpoint: endpoint,
+              authToken,
+            });
+          },
+        ),
       );
-      const thresholdCount =
-        Math.floor(Object.keys(endPointToAuthTokenMap).length / 2) + 1;
-      await this.#thresholdCheck<boolean>(promises, thresholdCount);
     } catch (error) {
-      if (error instanceof SomeError) {
-        throw new MetadataStoreError(
-          `failed to add batch metadata: ${error.predicate}`,
-        );
-      }
       throw new MetadataStoreError(
         `failed to add batch metadata: ${(error as Error).message}`,
       );
@@ -193,6 +204,93 @@ export class MetadataStore {
   }
 
   /**
+   * Acquires a lock on the metadata store.
+   *
+   * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
+   * @param nodeAuthTokens - The array of auth tokens to be used for authenticating against the metadata server.
+   * @returns A promise that resolves with the lock id.
+   */
+  async acquireMetadataLock(
+    authKeyPair: KeyPair,
+    nodeAuthTokens: NodeAuthTokens,
+  ): Promise<MetadataLock> {
+    // get metadata endpoints to NodeAuthTokens map
+    const endPointToAuthTokenMap =
+      this.#getAuthTokenToMetadataEndpointsMap(nodeAuthTokens);
+
+    const lockIndexes: number[] = [];
+    const lockResult = await Promise.all(
+      Object.entries(endPointToAuthTokenMap).map(
+        async ([endpoint, { nodeIndex }]) => {
+          lockIndexes.push(nodeIndex);
+          return this.#acquireLock(endpoint, authKeyPair);
+        },
+      ),
+    );
+
+    const allLockAcquired = lockResult.every(
+      (result) => result.status === MetadataLockStatus.SUCCESS,
+    );
+
+    if (!allLockAcquired) {
+      throw new MetadataStoreError('Failed to acquire metadata lock');
+    }
+
+    const lock: MetadataLock = lockResult.map((result, idx) => {
+      if (!result.id) {
+        throw new MetadataStoreError(
+          'Failed to acquire metadata lock. Missing lock id',
+        );
+      }
+
+      return {
+        id: result.id,
+        nodeIndex: lockIndexes[idx],
+      };
+    });
+
+    return lock;
+  }
+
+  /**
+   * Releases the lock on the metadata store.
+   *
+   * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
+   * @param metadataLock - The lock to be released.
+   * @param nodeAuthTokens - The array of auth tokens to be used for authenticating against the metadata server.
+   * @returns A promise that resolves with the lock status.
+   */
+  async releaseMetadataLock(
+    authKeyPair: KeyPair,
+    metadataLock: MetadataLock,
+    nodeAuthTokens: NodeAuthTokens,
+  ): Promise<MetadataLockStatus> {
+    // get metadata endpoints to NodeAuthTokens map
+    const endPointToAuthTokenMap =
+      this.#getAuthTokenToMetadataEndpointsMap(nodeAuthTokens);
+
+    await Promise.all(
+      Object.entries(endPointToAuthTokenMap).map(
+        async ([metadataEndpoint, { nodeIndex }]) => {
+          // get lockId for the specific node
+          const lockId = metadataLock.find(
+            (lock) => lock.nodeIndex === nodeIndex,
+          )?.id;
+
+          if (!lockId) {
+            throw new MetadataStoreError(
+              `Could not find lock for node index ${nodeIndex}`,
+            );
+          }
+          return this.#releaseLock(metadataEndpoint, authKeyPair, lockId);
+        },
+      ),
+    );
+
+    return MetadataLockStatus.SUCCESS;
+  }
+
+  /**
    * Encrypts the secret data and inserts or appends it in the metadata store.
    *
    * @param params - The parameters for storing the secret data.
@@ -219,7 +317,6 @@ export class MetadataStore {
           params.authKeyPair,
           params.authToken,
         );
-
       const requestBody = JSON.stringify(payload);
 
       const response = await fetch(url, {
@@ -346,6 +443,89 @@ export class MetadataStore {
   }
 
   /**
+   * Acquires a lock on the metadata store.
+   *
+   * @param metadataEndpoint - The metadata server endpoint to be used for acquiring the lock.
+   * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
+   * @returns A promise that resolves when the lock is acquired.
+   */
+  async #acquireLock(
+    metadataEndpoint: string,
+    authKeyPair: KeyPair,
+  ): Promise<LockAcquiredResponse> {
+    try {
+      const payload = this.#generatePayloadForLockRequests(authKeyPair);
+      const url = `${metadataEndpoint}/acquireLock`;
+
+      const response = await fetch(url, {
+        headers: {
+          // eslint-disable-next-line @typescript-eslint/naming-convention
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const responseBody = await response.json();
+        throw new Error(`HTTP error message: ${responseBody.error}`);
+      }
+
+      const jsonData = await response.json();
+      return {
+        status: jsonData.status,
+        id: jsonData.id,
+      };
+    } catch (error) {
+      const errorMessage = (error as Error).message || 'Unknown error';
+      throw new MetadataStoreError(
+        `failed to acquire metadata lock: ${errorMessage}`,
+      );
+    }
+  }
+
+  /**
+   * Releases the lock on the metadata store.
+   *
+   * @param metadataEndpoint - The metadata server endpoint to be used for releasing the lock.
+   * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
+   * @param lockId - The lock id to be released.
+   * @returns A promise that resolves with the lock status.
+   */
+  async #releaseLock(
+    metadataEndpoint: string,
+    authKeyPair: KeyPair,
+    lockId: string,
+  ): Promise<MetadataLockStatus> {
+    try {
+      const payload = this.#generatePayloadForLockRequests(authKeyPair, lockId);
+
+      const url = `${metadataEndpoint}/releaseLock`;
+      const response = await fetch(url, {
+        headers: {
+          // eslint-disable-next-line @typescript-eslint/naming-convention
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const responseBody = await response.json();
+        throw new Error(`HTTP error message: ${responseBody.error}`);
+      }
+
+      const jsonData = await response.json();
+      return jsonData.status;
+    } catch (error) {
+      const errorMessage = (error as Error).message || 'Unknown error';
+      throw new MetadataStoreError(
+        `failed to release metadata lock: ${errorMessage}`,
+      );
+    }
+  }
+
+  /**
    * Validates Metadata Responses with threshold check.
    *
    * Criteria to be met:
@@ -397,10 +577,8 @@ export class MetadataStore {
       data = rawData.map((item) => ({
         data: Buffer.from(item.data).toString('base64'),
       }));
-    } else if (rawData instanceof Uint8Array) {
-      data = Buffer.from(rawData).toString('base64');
     } else {
-      throw new MetadataStoreError('Invalid data type');
+      data = Buffer.from(rawData).toString('base64');
     }
 
     const { pk, sk } = authKeyPair;
@@ -452,19 +630,57 @@ export class MetadataStore {
   }
 
   /**
+   * Generate the payload for the lock requests.
+   *
+   * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
+   * @param lockId - The lock id to be released.
+   * @returns The payload for the lock requests.
+   */
+  #generatePayloadForLockRequests(
+    authKeyPair: KeyPair,
+    lockId?: string,
+  ): IMetadataLockRequestBody {
+    const { pk, sk } = authKeyPair;
+    const data = { timestamp: Date.now() };
+    // metadata server expects der encoded signature for lock requests
+    const shouldDerEncoded = true;
+    const signature = this.#generatePayloadSignature(
+      data,
+      sk,
+      shouldDerEncoded,
+    );
+    const key = bytesToHex(pk);
+
+    const payloadForLockRequest: IMetadataLockRequestBody = {
+      data,
+      signature,
+      key,
+      id: lockId,
+    };
+
+    return payloadForLockRequest;
+  }
+
+  /**
    * Generate the signature for the payload.
    *
    * @param payload - The payload to be signed.
    * @param privKey - The private key to sign the payload.
+   * @param shouldDerEncoded - Whether the signature should be der encoded.
    * @returns The signature hex string.
    */
   #generatePayloadSignature(
     payload: Record<string, unknown>,
     privKey: bigint,
+    shouldDerEncoded = false,
   ): string {
     const payloadString = safeStringify(payload);
     const hash = keccak256(payloadString);
     const signature = secp256k1.sign(hash, privKey);
+
+    if (shouldDerEncoded) {
+      return signature.toDERHex();
+    }
 
     return signature.toCompactHex();
   }
@@ -479,7 +695,8 @@ export class MetadataStore {
     nodeAuthTokens: NodeAuthTokens,
   ): AuthTokenToMetadataEndpointsMap {
     const endPointToAuthTokenMap: AuthTokenToMetadataEndpointsMap = {};
-    nodeAuthTokens.forEach(({ nodeIndex, authToken }) => {
+    nodeAuthTokens.forEach((nodeAuthToken) => {
+      const { nodeIndex } = nodeAuthToken;
       const endpoint = this.#nodeEndpointsMap.get(nodeIndex);
       if (!endpoint) {
         throw new MetadataStoreError(
@@ -487,37 +704,35 @@ export class MetadataStore {
         );
       }
 
-      endPointToAuthTokenMap[endpoint] = authToken;
+      endPointToAuthTokenMap[endpoint] = nodeAuthToken;
     });
 
     return endPointToAuthTokenMap;
   }
 
   /**
-   * Encrypt the data using the key with AEAD-chacha20poly1305.
-   *
-   * Here, we are using AEAD-chacha20poly1305 for the deterministic encryption.
+   * Encrypt the data using the key with AES-GCM.
    *
    * @param data - The secret data to be encrypted.
    * @param encryptionKey - The encryption key to encrypt the data.
    * @returns The encrypted data.
    */
   #encryptData(data: Uint8Array, encryptionKey: Uint8Array): Uint8Array {
-    const chacha = managedNonce(xchacha20poly1305)(encryptionKey);
-    const ciphertext = chacha.encrypt(data);
+    const aesGcm = managedNonce(gcm)(encryptionKey);
+    const ciphertext = aesGcm.encrypt(data);
     return ciphertext;
   }
 
   /**
    * Decrypt the data using the encryption key.
    *
-   * @param cipherText - The cipher text, encrypted with AEAD-chacha20poly1305.
+   * @param cipherText - The cipher text, encrypted with AES-GCM.
    * @param decryptionKey - The encryption key to decrypt the data.
    * @returns The decrypted data.
    */
   #decryptData(cipherText: Uint8Array, decryptionKey: Uint8Array): Uint8Array {
-    const chacha = managedNonce(xchacha20poly1305)(decryptionKey);
-    const decryptedData = chacha.decrypt(cipherText);
+    const aesGcm = managedNonce(gcm)(decryptionKey);
+    const decryptedData = aesGcm.decrypt(cipherText);
 
     return decryptedData;
   }
