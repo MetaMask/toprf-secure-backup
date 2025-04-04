@@ -187,7 +187,7 @@ export const evaluateSeed = async (
  * @param params.verifier - The verifier name used for authentication.
  * @param params.verifierId - The verifierId issued to user after authentication.
  * @param params.nodeEndpointsMap - Map of node index to endpoint to be used for the reset rate limit request.
- * @param params.userPasswordHash - The password of the user.
+ * @param params.userPassword - The password of the user.
  *
  * @returns - A promise that resolves with the key pair seed successfully.
  */
@@ -196,20 +196,15 @@ export const recoverTOPRFSeed = async (params: {
   nodeEndpointsMap: Record<number, string>;
   verifier: string;
   verifierId: string;
-  userPasswordHash: Uint8Array;
+  userPassword: Uint8Array;
 }): Promise<Uint8Array> => {
-  const {
-    authTokens,
-    nodeEndpointsMap,
-    verifier,
-    verifierId,
-    userPasswordHash,
-  } = params;
+  const { authTokens, nodeEndpointsMap, verifier, verifierId, userPassword } =
+    params;
 
   if (authTokens.length < 3) {
     throw new Error('At least 3 auth tokens are required');
   }
-  const { a, r } = OPRF.blind(userPasswordHash);
+  const { a, r } = OPRF.blind(userPassword);
 
   const promiseArr = authTokens.map(async (authToken) => {
     const endpoint = nodeEndpointsMap[authToken.nodeIndex];
@@ -231,6 +226,6 @@ export const recoverTOPRFSeed = async (params: {
 
   return Some<ToprfEvalJRPCResponse, Uint8Array>(
     promiseArr,
-    async (resultArr) => evaluateSeed(userPasswordHash, r, resultArr),
+    async (resultArr) => evaluateSeed(userPassword, r, resultArr),
   );
 };

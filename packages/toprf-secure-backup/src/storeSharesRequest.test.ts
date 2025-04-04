@@ -1,7 +1,6 @@
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { toBytes } from '@noble/hashes/utils';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
-import { sha256 } from 'ethereum-cryptography/sha256';
 
 import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
@@ -73,9 +72,8 @@ describe('store shares request', function () {
     });
     expect(authTokens).toBeDefined();
     const passwordBytes = toBytes('test-input');
-    const hashedInput = sha256(passwordBytes);
     const oprfKey = generateRandomScalar();
-    const seed = OPRF.localEval(oprfKey, hashedInput);
+    const seed = OPRF.localEval(oprfKey, passwordBytes);
     const authKeyPair = deriveAuthenticationKeyPair(seed);
 
     const storeSharesResponse = await storeKeyShares({
@@ -147,9 +145,8 @@ describe('store shares request', function () {
 
     expect(authTokens).toBeDefined();
     const passwordBytes = toBytes('test-input');
-    const hashedInput = sha256(passwordBytes);
     const oprfKey = generateRandomScalar();
-    const seed = OPRF.localEval(oprfKey, hashedInput);
+    const seed = OPRF.localEval(oprfKey, passwordBytes);
     const authKeyPair = deriveAuthenticationKeyPair(seed);
 
     const storeSharesResponse = await storeKeyShares({
