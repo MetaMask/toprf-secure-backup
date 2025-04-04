@@ -18,7 +18,9 @@ export type CommitmentRequestResult = {
   nodeIndex: number;
 };
 
-export type CommitmentJRPCResponse = JRPCResponse<CommitmentRequestResult>;
+export type CommitmentJRPCResponse = JRPCResponse<
+  CommitmentRequestResult | undefined
+>;
 
 export type AuthJRPCRequestParams = {
   authData: {

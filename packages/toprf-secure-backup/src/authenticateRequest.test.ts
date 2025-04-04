@@ -1,4 +1,4 @@
-import { getSecp256K1Curve } from '@metamask/auth-network-utils';
+import { getSecp256K1Curve, TOPRFError } from '@metamask/auth-network-utils';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import {
@@ -7,7 +7,6 @@ import {
 } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
 import type { AuthJRPCResponse, AuthRequestResult } from './jrpcInterfaces';
-import TOPRFError from '../../auth-network-utils/src/errors';
 import { generateIdToken } from '../tests/testHelpers';
 
 describe('validateThresholdAuthenticateResponses', () => {
@@ -178,7 +177,7 @@ describe('authenticate request', function () {
       idToken,
       verifier,
       verifierID,
-      sessionPrivateKey: keyPair.getPrivate().toString('hex'),
+      sessionPrivateKey: keyPair.getPrivate().toBuffer(),
       endpoints: torusNodeSSSEndpoints,
       commitmentSignatures: commitmentResults,
     });

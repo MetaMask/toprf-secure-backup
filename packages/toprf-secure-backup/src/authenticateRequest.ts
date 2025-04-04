@@ -1,4 +1,4 @@
-import { Some, thresholdSame } from '@metamask/auth-network-utils';
+import { Some, thresholdSame, TOPRFError } from '@metamask/auth-network-utils';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
 import {
@@ -14,13 +14,13 @@ import type {
   AuthRequestResult,
 } from './jrpcInterfaces';
 import { decryptAuthToken, postJRPCRequest } from './utils';
-import TOPRFError from '../../auth-network-utils/src/errors';
 
 /**
  * Creates the parameters for the authenticate request
  *
  * @param idToken - The idToken to be used for the authenticate request
- * @param verifier - The verifier to be used for the authenticate request
+ * @param verifier - The verifier 
+ * to be used for the authenticate request
  * @param verifierID - The verifierID to be used for the authenticate request
  * @param commitmentSignatures - The idToken commitment signatures to be used for the authenticate request.
  *
@@ -82,10 +82,8 @@ export const validateThresholdAuthenticateResponses = async (
     return true;
   });
   if (completedRequests.length < EXISTING_USER_AUTHENTICATION_THRESHOLD) {
-    return Promise.reject(
-      TOPRFError.invalidAuthenticateResults(
-        `Not enough completed requests. Expected: ${EXISTING_USER_AUTHENTICATION_THRESHOLD}, got: ${completedRequests.length}`,
-      ),
+    throw TOPRFError.invalidAuthenticateResults(
+      `Not enough completed requests. Expected: ${EXISTING_USER_AUTHENTICATION_THRESHOLD}, got: ${completedRequests.length}`,
     );
   }
   const pubData = completedRequests.map((res: AuthJRPCResponse) => {
@@ -164,11 +162,8 @@ export const authenticateUser = async (params: {
       validateThresholdAuthenticateResponses(responses),
   );
 
-  if (!results || results.length === 0) {
-    throw new Error('Invalid authenticate request results');
-  }
   const decryptedAuthResults = await Promise.all(
-    results.map(async (result: AuthJRPCResponse) => {
+    results.map(async (result: AuthRequestResult) => {
       const { authToken, nodeIndex, nodePubKey, pubKey, keyIndex } = result;
       const decryptedAuthToken = await decryptAuthToken(
         authToken,
