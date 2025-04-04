@@ -12,7 +12,7 @@
 
 # build & test coverages
 packages/*/coverage
-packages/*/dist
+# packages/*/dist
 packages/*/docs
 scripts/coverage
 
