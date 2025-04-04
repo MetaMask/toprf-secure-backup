@@ -4,7 +4,7 @@ import {
   safeStringify,
   thresholdSame,
 } from '@metamask/auth-network-utils';
-import { xchacha20poly1305 } from '@noble/ciphers/chacha';
+import { gcm } from '@noble/ciphers/aes';
 import { managedNonce } from '@noble/ciphers/webcrypto';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
@@ -381,30 +381,28 @@ export class MetadataStore {
   }
 
   /**
-   * Encrypt the data using the key with AEAD-chacha20poly1305.
-   *
-   * Here, we are using AEAD-chacha20poly1305 for the deterministic encryption.
+   * Encrypt the data using the key with AES-256-GCM.
    *
    * @param data - The secret data to be encrypted.
    * @param encryptionKey - The encryption key to encrypt the data.
    * @returns The encrypted data.
    */
   #encryptData(data: Uint8Array, encryptionKey: Uint8Array): Uint8Array {
-    const chacha = managedNonce(xchacha20poly1305)(encryptionKey);
-    const ciphertext = chacha.encrypt(data);
+    const aesGcm = managedNonce(gcm)(encryptionKey);
+    const ciphertext = aesGcm.encrypt(data);
     return ciphertext;
   }
 
   /**
    * Decrypt the data using the encryption key.
    *
-   * @param cipherText - The cipher text, encrypted with AEAD-chacha20poly1305.
+   * @param cipherText - The cipher text, encrypted with AES-256-GCM.
    * @param decryptionKey - The encryption key to decrypt the data.
    * @returns The decrypted data.
    */
   #decryptData(cipherText: Uint8Array, decryptionKey: Uint8Array): Uint8Array {
-    const chacha = managedNonce(xchacha20poly1305)(decryptionKey);
-    const decryptedData = chacha.decrypt(cipherText);
+    const aesGcm = managedNonce(gcm)(decryptionKey);
+    const decryptedData = aesGcm.decrypt(cipherText);
 
     return decryptedData;
   }
