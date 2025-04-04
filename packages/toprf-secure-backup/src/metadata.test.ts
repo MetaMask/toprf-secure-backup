@@ -1,5 +1,6 @@
 import { randomBytes, utf8ToBytes } from '@noble/hashes/utils';
 
+import { METADATA_NODES_ENDPOINTS_MAP } from './constants';
 import type { KeyPair, NodeAuthTokens } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -7,7 +8,6 @@ import {
 } from './keyDerivation';
 import { MetadataLockStatus, MetadataStore } from './metadata';
 import { ToprfSecureBackup } from './toprfSecureBackup';
-import { METADATA_NODES_ENDPOINTS_MAP } from '../tests/constants';
 import { generateIdToken } from '../tests/testHelpers';
 
 const toprfSecureBackup = new ToprfSecureBackup({
@@ -44,13 +44,8 @@ describe('MetadataStore', () => {
       verifier,
       verifierID,
     });
-    console.log('result', result);
+
     nodeAuthTokens = result.nodeAuthTokens;
-    // // TODO: get from the `authenticateRequest` function instead of using the mock
-    // nodeAuthTokens = generateMockAuthTokenForMetadataRequests({
-    //   verifier,
-    //   verifierId: verifierID,
-    // });
     encKey = deriveEncryptionKey(MOCK_SEED);
     authKeyPair = deriveAuthenticationKeyPair(MOCK_SEED);
   });
@@ -176,9 +171,11 @@ describe('MetadataStore', () => {
 
   it('should throw an error if the lock is not found for the specific nodeIndex (or Endpoint) during release', async () => {
     const mockNodeEndpointsMap = new Map<number, string>([
-      [1, METADATA_SERVER_URL],
-      [2, METADATA_SERVER_URL],
-      [3, METADATA_SERVER_URL],
+      [1, 'http://localhost:5051'],
+      [2, 'http://localhost:5052'],
+      [3, 'http://localhost:5053'],
+      [4, 'http://localhost:5054'],
+      [5, 'http://localhost:5055'],
     ]);
     const metadataStore = createMockMetadataStore(mockNodeEndpointsMap);
 
@@ -194,7 +191,6 @@ describe('MetadataStore', () => {
   it('should be able to store secret data in batch', async () => {
     const metadataStore = createMockMetadataStore();
 
-    const secretData = utf8ToBytes('SECRET_DATA');
     await metadataStore.addSecretDataItem({
       secretData,
       encKey,
@@ -369,9 +365,11 @@ describe('MetadataStore', () => {
       metadataStore.releaseMetadataLock(
         authKeyPair,
         [
-          { id: '1', nodeIndex: 1 },
-          { id: '2', nodeIndex: 2 },
-          { id: '3', nodeIndex: 3 },
+          { id: 'LOCK_ID_1', nodeIndex: 1 },
+          { id: 'LOCK_ID_2', nodeIndex: 2 },
+          { id: 'LOCK_ID_3', nodeIndex: 3 },
+          { id: 'LOCK_ID_4', nodeIndex: 4 },
+          { id: 'LOCK_ID_5', nodeIndex: 5 },
         ],
         nodeAuthTokens,
       ),
