@@ -1,8 +1,10 @@
 {
-  "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "composite": true,
+    "esModuleInterop": true,
     "lib": ["ES2020", "DOM"],
+    "module": "Node16",
+    "moduleResolution": "Node16",
     /**
      * Here we ensure that TypeScript resolves `@metamask/*` imports to the
      * uncompiled source code for packages that live in this repo.
@@ -12,6 +14,8 @@
      */
     "paths": {
       "@metamask/*": ["../*/src"]
-    }
+    },
+    "strict": true,
+    "target": "ES2020"
   }
 }

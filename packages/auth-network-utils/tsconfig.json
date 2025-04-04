@@ -3,6 +3,5 @@
   "compilerOptions": {
     "baseUrl": "./"
   },
-  "references": [], // TODO: add references
-  "include": ["./src/**/*", "./tests/**/*"]
+  "include": ["./src", "./tests"]
 }
