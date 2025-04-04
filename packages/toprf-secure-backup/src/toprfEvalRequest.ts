@@ -125,8 +125,8 @@ export const evaluateSeed = async (
       }
 
       return {
-        x: blindedOutputX,
-        y: blindedOutputY,
+        x: blindedOutputX.padStart(64, '0'),
+        y: blindedOutputY.padStart(64, '0'),
         nodeIndex,
       };
     })
