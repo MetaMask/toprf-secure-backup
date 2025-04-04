@@ -135,7 +135,7 @@ export const authenticateUser = async (params: {
   idToken: string;
   verifier: string;
   verifierID: string;
-  sessionPrivateKey: string;
+  sessionPrivateKey: Uint8Array;
   endpoints: string[];
   commitmentSignatures: CommitmentRequestResult[];
 }): Promise<AuthRequestResult[]> => {
@@ -160,14 +160,15 @@ export const authenticateUser = async (params: {
 
   const results = await Some<AuthJRPCResponse, AuthRequestResult[]>(
     promiseArr,
-    async (responses) => validateThresholdAuthenticateResponses(responses),
+    async (responses: AuthJRPCResponse[]) =>
+      validateThresholdAuthenticateResponses(responses),
   );
 
   if (!results || results.length === 0) {
     throw new Error('Invalid authenticate request results');
   }
   const decryptedAuthResults = await Promise.all(
-    results.map(async (result) => {
+    results.map(async (result: AuthJRPCResponse) => {
       const { authToken, nodeIndex, nodePubKey, pubKey, keyIndex } = result;
       const decryptedAuthToken = await decryptAuthToken(
         authToken,
