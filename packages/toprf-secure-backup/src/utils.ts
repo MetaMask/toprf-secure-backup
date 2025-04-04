@@ -46,23 +46,40 @@ export const bigIntToBN = (value: bigint): BN => {
  */
 export const postJRPCRequest = async <
   Response extends {
+    id: number;
+    jsonrpc: '2.0';
     result?: JSONValue | undefined;
+    error?: {
+      code: number;
+      message: string;
+      data?: unknown;
+    };
   },
 >(
   endpoint: string,
   request: JRPCRequest<JSONValue>,
 ): Promise<Response> => {
   const req = { ...request };
-  const params = toSnakeCaseKeys(request.params);
-  req.params = params;
-  return post<Response>(endpoint, req, {}, { logTracingHeader: false }).then(
-    (res) => {
+  req.params = toSnakeCaseKeys(request.params);
+
+  return post<Response>(endpoint, req, {}, { logTracingHeader: false })
+    .then((res) => {
       if (res.result) {
         res.result = toCamelCaseKeys(res.result);
       }
       return res;
-    },
-  );
+    })
+    .catch((er: unknown) => {
+      return {
+        id: request.id,
+        jsonrpc: '2.0',
+        error: {
+          code: -32000,
+          message: 'Internal error',
+          data: er,
+        },
+      } as Response;
+    });
 };
 
 /**
