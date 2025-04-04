@@ -3,6 +3,5 @@
   "compilerOptions": {
     "baseUrl": "./"
   },
-  "references": [],
   "include": ["./src", "./tests"]
 }

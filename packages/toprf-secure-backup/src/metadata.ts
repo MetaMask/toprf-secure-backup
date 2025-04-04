@@ -8,7 +8,7 @@ import { gcm } from '@noble/ciphers/aes';
 import { managedNonce } from '@noble/ciphers/webcrypto';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
-import { bytesToHex } from '@noble/hashes/utils';
+import { hexToBytes, bytesToHex } from '@noble/hashes/utils';
 
 import type {
   FetchSecretDataResult,
@@ -109,7 +109,7 @@ export class MetadataStore {
         );
       }
       throw new MetadataStoreError(
-        `failed to fetch metadata: ${(error as Error).message}`,
+        `failed to store metadata: ${(error as Error).message}`,
       );
     }
   }
@@ -136,13 +136,10 @@ export class MetadataStore {
         },
       );
       const thresholdCount = this.#thresholdValues.fetchAllSecretDataItems;
-      const thresholdResult = await this.#thresholdCheck<Uint8Array[]>(
+      const thresholdResult = await this.#thresholdReadSecretData(
         promises,
         thresholdCount,
       );
-      if (thresholdResult?.length === 0 || !thresholdResult) {
-        return null;
-      }
 
       return thresholdResult;
     } catch (error) {
@@ -178,14 +175,14 @@ export class MetadataStore {
     try {
       const url = `${params.metadataEndpoint}/enc_account_data/set`;
       const encryptedData = this.#encryptData(params.secretData, params.encKey);
-      const payload = this.#generatePayloadForSetOrBatchSetSecretDataRequest(
+      const payload = this.#generatePayloadForSetOrBatchSet(
         encryptedData,
         params.authKeyPair,
-        params.authToken,
+        // params.authToken,
       );
 
       const requestBody = JSON.stringify(payload);
-
+      console.log('requestBody', requestBody);
       const response = await fetch(url, {
         headers: {
           // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -244,8 +241,21 @@ export class MetadataStore {
       }
 
       const jsonData = await response.json();
+      if (!jsonData) {
+        throw new MetadataStoreError('Empty response from metadata server');
+      }
+
+      if ('error' in jsonData) {
+        throw new MetadataStoreError(`Server error: ${jsonData.error}`);
+      }
+
       if (!jsonData.data) {
-        throw new MetadataStoreError('Failed to fetch metadata');
+        // This could mean no data exists yet.
+        return [];
+      }
+
+      if (!Array.isArray(jsonData.data)) {
+        throw new MetadataStoreError('Invalid data format: expected array');
       }
 
       const secretData = jsonData.data.map((data: string) => {
@@ -254,6 +264,7 @@ export class MetadataStore {
       });
       return secretData;
     } catch (error) {
+      console.log('error while fetching metadata', error);
       const errorMessage = (error as Error).message || 'Unknown error';
       throw new MetadataStoreError(`failed to fetch metadata: ${errorMessage}`);
     }
@@ -275,7 +286,7 @@ export class MetadataStore {
   ): Promise<DataType | null> {
     const results = await Some<DataType, DataType>(
       promises,
-      async (resultArray) => {
+      async (resultArray: DataType[]) => {
         const tResult = thresholdSame(resultArray, thresholdCount);
         if (tResult) {
           return Promise.resolve(tResult);
@@ -289,17 +300,94 @@ export class MetadataStore {
   }
 
   /**
+   * Processes an array of promises that resolve to byte arrays and finds threshold-matching values.
+   *
+   * @description
+   * This function:
+   * 1. Waits for promises to resolve into arrays of Uint8Array
+   * 2. Counts occurrences of unique values across all arrays
+   * 3. Returns values that appear at least `thresholdCount` times
+   *
+   * @param promises - Array of promises that resolve to arrays of Uint8Array
+   * @param thresholdCount - Minimum number of occurrences required for a value to be included
+   *
+   * @returns Promise that resolves to:
+   * - Array of Uint8Array values that meet the threshold requirement
+   * - It returns as soon as it finds the threshold-matching values.
+   * - It keeps on checking all the nodes until it finds the threshold-matching values for all the items.
+   *
+   * @example
+   *const data = [[1, 2, 3], [1, 2], [1, 2], [1, 3], [1, 3]];
+   *const threshold = 3;
+   *const result = await #thresholdReadSecretData(data, threshold);
+   *console.log(result); // [1, 2, 3]
+   */
+  async #thresholdReadSecretData(
+    promises: Promise<Uint8Array[]>[],
+    thresholdCount: number,
+  ): Promise<Uint8Array[]> {
+    return Some<Uint8Array[], Uint8Array[]>(
+      promises,
+      async (resultArray: Uint8Array[][], error?: Error[]) => {
+        const count: Record<string, number> = {};
+        const allItems = new Set<string>();
+        // First pass: collect all unique items
+        for (const nodeData of resultArray) {
+          if (!nodeData) {
+            continue;
+          }
+          for (const item of nodeData) {
+            allItems.add(bytesToHex(item));
+          }
+        }
+
+        // Second pass: count occurrences
+        for (const nodeData of resultArray) {
+          if (!nodeData) {
+            continue;
+          }
+          const unique = new Set([...nodeData]);
+          for (const item of unique) {
+            const hexItem = bytesToHex(item);
+            count[hexItem] = (count[hexItem] || 0) + 1;
+          }
+        }
+
+        // Only return result when we've checked all nodes or found threshold matches for all items
+        const thresholdMatches = Object.keys(count)
+          .filter((item) => count[item] >= thresholdCount)
+          .map((item) => hexToBytes(item));
+
+        // If we've found all items meeting threshold already, return the result
+        if (thresholdMatches.length === allItems.size) {
+          return thresholdMatches;
+        }
+
+        // if we have checked all the nodes and no error found return thresholdMatches
+        if (
+          resultArray.length + (error?.length ?? 0) >= promises.length &&
+          !(error?.length ?? 0)
+        ) {
+          return thresholdMatches;
+        }
+        // throw and wait for result from other nodes.
+        throw new MetadataStoreError('Unable to resolve threshold for data');
+      },
+    );
+  }
+
+  /**
    * Generate the payload for the set or batch set secret data request and get payload signature.
    *
    * @param rawData - The encrypted secret data to be stored.
    * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
-   * @param authToken - The auth token to be used for authentication for the metadata server.
+  //  * @param authToken - The auth token to be used for authentication for the metadata server.
    * @returns The payload for the batch set secret data request.
    */
-  #generatePayloadForSetOrBatchSetSecretDataRequest(
+  #generatePayloadForSetOrBatchSet(
     rawData: Uint8Array,
     authKeyPair: KeyPair,
-    authToken: string,
+    // authToken: string,
   ): ISetSecretDataRequestBody {
     const timestamp = Date.now().toString();
     const feature = this.#feature;
@@ -307,7 +395,7 @@ export class MetadataStore {
 
     const { pk, sk } = authKeyPair;
     const signature = this.#generatePayloadSignature(
-      { data: base64Data, timestamp, feature, authToken },
+      { data: base64Data, timestamp, feature },
       sk,
     );
 
@@ -318,7 +406,7 @@ export class MetadataStore {
       signature,
       feature,
       timestamp,
-      authToken,
+      // authToken,
       pubKey,
     };
   }

@@ -1,6 +1,5 @@
 /**
  * SEC1 encoded public key
- * Where x and y are 32-byte coordinates in big-endian format
  */
 export type SEC1EncodedPublicKey = Uint8Array;
 
@@ -200,10 +199,9 @@ export type FetchAllSecretDataParams = {
 /**
  * Result from fetching the secret data from the metadata store.
  *
- * null - If no secret data is found.
  * Uint8Array - The secret data in decrypted form.
  */
-export type FetchSecretDataResult = Uint8Array[] | null;
+export type FetchSecretDataResult = Uint8Array[];
 
 export type IToprfSecureBackup = {
   authenticate: (params: AuthenticateParams) => Promise<AuthenticateResult>;
@@ -298,7 +296,7 @@ export type IBaseSetSecretDataRequestBody<T> = IBaseMetadataRequestBody & {
   /**
    * The authentication token of the user issued by the SSS services
    */
-  authToken: string;
+  // authToken: string;
   /**
    * The secret data to be stored.
    *

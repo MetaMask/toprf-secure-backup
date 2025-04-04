@@ -119,7 +119,7 @@ describe('MetadataStore', () => {
     expect(result).toBeNull();
   });
 
-  it('should an error if the data is not present in the metadata response', async () => {
+  it('should return empty array if the data is not present in the metadata response', async () => {
     const fetchSpy = jest
       .spyOn(global, 'fetch')
       .mockImplementation(async () => {
@@ -137,9 +137,12 @@ describe('MetadataStore', () => {
 
     const metadataStore = createMockMetadataStore();
 
-    await expect(
-      metadataStore.fetchAllSecretDataItems(encKey, authKeyPair),
-    ).rejects.toThrow('Threshold not resolved');
+    const result = await metadataStore.fetchAllSecretDataItems(
+      encKey,
+      authKeyPair,
+    );
+    expect(result).toBeInstanceOf(Array);
+    expect(result).toHaveLength(0);
 
     expect(fetchSpy).toHaveBeenCalled();
 
