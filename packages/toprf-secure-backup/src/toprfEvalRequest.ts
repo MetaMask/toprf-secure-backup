@@ -124,8 +124,8 @@ export const evaluateSeed = async (
         return null;
       }
       const blindedOutput = secp256k1.ProjectivePoint.fromAffine({
-        x: BigInt(blindedOutputX),
-        y: BigInt(blindedOutputY),
+        x: BigInt(`0x${blindedOutputX}`),
+        y: BigInt(`0x${blindedOutputY}`),
       });
 
       return {
