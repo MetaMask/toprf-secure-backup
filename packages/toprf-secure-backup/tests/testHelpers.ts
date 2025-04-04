@@ -70,6 +70,7 @@ export function generateMockAuthTokenForMetadataRequests(params: {
     temp_key_x: '0x123',
     temp_key_y: '0x456',
     exp: AUTH_TOKEN_EXPIRY,
+    signature: '',
   };
 
   // base-64 encode the authNetworkToken object (without signature)

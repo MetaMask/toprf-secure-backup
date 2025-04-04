@@ -84,7 +84,6 @@ describe('MetadataStore', () => {
     const metadataStore2 = createMockMetadataStore();
 
     const secretData = utf8ToBytes('SECRET_DATA');
-
     await metadataStore1.addSecretDataItem({
       secretData,
       encKey,
@@ -98,6 +97,46 @@ describe('MetadataStore', () => {
     );
     expect(result).not.toBeNull();
     expect(result?.[0]).toStrictEqual(secretData);
+  });
+
+  it('should be able to store secret data in batch', async () => {
+    const metadataStore = createMockMetadataStore();
+
+    const secretData = utf8ToBytes('SECRET_DATA');
+    await metadataStore.addSecretDataItem({
+      secretData,
+      encKey,
+      authKeyPair,
+      nodeAuthTokens,
+    });
+
+    const existingSecretData = await metadataStore.fetchAllSecretDataItems(
+      encKey,
+      authKeyPair,
+    );
+
+    expect(existingSecretData).not.toBeNull();
+
+    const newEncKey = deriveEncryptionKey(randomBytes(32));
+    await metadataStore.batchAddSecretData({
+      secretData: existingSecretData ?? [], // should not be null, the above `expect` should have failed if it was
+      encKey: newEncKey,
+      authKeyPair,
+      nodeAuthTokens,
+    });
+
+    // the result should be the new encrypted value of the existing secret data
+    const newSecretData = await metadataStore.fetchAllSecretDataItems(
+      newEncKey,
+      authKeyPair,
+    );
+
+    expect(newSecretData).not.toBeNull();
+    expect(newSecretData?.length).toStrictEqual(existingSecretData?.length);
+
+    const sortedResult = newSecretData?.sort();
+    expect(sortedResult?.[0]).toStrictEqual(existingSecretData?.[0]);
+    expect(sortedResult?.[1]).toStrictEqual(existingSecretData?.[1]);
   });
 
   it('should get null if metadata key not found', async () => {

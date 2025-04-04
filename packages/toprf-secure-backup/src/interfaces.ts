@@ -83,14 +83,7 @@ export type CreateEncryptionKeyResult = {
   encKey: Uint8Array;
 };
 
-/**
- * nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
- *
- * keyPair - The encryption/decryption key pair which is used to encrypt the secret data before storing it.
- *
- * secretData - The secret data to be registered.
- */
-export type AddSecretDataItemParams = {
+export type BaseAddSecretDataItemParams<SecretDataType> = {
   /**
    * The node auth tokens issued by the nodes on authenticating the user.
    */
@@ -99,7 +92,7 @@ export type AddSecretDataItemParams = {
   /**
    * The secret data to be stored.
    */
-  secretData: Uint8Array;
+  secretData: SecretDataType;
 
   /**
    * The encryption key to be used to encrypt the secret data.
@@ -111,6 +104,19 @@ export type AddSecretDataItemParams = {
    */
   authKeyPair: KeyPair;
 };
+
+/**
+ * nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
+ *
+ * keyPair - The encryption/decryption key pair which is used to encrypt the secret data before storing it.
+ *
+ * secretData - The secret data to be registered.
+ */
+export type AddSecretDataItemParams = BaseAddSecretDataItemParams<Uint8Array>;
+
+export type BatchAddSecretDataItemParams = BaseAddSecretDataItemParams<
+  Uint8Array[]
+>;
 
 /**
  * nodeAuthTokens - The tokens issued by the nodes on authenticating the user.

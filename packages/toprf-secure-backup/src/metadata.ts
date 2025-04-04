@@ -17,6 +17,8 @@ import type {
   AddSecretDataItemParams,
   NodeAuthTokens,
   ISetSecretDataRequestBody,
+  IBatchSetSecretDataRequestBody,
+  BatchAddSecretDataItemParams,
 } from './interfaces';
 
 type MetadataStoreOptions = {
@@ -95,11 +97,54 @@ export class MetadataStore {
     } catch (error) {
       if (error instanceof SomeError) {
         throw new MetadataStoreError(
-          `failed to store metadata: ${error.predicate}`,
+          `failed to add metadata: ${error.predicate}`,
         );
       }
       throw new MetadataStoreError(
-        `failed to fetch metadata: ${(error as Error).message}`,
+        `failed to add metadata: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  /**
+   * Encrypts the secret data and stores it in the metadata store.
+   *
+   * @param params - The parameters for storing the secret data.
+   * @param params.secretData - The array of secret data to be stored.
+   * @param params.encKey - The encryption key to be used for encrypting the secret data.
+   * @param params.authKeyPair - The authentication key pair to be used for authenticating the secret data.
+   * @param params.nodeAuthTokens - The array of auth tokens to be used for authenticating against the metadata server.
+   * @returns A promise that resolves when the secret data is stored.
+   */
+  async batchAddSecretData(
+    params: BatchAddSecretDataItemParams,
+  ): Promise<void> {
+    try {
+      const { secretData, encKey, nodeAuthTokens, authKeyPair } = params;
+      const endPointToAuthTokenMap =
+        this.#getAuthTokenToMetadataEndpointsMap(nodeAuthTokens);
+      const promises = Object.entries(endPointToAuthTokenMap).map(
+        async ([endpoint, authToken]) => {
+          return this.#batchAddData({
+            secretData,
+            encKey,
+            authKeyPair,
+            metadataEndpoint: endpoint,
+            authToken,
+          });
+        },
+      );
+      const thresholdCount =
+        Math.floor(Object.keys(endPointToAuthTokenMap).length / 2) + 1;
+      await this.#thresholdCheck<boolean>(promises, thresholdCount);
+    } catch (error) {
+      if (error instanceof SomeError) {
+        throw new MetadataStoreError(
+          `failed to add batch metadata: ${error.predicate}`,
+        );
+      }
+      throw new MetadataStoreError(
+        `failed to add batch metadata: ${(error as Error).message}`,
       );
     }
   }
@@ -168,11 +213,12 @@ export class MetadataStore {
     try {
       const url = `${params.metadataEndpoint}/enc_account_data/set`;
       const encryptedData = this.#encryptData(params.secretData, params.encKey);
-      const payload = this.#generatePayloadForSetOrBatchSetSecretDataRequest(
-        encryptedData,
-        params.authKeyPair,
-        params.authToken,
-      );
+      const payload =
+        this.#generatePayloadForSetOrBatchSetSecretDataRequest<Uint8Array>(
+          encryptedData,
+          params.authKeyPair,
+          params.authToken,
+        );
 
       const requestBody = JSON.stringify(payload);
 
@@ -183,6 +229,56 @@ export class MetadataStore {
         },
         method: 'POST',
         body: requestBody,
+      });
+
+      if (!response.ok) {
+        const responseBody = await response.json();
+        throw new Error(`HTTP error message: ${responseBody.error}`);
+      }
+      const jsonData = await response.json();
+      return jsonData.success;
+    } catch (error: unknown) {
+      const errorMessage = (error as Error).message || 'Unknown error';
+      throw new MetadataStoreError(
+        `failed to upsert metadata: ${errorMessage}`,
+      );
+    }
+  }
+
+  /**
+   * Encrypts the array of secret data and inserts them in the metadata store.
+   *
+   * @param params - The parameters for serializing and making batch set secret data request.
+   * @param params.secretData - The array of secret data to be stored.
+   * @param params.encKey - The encryption key to be used for encrypting the secret data.
+   * @param params.authKeyPair - The authentication key pair to be used for authenticating the secret data.
+   * @param params.metadataEndpoint - The metadata server endpoint to be used for storing the secret data.
+   * @param params.authToken - The auth token to be used for authentication for the metadata server.
+   * @returns A promise that resolves when the secret data is stored.
+   */
+  async #batchAddData(params: {
+    secretData: Uint8Array[];
+    encKey: Uint8Array;
+    authKeyPair: KeyPair;
+    metadataEndpoint: string;
+    authToken: string;
+  }): Promise<boolean> {
+    try {
+      const url = `${params.metadataEndpoint}/enc_account_data/batch_set`;
+      const encryptedDataArray = params.secretData.map((secret) => ({
+        data: this.#encryptData(secret, params.encKey),
+      }));
+      const payload = this.#generatePayloadForSetOrBatchSetSecretDataRequest<
+        { data: Uint8Array }[]
+      >(encryptedDataArray, params.authKeyPair, params.authToken);
+
+      const response = await fetch(url, {
+        headers: {
+          // eslint-disable-next-line @typescript-eslint/naming-convention
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -278,36 +374,53 @@ export class MetadataStore {
   /**
    * Generate the payload for the set or batch set secret data request and get payload signature.
    *
-   * @param rawData - The encrypted secret data to be stored.
+   * @param rawData - The raw encrypted secret data or batch of encrypted secret data to be stored.
    * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
    * @param authToken - The auth token to be used for authentication for the metadata server.
    * @returns The payload for the batch set secret data request.
    */
-  #generatePayloadForSetOrBatchSetSecretDataRequest(
-    rawData: Uint8Array,
+  #generatePayloadForSetOrBatchSetSecretDataRequest<
+    TYPE extends Uint8Array | { data: Uint8Array }[],
+  >(
+    rawData: TYPE,
     authKeyPair: KeyPair,
     authToken: string,
-  ): ISetSecretDataRequestBody {
+  ): TYPE extends Uint8Array
+    ? ISetSecretDataRequestBody
+    : IBatchSetSecretDataRequestBody {
     const timestamp = Date.now().toString();
     const feature = this.#feature;
-    const base64Data = Buffer.from(rawData).toString('base64');
+
+    let data: string | { data: string }[];
+
+    if (Array.isArray(rawData)) {
+      data = rawData.map((item) => ({
+        data: Buffer.from(item.data).toString('base64'),
+      }));
+    } else if (rawData instanceof Uint8Array) {
+      data = Buffer.from(rawData).toString('base64');
+    } else {
+      throw new MetadataStoreError('Invalid data type');
+    }
 
     const { pk, sk } = authKeyPair;
     const signature = this.#generatePayloadSignature(
-      { data: base64Data, timestamp, feature, authToken },
+      { data, timestamp, feature, authToken },
       sk,
     );
 
     const pubKey = bytesToHex(pk);
 
     return {
-      data: base64Data,
+      data,
       signature,
       feature,
       timestamp,
       authToken,
       pubKey,
-    };
+    } as TYPE extends Uint8Array
+      ? ISetSecretDataRequestBody
+      : IBatchSetSecretDataRequestBody;
   }
 
   /**
