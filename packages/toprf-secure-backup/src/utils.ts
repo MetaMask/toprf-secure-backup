@@ -10,21 +10,10 @@ import {
 } from '@metamask/auth-network-utils';
 import { decrypt } from '@toruslabs/eccrypto';
 import { post } from '@toruslabs/http-helpers';
-import BN from 'bn.js';
 
 type EncryptedData = {
   data: string;
   metadata: Omit<EciesHex, 'ciphertext'>;
-};
-
-/**
- * Converts a BigInt to BN
- *
- * @param value - BigInt value to convert
- * @returns BN instance
- */
-export const bigIntToBN = (value: bigint): BN => {
-  return new BN(value.toString());
 };
 
 /**
