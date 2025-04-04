@@ -86,25 +86,25 @@ export function kCombinations(
 /**
  * Calculates the index of the proxy coordinator endpoint based on verifier details
  *
- * @param endpoints - The endpoints to choose from
+ * @param indexes - The indexes to choose from.
  * @param verifier - The verifier to use to generate the index
  * @param verifierId - The verifier id to use to generate the index
- * @returns The index of the proxy coordinator endpoint
+ * @returns The node index of the proxy coordinator endpoint.
  */
-export function getProxyCoordinatorEndpointIndex(
-  endpoints: string[],
+export const getProxyCoordinatorNodeIndex = (
+  indexes: number[],
   verifier: string,
   verifierId: string,
-): number {
+): number => {
   const verifierIdStr = `${verifier}${verifierId}`;
   const hashedVerifierId = keccak256AndHexify(
     Buffer.from(verifierIdStr, 'utf8'),
   ).slice(2);
   const proxyEndpointNum = new BN(hashedVerifierId, 'hex')
-    .mod(new BN(endpoints.length))
+    .mod(new BN(indexes.length))
     .toNumber();
-  return proxyEndpointNum;
-}
+  return indexes[proxyEndpointNum];
+};
 
 /**
  *

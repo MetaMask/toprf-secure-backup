@@ -124,7 +124,7 @@ export const validateThresholdAuthenticateResponses = async (
  * @param params.verifier - The verifier to be used for the authenticate request
  * @param params.verifierID - The verifierID to be used for the authenticate request
  * @param params.sessionPrivateKey - The session private key used for commitment request.
- * @param params.endpoints - The endpoints to be used for the authenticate request
+ * @param params.nodeEndpointsMap - The map of node indexes to endpoints map to be used for the authenticate request.
  * @param params.commitmentSignatures - The idToken commitment signatures to be used for the authenticate request.
  * @returns resultArr - The authenticate request result, where each element is
  * a signed authenticate data from a node.
@@ -134,12 +134,12 @@ export const authenticateUser = async (params: {
   verifier: string;
   verifierID: string;
   sessionPrivateKey: Uint8Array;
-  endpoints: string[];
+  nodeEndpointsMap: Record<number, string>;
   commitmentSignatures: CommitmentRequestResult[];
 }): Promise<AuthRequestResult[]> => {
   const {
     idToken,
-    endpoints,
+    nodeEndpointsMap,
     verifier,
     verifierID,
     commitmentSignatures,
@@ -152,7 +152,7 @@ export const authenticateUser = async (params: {
     commitmentSignatures,
   );
   // start with half the nodes count optimistically.
-  const promiseArr = endpoints.map(async (endpoint) =>
+  const promiseArr = Object.values(nodeEndpointsMap).map(async (endpoint) =>
     sendAuthenticateRequest(endpoint, requestParams),
   );
 

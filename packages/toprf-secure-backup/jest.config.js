@@ -14,6 +14,9 @@ module.exports = merge(baseConfig, {
   // The display name when running multiple projects
   displayName,
 
+  // Setup files to run before tests
+  setupFiles: ['./tests/setup.ts'],
+
   // An object that configures minimum threshold enforcement for coverage results
   coverageThreshold: {
     global: {
@@ -22,11 +25,11 @@ module.exports = merge(baseConfig, {
       lines: 100,
       statements: 100,
     },
-    // global: {
-    //   branches: 80,
-    //   functions: 80,
-    //   lines: 80,
-    //   statements: -10,
-    // },
+    './src/toprfSecureBackup.ts': {
+      statements: 97.87,
+      branches: 75,
+      functions: 100,
+      lines: 97.87,
+    },
   },
 });

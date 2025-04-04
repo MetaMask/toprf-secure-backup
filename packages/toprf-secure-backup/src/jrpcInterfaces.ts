@@ -45,3 +45,23 @@ export type AuthRequestResult = {
 };
 
 export type AuthJRPCResponse = JRPCResponse<AuthRequestResult>;
+
+export type ShareImportItem = {
+  encryptedAuthToken: string;
+  encryptedShare: string;
+  shareKeyIndex: number;
+  nodeIndex: number;
+  sssEndpoint: string;
+};
+
+export type StoreKeySharesJRPCRequestParams = {
+  verifier: string;
+  verifierId: string;
+  pubKey: string;
+  shareImportItems: ShareImportItem[];
+};
+
+export type StoreKeySharesJRPCRequest =
+  JRPCRequest<StoreKeySharesJRPCRequestParams>;
+
+export type StoreKeySharesJRPCResponse = JRPCResponse<null>;

@@ -21,7 +21,7 @@ import { postJRPCRequest } from './utils';
  * @param verifier - The verifier
  * @param sessionPubKeyX - The public key x to be used for the commitment request session.
  * @param sessionPubKeyY - The public key y to be used for the commitment request session.
- * @returns The parameters for the commitment jrpc request
+ * @returns The parameters for the commitment JRPC request.
  */
 const createCommitmentRequestParams = (
   tokenCommitment: string,

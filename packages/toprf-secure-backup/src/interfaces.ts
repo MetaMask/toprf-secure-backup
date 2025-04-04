@@ -11,8 +11,8 @@ export type SEC1EncodedPublicKey = Uint8Array;
  * pubKey - The encryption public key in SEC1 encoded format.
  */
 export type KeyPair = {
-  privKey: bigint;
-  pubKey: SEC1EncodedPublicKey;
+  sk: bigint;
+  pk: SEC1EncodedPublicKey;
 };
 
 export type AuthenticateParams = {
