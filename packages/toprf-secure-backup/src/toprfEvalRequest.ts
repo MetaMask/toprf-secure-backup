@@ -5,8 +5,9 @@ import {
   pubKeyToSec1,
   thresholdSame,
 } from '@metamask/auth-network-utils';
+import type { ProjPointType } from '@noble/curves/abstract/weierstrass';
+import { secp256k1 } from '@noble/curves/secp256k1';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
-import { secp256k1 } from 'ethereum-cryptography/secp256k1';
 
 import {
   EXISTING_USER_AUTHENTICATION_THRESHOLD,
@@ -22,9 +23,8 @@ import { deriveAuthenticationKeyPair } from './keyDerivation';
 import { OPRF } from './oprf';
 import { postJRPCRequest } from './utils';
 
-type BlindedPoint = {
-  x: string;
-  y: string;
+type BlindedOutputShare = {
+  blindedOutput: ProjPointType<bigint>;
   nodeIndex: number;
 };
 /**
@@ -116,21 +116,24 @@ export const evaluateSeed = async (
   }
 
   const blindedServerPoints = completedRequests
-    .map((resp): BlindedPoint | null => {
+    .map((resp): BlindedOutputShare | null => {
       const { blindedOutputX, blindedOutputY, nodeIndex } = resp.result ?? {};
 
       // Check if all required values are defined
       if (!blindedOutputX || !blindedOutputY || !nodeIndex) {
         return null;
       }
+      const blindedOutput = secp256k1.ProjectivePoint.fromAffine({
+        x: BigInt(blindedOutputX),
+        y: BigInt(blindedOutputY),
+      });
 
       return {
-        x: blindedOutputX.padStart(64, '0'),
-        y: blindedOutputY.padStart(64, '0'),
+        blindedOutput,
         nodeIndex,
       };
     })
-    .filter((point): point is BlindedPoint => point !== null);
+    .filter((point): point is BlindedOutputShare => point !== null);
 
   // evaluate auth priv key using oprf and match with the threshold auth pub key
   const allCombis = kCombinations(
@@ -143,9 +146,7 @@ export const evaluateSeed = async (
     const currentCombiPoints = blindedServerPoints.filter((_, index) =>
       currentCombi.includes(index),
     );
-    const curvePoints = currentCombiPoints.map((point) =>
-      secp256k1.ProjectivePoint.fromHex(`04${point.x}${point.y}`),
-    );
+    const curvePoints = currentCombiPoints.map((point) => point.blindedOutput);
     const nodeIndexes = currentCombiPoints.map((point) =>
       BigInt(point.nodeIndex),
     );
@@ -163,8 +164,10 @@ export const evaluateSeed = async (
       randomScalar,
     );
     const { pk } = deriveAuthenticationKeyPair(recoveredSeed);
-    const authPubKey = pubKeyToSec1(pk);
-    if (authPubKey === thresholdAuthPubKey) {
+    const derivedPubKey = secp256k1.ProjectivePoint.fromHex(pk);
+    const thresholdPubKey =
+      secp256k1.ProjectivePoint.fromHex(thresholdAuthPubKey);
+    if (derivedPubKey.equals(thresholdPubKey)) {
       seed = recoveredSeed;
       break;
     }
