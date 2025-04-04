@@ -30,7 +30,6 @@ const createCommitmentRequestParams = (
   sessionPubKeyY: string,
 ): CommitmentJRPCRequestParams => {
   return {
-    messagePrefix: 'mug00',
     tokenCommitment,
     verifier,
     tempPubKeyX: sessionPubKeyX,
