@@ -6,15 +6,18 @@ import {
   deriveEncryptionKey,
 } from './keyDerivation';
 import { MetadataStore } from './metadata';
-import { generateMockAuthTokenForMetadataRequests } from '../tests/testHelpers';
+import { ToprfSecureBackup } from './toprfSecureBackup';
+import { METADATA_NODES_ENDPOINTS_MAP } from '../tests/constants';
+import { generateIdToken } from '../tests/testHelpers';
 
+const toprfSecureBackup = new ToprfSecureBackup({
+  network: 'sapphire_devnet',
+});
 const MOCK_SEED = randomBytes(32);
-const METADATA_SERVER_URL = 'http://localhost:5051';
-const NODE_ENDPOINTS_MAP = new Map([
-  [1, METADATA_SERVER_URL],
-  [2, METADATA_SERVER_URL],
-  [3, METADATA_SERVER_URL],
-]);
+const NODE_ENDPOINTS_MAP = METADATA_NODES_ENDPOINTS_MAP;
+const secretData = utf8ToBytes('test-secret-data');
+const verifier = 'torus-test-health';
+const verifierID = `test-verifier-id-${Math.random()}`;
 
 /**
  * Creates a mock MetadataStore instance.
@@ -32,15 +35,22 @@ describe('MetadataStore', () => {
   let nodeAuthTokens: NodeAuthTokens;
   let encKey: Uint8Array;
   let authKeyPair: KeyPair;
-  const verifier = 'torus-test-health';
-  const verifierId = 'test-verifier-id';
 
   beforeAll(async () => {
-    // TODO: get from the `authenticateRequest` function instead of using the mock
-    nodeAuthTokens = generateMockAuthTokenForMetadataRequests({
+    const idToken = generateIdToken(verifierID, 'ES256');
+
+    const result = await toprfSecureBackup.authenticate({
+      idTokens: [idToken],
       verifier,
-      verifierId,
+      verifierID,
     });
+    console.log('result', result);
+    nodeAuthTokens = result.nodeAuthTokens;
+    // // TODO: get from the `authenticateRequest` function instead of using the mock
+    // nodeAuthTokens = generateMockAuthTokenForMetadataRequests({
+    //   verifier,
+    //   verifierId: verifierID,
+    // });
     encKey = deriveEncryptionKey(MOCK_SEED);
     authKeyPair = deriveAuthenticationKeyPair(MOCK_SEED);
   });
@@ -62,7 +72,6 @@ describe('MetadataStore', () => {
 
   it('should be able to store/fetch data', async () => {
     const metadataStore = createMockMetadataStore();
-    const secretData = utf8ToBytes('SECRET_DATA');
 
     await metadataStore.addSecretDataItem({
       secretData,
@@ -82,8 +91,6 @@ describe('MetadataStore', () => {
   it('should be able to store/fetch data with different instances', async () => {
     const metadataStore1 = createMockMetadataStore();
     const metadataStore2 = createMockMetadataStore();
-
-    const secretData = utf8ToBytes('SECRET_DATA');
 
     await metadataStore1.addSecretDataItem({
       secretData,
@@ -140,9 +147,7 @@ describe('MetadataStore', () => {
   });
 
   it('should throw an error if the threshold is not met', async () => {
-    const metadataStore = new MetadataStore({
-      nodeEndpointsMap: NODE_ENDPOINTS_MAP,
-    });
+    const metadataStore = createMockMetadataStore();
 
     const fetchSpy = jest
       .spyOn(global, 'fetch')
@@ -169,7 +174,7 @@ describe('MetadataStore', () => {
       metadataStore.fetchAllSecretDataItems(encKey, authKeyPair),
     ).rejects.toThrow('Threshold not resolved');
 
-    expect(fetchSpy).toHaveBeenCalledTimes(3);
+    expect(fetchSpy).toHaveBeenCalledTimes(NODE_ENDPOINTS_MAP.size);
     jest.restoreAllMocks();
   });
 
