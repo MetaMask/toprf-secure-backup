@@ -1,6 +1,7 @@
 name: Main
 
-on: [] # disabled
+on:
+  [] # disabled
   # push:
   #   branches: [main]
   # pull_request:
