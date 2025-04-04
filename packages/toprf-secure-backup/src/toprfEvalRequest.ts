@@ -2,7 +2,6 @@ import {
   Some,
   kCombinations,
   lagrangeInterpolationForPoints,
-  pubKeyToSec1,
   thresholdSame,
 } from '@metamask/auth-network-utils';
 import type { ProjPointType } from '@noble/curves/abstract/weierstrass';
