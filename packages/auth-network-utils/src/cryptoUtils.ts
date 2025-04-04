@@ -83,8 +83,8 @@ function stripHexPrefix(str: string): string {
 export function toChecksumAddress(hexAddress: string): string {
   const address = stripHexPrefix(hexAddress).toLowerCase();
 
-  const buf = Buffer.from(address, 'utf8');
-  const hash = keccak256AndHexify(buf).slice(2); // hash and remove 0x prefix
+  const buffer = Buffer.from(address, 'utf8');
+  const hash = keccak256AndHexify(buffer).slice(2); // hash and remove 0x prefix
 
   let ret = '0x';
   for (let i = 0; i < address.length; i++) {

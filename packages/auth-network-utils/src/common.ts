@@ -21,10 +21,13 @@ export function keccak256AndHexify(buffer: Uint8Array): `0x${string}` {
  * Finds the first element that appears t times in the array
  *
  * @param arr - The array to search
- * @param t - The number of times the element should appear
+ * @param threshold - The number of times the element should appear
  * @returns The first element that appears t times in the array
  */
-export function thresholdSame<T>(arr: T[], t: number): T | undefined {
+export function thresholdSame<Type>(
+  arr: Type[],
+  threshold: number,
+): Type | undefined {
   const hashMap: Record<string, number> = {};
   for (const item of arr) {
     const str = JsonStringify(item);
@@ -32,7 +35,7 @@ export function thresholdSame<T>(arr: T[], t: number): T | undefined {
       continue;
     }
     hashMap[str] = hashMap[str] ? hashMap[str] + 1 : 1;
-    if (hashMap[str] === t) {
+    if (hashMap[str] === threshold) {
       return item;
     }
   }
@@ -40,13 +43,17 @@ export function thresholdSame<T>(arr: T[], t: number): T | undefined {
 }
 
 /**
+ * Generates all possible combinations of k elements from a set.
  *
- * @param s - The set to generate combinations from
+ * @param inputSet - The set to generate combinations from
  * @param k - The number of elements in each combination
  * @returns All possible combinations of k elements from the set s
  */
-export function kCombinations(s: number | number[], k: number): number[][] {
-  let set = s;
+export function kCombinations(
+  inputSet: number | number[],
+  k: number,
+): number[][] {
+  let set = inputSet;
   if (typeof set === 'number') {
     set = Array.from({ length: set }, (_, i) => i);
   }
@@ -77,6 +84,7 @@ export function kCombinations(s: number | number[], k: number): number[][] {
 }
 
 /**
+ * Calculates the index of the proxy coordinator endpoint based on verifier details
  *
  * @param endpoints - The endpoints to choose from
  * @param verifier - The verifier to use to generate the index
@@ -87,7 +95,7 @@ export function getProxyCoordinatorEndpointIndex(
   endpoints: string[],
   verifier: string,
   verifierId: string,
-) {
+): number {
   const verifierIdStr = `${verifier}${verifierId}`;
   const hashedVerifierId = keccak256AndHexify(
     Buffer.from(verifierIdStr, 'utf8'),
@@ -131,10 +139,10 @@ export function calculateMedian(arr: number[]): number {
  * @param maxRetries - The maximum number of retries
  * @returns The result of the promise
  */
-export async function retryPromiseWithBackoff<T>(
-  executionPromise: () => Promise<JRPCResponse<T>>,
+export async function retryPromiseWithBackoff<Type>(
+  executionPromise: () => Promise<JRPCResponse<Type>>,
   maxRetries: number,
-) {
+): Promise<JRPCResponse<Type>> {
   // Notice that we declare an inner function here
   // so we can encapsulate the retries and don't expose
   // it to the caller. This is also a recursive function
@@ -143,7 +151,9 @@ export async function retryPromiseWithBackoff<T>(
    * @param retries - The number of retries
    * @returns The result of the promise
    */
-  async function retryWithBackoff(retries: number) {
+  async function retryWithBackoff(
+    retries: number,
+  ): Promise<JRPCResponse<Type>> {
     try {
       // we don't wait on the first attempt
       if (retries > 0) {
@@ -157,8 +167,8 @@ export async function retryPromiseWithBackoff<T>(
       }
       const a = await executionPromise();
       return a;
-    } catch (e: unknown) {
-      const errorMsg = (e as Error).message;
+    } catch (error: unknown) {
+      const errorMsg = (error as Error).message;
       const acceptedErrorMsgs = [
         // Slow node
         'Timed out',
@@ -176,13 +186,13 @@ export async function retryPromiseWithBackoff<T>(
       if (
         retries < maxRetries &&
         (acceptedErrorMsgs.includes(errorMsg) ||
-          (errorMsg && errorMsg.includes('reason: getaddrinfo EAI_AGAIN')))
+          errorMsg?.includes('reason: getaddrinfo EAI_AGAIN'))
       ) {
         // only retry if we didn't reach the limit
         // otherwise, let the caller handle the error
         return retryWithBackoff(retries + 1);
       }
-      throw e;
+      throw error;
     }
   }
 
@@ -197,11 +207,11 @@ export async function retryPromiseWithBackoff<T>(
  * @param resultArr - array of resolved results
  * @param predicateError - error thrown by the callbackFn
  */
-function handleSomeCallBackFnError<K>(
+function handleSomeCallBackFnError<Type>(
   errorArr: Error[],
-  resultArr: K[],
+  resultArr: Type[],
   predicateError?: Error,
-) {
+): void {
   // check if there's any rejected promises
   let hasError = errorArr.some((error) => error !== undefined);
   if (hasError) {
@@ -244,20 +254,23 @@ function handleSomeCallBackFnError<K>(
  * @param callbackFn - function to execute resolved promises and determine the outcome of the operation conditionally
  * @returns - result of the operation
  */
-export async function Some<K, T>(
-  promises: Promise<K>[],
-  callbackFn: (resultArr: K[], params?: { resolved: boolean }) => Promise<T>,
-): Promise<T> {
+export async function Some<Input, Output>(
+  promises: Promise<Input>[],
+  callbackFn: (
+    resultArr: Input[],
+    params?: { resolved: boolean },
+  ) => Promise<Output>,
+): Promise<Output> {
   let predicateError: Error | undefined; // to keep track of the latest error thrown by the callbackFn
   let finishedCount = 0;
-  const resultArr: K[] = new Array(promises.length).fill(undefined);
+  const resultArr: Input[] = new Array(promises.length).fill(undefined);
   const errorArr: Error[] = new Array(promises.length).fill(undefined);
 
   for (const [i, promise] of promises.entries()) {
     try {
       resultArr[i] = await promise;
-    } catch (e: unknown) {
-      errorArr[i] = e as Error;
+    } catch (error: unknown) {
+      errorArr[i] = error as Error;
     }
 
     try {
@@ -265,8 +278,8 @@ export async function Some<K, T>(
       if (result) {
         return result;
       }
-    } catch (e: unknown) {
-      predicateError = e as Error;
+    } catch (error: unknown) {
+      predicateError = error as Error;
     } finally {
       finishedCount += 1;
     }
