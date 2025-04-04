@@ -217,3 +217,21 @@ export const generateShareImportItems = async (
     }),
   );
 };
+
+/**
+ * Creates a map of node indexes to endpoints
+ *
+ * @param nodeEndpoints - The endpoints of the nodes.
+ * @param nodeIndexes - The indexes of the nodes.
+ *
+ * @returns A map of node indexes to endpoints.
+ */
+export const createNodeEndpointsMap = (
+  nodeEndpoints: string[],
+  nodeIndexes: number[],
+): Record<number, string> => {
+  return nodeIndexes.reduce<Record<number, string>>((acc, index) => {
+    acc[index] = nodeEndpoints[index - 1];
+    return acc;
+  }, {});
+};

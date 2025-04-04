@@ -7,6 +7,7 @@ import {
 } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
 import type { AuthJRPCResponse, AuthRequestResult } from './jrpcInterfaces';
+import { createNodeEndpointsMap } from './utils';
 import { generateIdToken } from '../tests/testHelpers';
 
 describe('validateThresholdAuthenticateResponses', () => {
@@ -173,12 +174,23 @@ describe('authenticate request', function () {
       sessionPubKeyY,
       endpoints: torusNodeSSSEndpoints,
     });
+    const nodeEndpointsMap = createNodeEndpointsMap(
+      torusNodeSSSEndpoints,
+      torusIndexes,
+    );
+
+    const selectedEndpointsMap = commitmentResults.reduce<
+      Record<number, string>
+    >((acc, result) => {
+      acc[result.nodeIndex] = nodeEndpointsMap[result.nodeIndex];
+      return acc;
+    }, {});
     const authResult = await authenticateUser({
       idToken,
       verifier,
       verifierID,
       sessionPrivateKey: keyPair.getPrivate().toBuffer(),
-      endpoints: torusNodeSSSEndpoints,
+      nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
     });
     expect(authResult).toBeDefined();

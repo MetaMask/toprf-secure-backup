@@ -23,6 +23,7 @@ import {
 } from './keyDerivation';
 import { OPRF, generateRandomScalar } from './oprf';
 import { storeKeyShares } from './storeSharesRequest';
+import { createNodeEndpointsMap } from './utils';
 
 /**
  *
@@ -54,7 +55,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @throws {Error} If idToken is older than 6 minutes.
    */
   async authenticate(params: AuthenticateParams): Promise<AuthenticateResult> {
-    const { nodeEndpoints } = await this.#getNodeDetails();
+    const { nodeEndpoints, nodeEndpointsMap } = await this.#getNodeDetails();
     const curve = getSecp256K1Curve();
     const sessionKeyPair = curve.genKeyPair();
     const sessionPrivKeyBuffer = sessionKeyPair.getPrivate().toBuffer();
@@ -70,13 +71,22 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       sessionPubKeyY,
       endpoints: nodeEndpoints,
     });
+
+    // use only the node indexes that returned valid commitment responses
+    const selectedEndpointsMap = commitmentResults.reduce<
+      Record<number, string>
+    >((acc, result) => {
+      acc[result.nodeIndex] = nodeEndpointsMap[result.nodeIndex];
+      return acc;
+    }, {});
+
     // get auth tokens from nodes
     const authTokens = await authenticateUser({
       idToken: params.idTokens[0],
       verifier: params.verifier,
       verifierID: params.verifierID,
       sessionPrivateKey: sessionPrivKeyBuffer,
-      endpoints: nodeEndpoints,
+      nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
     });
     const hasValidEncKey = thresholdSame(
@@ -115,9 +125,15 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     const oprfKey = generateRandomScalar();
     const seed = OPRF.localEval(oprfKey, hashedInput);
     const authKeyPair = deriveAuthenticationKeyPair(seed);
-
+    const selectedEndpointsMap = nodeAuthTokens.reduce<Record<number, string>>(
+      (acc, tokenData) => {
+        acc[tokenData.nodeIndex] = nodeEndpointsMap[tokenData.nodeIndex];
+        return acc;
+      },
+      {},
+    );
     await storeKeyShares({
-      nodeEndpointsMap,
+      nodeEndpointsMap: selectedEndpointsMap,
       verifier,
       verifierId,
       authTokens: nodeAuthTokens,
@@ -159,12 +175,9 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
 
     return {
       nodeEndpoints: torusNodeSSSEndpoints,
-      nodeEndpointsMap: torusIndexes.reduce<Record<number, string>>(
-        (acc, index) => {
-          acc[index] = torusNodeSSSEndpoints[index - 1];
-          return acc;
-        },
-        {},
+      nodeEndpointsMap: createNodeEndpointsMap(
+        torusNodeSSSEndpoints,
+        torusIndexes,
       ),
       nodeIndexes: torusIndexes,
       nodePubkeys: torusNodePub,

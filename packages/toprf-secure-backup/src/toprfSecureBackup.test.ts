@@ -48,4 +48,45 @@ describe('toprf secret backup', function () {
     expect(encKey.authKeyPair.pk).toBeDefined();
     expect(encKey.encKey).toBeDefined();
   });
+
+  it('should throw error if user is not authenticated while creating enc key', async function () {
+    const verifier = 'torus-test-health';
+    const verifierID = `test-verifier-id-${Math.random()}`;
+    const toprfSecureBackup = new ToprfSecureBackup({
+      network: 'sapphire_devnet',
+    });
+
+    await expect(
+      toprfSecureBackup.createEncKey({
+        nodeAuthTokens: [],
+        password: 'test-password',
+        verifier,
+        verifierId: verifierID,
+      }),
+    ).rejects.toBeDefined();
+  });
+
+  it('should throw error if user is not authenticated by enough nodes while creating enc key', async function () {
+    const verifier = 'torus-test-health';
+    const verifierID = `test-verifier-id-${Math.random()}`;
+    const idToken = generateIdToken(verifierID, 'ES256');
+    const toprfSecureBackup = new ToprfSecureBackup({
+      network: 'sapphire_devnet',
+    });
+
+    const result = await toprfSecureBackup.authenticate({
+      idTokens: [idToken],
+      verifier,
+      verifierID,
+    });
+
+    await expect(
+      toprfSecureBackup.createEncKey({
+        nodeAuthTokens: result.nodeAuthTokens.slice(0, 2),
+        password: 'test-password',
+        verifier,
+        verifierId: verifierID,
+      }),
+    ).rejects.toBeDefined();
+  });
 });

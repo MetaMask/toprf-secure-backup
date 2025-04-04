@@ -8,6 +8,7 @@ import { commitIdToken } from './commitRequest';
 import { deriveAuthenticationKeyPair } from './keyDerivation';
 import { OPRF, generateRandomScalar } from './oprf';
 import { storeKeyShares } from './storeSharesRequest';
+import { createNodeEndpointsMap } from './utils';
 import { generateIdToken } from '../tests/testHelpers';
 
 describe('store shares request', function () {
@@ -20,7 +21,7 @@ describe('store shares request', function () {
     });
   });
 
-  it('should be able to store shares', async function () {
+  it('should be able to store shares for a new user', async function () {
     const curve = getSecp256K1Curve();
     const keyPair = curve.genKeyPair();
     const pubPoint = keyPair.getPublic();
@@ -49,12 +50,98 @@ describe('store shares request', function () {
       endpoints: torusNodeSSSEndpoints,
     });
 
+    const nodeEndpointsMap = createNodeEndpointsMap(
+      torusNodeSSSEndpoints,
+      torusIndexes,
+    );
+
+    // use only the node indexes that returned valid commitment responses
+    const selectedEndpointsMap = commitmentResults.reduce<
+      Record<number, string>
+    >((acc, result) => {
+      acc[result.nodeIndex] = nodeEndpointsMap[result.nodeIndex];
+      return acc;
+    }, {});
+
     const authTokens = await authenticateUser({
       idToken,
       verifier,
       verifierID,
-      sessionPrivateKey: keyPair.getPrivate(),
-      endpoints: torusNodeSSSEndpoints,
+      sessionPrivateKey: keyPair.getPrivate().toBuffer(),
+      nodeEndpointsMap: selectedEndpointsMap,
+      commitmentSignatures: commitmentResults,
+    });
+    expect(authTokens).toBeDefined();
+    const passwordBytes = toBytes('test-input');
+    const hashedInput = sha256(passwordBytes);
+    const oprfKey = generateRandomScalar();
+    const seed = OPRF.localEval(oprfKey, hashedInput);
+    const authKeyPair = deriveAuthenticationKeyPair(seed);
+
+    const storeSharesResponse = await storeKeyShares({
+      nodeEndpointsMap: selectedEndpointsMap,
+      verifier,
+      verifierId: verifierID,
+      authTokens,
+      keyIndex: 1,
+      oprfKey,
+      authPubKey: authKeyPair.pk,
+    });
+
+    expect(storeSharesResponse).toBeDefined();
+    expect(storeSharesResponse.error).toBeUndefined();
+  });
+
+  it('should be able to store shares even when 1 node is down', async function () {
+    const curve = getSecp256K1Curve();
+    const keyPair = curve.genKeyPair();
+    const pubPoint = keyPair.getPublic();
+    const verifier = 'torus-test-health';
+    // generate a random verifierID string
+    const verifierID = `test-verifier-id-${Math.random()}`;
+    const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
+      await nodeDetailManager.getNodeDetails({
+        verifier,
+        verifierId: verifierID,
+      });
+
+    if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
+      throw new Error('Failed to get node details');
+    }
+
+    const nodeEndpointsMap = createNodeEndpointsMap(
+      torusNodeSSSEndpoints,
+      torusIndexes,
+    );
+
+    const endpoints = [...torusNodeSSSEndpoints];
+    endpoints[0] = endpoints[0].replace('/jrpc', '');
+
+    const idToken = generateIdToken(verifierID, 'ES256');
+    const sessionPubKeyX = pubPoint.getX().toString('hex');
+    const sessionPubKeyY = pubPoint.getY().toString('hex');
+
+    const commitmentResults = await commitIdToken({
+      idToken,
+      verifier,
+      sessionPubKeyX,
+      sessionPubKeyY,
+      endpoints,
+    });
+
+    // use only the node indexes that returned valid commitment responses
+    const selectedEndpointsMap = commitmentResults.reduce<
+      Record<number, string>
+    >((acc, result) => {
+      acc[result.nodeIndex] = nodeEndpointsMap[result.nodeIndex];
+      return acc;
+    }, {});
+    const authTokens = await authenticateUser({
+      idToken,
+      verifier,
+      verifierID,
+      sessionPrivateKey: keyPair.getPrivate().toBuffer(),
+      nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
     });
 
@@ -65,16 +152,8 @@ describe('store shares request', function () {
     const seed = OPRF.localEval(oprfKey, hashedInput);
     const authKeyPair = deriveAuthenticationKeyPair(seed);
 
-    const nodeEndpointsMap = torusIndexes.reduce<Record<number, string>>(
-      (acc, index) => {
-        acc[index] = torusNodeSSSEndpoints[index - 1];
-        return acc;
-      },
-      {},
-    );
-
     const storeSharesResponse = await storeKeyShares({
-      nodeEndpointsMap,
+      nodeEndpointsMap: selectedEndpointsMap,
       verifier,
       verifierId: verifierID,
       authTokens,
