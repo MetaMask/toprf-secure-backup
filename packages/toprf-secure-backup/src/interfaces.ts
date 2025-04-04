@@ -64,6 +64,35 @@ export type AuthenticateResult = {
  *
  * password - The password of the user.
  */
+export type CreateLocalEncryptionKeyParams = {
+  password: string;
+};
+
+/**
+ * CreateEncryptionKeyResult - The result of creating an encryption key.
+ *
+ * authKeyPair - The authentication key pair which is used to authenticate the user.
+ *
+ * encKey - The encryption key which is used to encrypt the secret data.
+ */
+export type CreateLocalEncryptionKeyResult = {
+  oprfKey: bigint;
+  seed: Uint8Array;
+  authKeyPair: KeyPair;
+  encKey: Uint8Array;
+};
+
+/**
+ * CreateEncryptionKeyParams - The parameters for creating an encryption key.
+ *
+ * verifier - The verifier of the user.
+ *
+ * verifierId - The verifier ID of the user.
+ *
+ * nodeAuthTokens - The tokens issued by the nodes on verifying the idTokens.
+ *
+ * password - The password of the user.
+ */
 export type CreateEncryptionKeyParams = {
   verifier: string;
   verifierId: string;

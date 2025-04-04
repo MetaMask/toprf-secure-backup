@@ -711,7 +711,7 @@ export class MetadataStore {
   }
 
   /**
-   * Encrypt the data using the key with AES-GCM.
+   * Encrypt the data using the key with AES-256-GCM.
    *
    * @param data - The secret data to be encrypted.
    * @param encryptionKey - The encryption key to encrypt the data.
@@ -726,7 +726,7 @@ export class MetadataStore {
   /**
    * Decrypt the data using the encryption key.
    *
-   * @param cipherText - The cipher text, encrypted with AES-GCM.
+   * @param cipherText - The cipher text, encrypted with AES-256-GCM.
    * @param decryptionKey - The encryption key to decrypt the data.
    * @returns The decrypted data.
    */

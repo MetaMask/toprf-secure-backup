@@ -21,6 +21,8 @@ import type {
   RecoverEncryptionKeyParams,
   RecoverEncryptionKeyResult,
   AddSecretDataItemParams,
+  CreateLocalEncryptionKeyParams,
+  CreateLocalEncryptionKeyResult,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -107,6 +109,36 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   }
 
   /**
+   * This function creates the oprf encryption key seed and authentication key pair.
+   *
+   * @param params - The parameters for creating the encryption key.
+   * @param params.password - New password of the user.
+   *
+   * @returns A promise that resolves with the encryption key.
+   */
+  createLocalEncKey(
+    params: CreateLocalEncryptionKeyParams,
+  ): CreateLocalEncryptionKeyResult {
+    const { password } = params;
+    const passwordBytes = toBytes(password);
+    const hashedInput = sha256(passwordBytes);
+    const oprfKey = generateRandomScalar();
+    const seed = OPRF.localEval(oprfKey, hashedInput);
+    const authKeyPair = deriveAuthenticationKeyPair(seed);
+    const encKey = deriveEncryptionKey(seed);
+
+    return {
+      oprfKey,
+      seed,
+      authKeyPair: {
+        sk: authKeyPair.sk,
+        pk: authKeyPair.pk,
+      },
+      encKey,
+    };
+  }
+
+  /**
    * This function creates the encryption key which is used to encrypt/decrypt the secret data.
    *
    * @param params - The parameters for creating the encryption key.
@@ -120,11 +152,9 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   ): Promise<CreateEncryptionKeyResult> {
     const { nodeAuthTokens, password, verifier, verifierId } = params;
     const { nodeEndpointsMap } = await this.#getNodeDetails();
-    const passwordBytes = toBytes(password);
-    const hashedInput = sha256(passwordBytes);
-    const oprfKey = generateRandomScalar();
-    const seed = OPRF.localEval(oprfKey, hashedInput);
-    const authKeyPair = deriveAuthenticationKeyPair(seed);
+    const { oprfKey, authKeyPair, encKey } = this.createLocalEncKey({
+      password,
+    });
 
     await storeKeyShares({
       nodeEndpointsMap,
@@ -135,7 +165,6 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       oprfKey,
       authPubKey: authKeyPair.pk,
     });
-    const encKey = deriveEncryptionKey(seed);
 
     return {
       authKeyPair: {
