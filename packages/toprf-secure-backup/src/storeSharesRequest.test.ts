@@ -174,8 +174,6 @@ describe('secure backup operations', function () {
       newAuthPubKey: newAuthKeyPair.pk,
     });
 
-    console.log('zzzz keyChangeResponse', keyChangeResponse);
-
     expect(keyChangeResponse).toBeDefined();
     expect(keyChangeResponse.error).toBeUndefined();
   });
