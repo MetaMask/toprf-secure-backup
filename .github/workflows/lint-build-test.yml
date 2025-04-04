@@ -101,8 +101,7 @@ jobs:
         uses: MetaMask/action-checkout-and-setup@v1
         with:
           is-high-risk-environment: false
-      # TODO: Uncomment this when we have tests for scripts folder
-      # - run: yarn test:scripts
+      - run: yarn test:scripts
       - run: yarn workspace ${{ matrix.package-name }} run test
       - name: Require clean working directory
         shell: bash
