@@ -19,7 +19,7 @@ import { decryptAuthToken, postJRPCRequest } from './utils';
  * Creates the parameters for the authenticate request
  *
  * @param idToken - The idToken to be used for the authenticate request
- * @param verifier - The verifier 
+ * @param verifier - The verifier
  * to be used for the authenticate request
  * @param verifierID - The verifierID to be used for the authenticate request
  * @param commitmentSignatures - The idToken commitment signatures to be used for the authenticate request.
