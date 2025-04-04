@@ -300,7 +300,7 @@ export type IBatchSetData = {
 /**
  * Payload structure for storing secret data
  */
-export type IBaseSetSecretDataRequestBody<DataType> =
+export type IBaseAddSecretDataRequestBody<DataType> =
   IBaseMetadataRequestBody & {
     /**
      * The authentication token of the user issued by the SSS services
@@ -339,7 +339,7 @@ export type IBaseSetSecretDataRequestBody<DataType> =
  * Payload structure for storing secret data for single secret data
  */
 export type ISetSecretDataRequestBody =
-  IBaseSetSecretDataRequestBody<string> & {
+  IBaseAddSecretDataRequestBody<string> & {
     /**
      * The version of the secret data
      */
@@ -350,7 +350,7 @@ export type ISetSecretDataRequestBody =
  * Payload structure for storing secret data in batch request
  */
 export type IBatchSetSecretDataRequestBody =
-  IBaseSetSecretDataRequestBody<IBatchSetData>;
+  IBaseAddSecretDataRequestBody<IBatchSetData>;
 
 /**
  * Payload structure for fetching secret data

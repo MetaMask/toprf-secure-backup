@@ -573,43 +573,46 @@ export class MetadataStore {
    * @returns The payload for the batch set secret data request.
    */
   #generatePayloadForSetOrBatchSetSecretDataRequest<
-    TYPE extends Uint8Array | { data: Uint8Array }[],
+    RawDataType extends Uint8Array | { data: Uint8Array }[],
   >(
-    rawData: TYPE,
+    rawData: RawDataType,
     authKeyPair: KeyPair,
     authToken: string,
-  ): TYPE extends Uint8Array
+  ): RawDataType extends Uint8Array
     ? ISetSecretDataRequestBody
     : IBatchSetSecretDataRequestBody {
     const timestamp = Date.now().toString();
     const feature = this.#feature;
 
-    let data: string | { data: string }[];
+    let base64EncodedData: string | { data: string }[];
 
     if (Array.isArray(rawData)) {
-      data = rawData.map((item) => ({
-        data: Buffer.from(item.data).toString('base64'),
-      }));
+      base64EncodedData = rawData.map((item) => {
+        const dataBytes = item.data;
+        return {
+          data: Buffer.from(dataBytes).toString('base64'),
+        };
+      });
     } else {
-      data = Buffer.from(rawData).toString('base64');
+      base64EncodedData = Buffer.from(rawData).toString('base64');
     }
 
     const { pk, sk } = authKeyPair;
     const signature = this.#generatePayloadSignature(
-      { data, timestamp, feature, authToken },
+      { data: base64EncodedData, timestamp, feature, authToken },
       sk,
     );
 
     const pubKey = bytesToHex(pk);
 
     return {
-      data,
+      data: base64EncodedData,
       signature,
       feature,
       timestamp,
       authToken,
       pubKey,
-    } as TYPE extends Uint8Array
+    } as RawDataType extends Uint8Array
       ? ISetSecretDataRequestBody
       : IBatchSetSecretDataRequestBody;
   }
