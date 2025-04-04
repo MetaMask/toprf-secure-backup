@@ -182,7 +182,6 @@ export class MetadataStore {
       );
 
       const requestBody = JSON.stringify(payload);
-      console.log('requestBody', requestBody);
       const response = await fetch(url, {
         headers: {
           // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -264,7 +263,6 @@ export class MetadataStore {
       });
       return secretData;
     } catch (error) {
-      console.log('error while fetching metadata', error);
       const errorMessage = (error as Error).message || 'Unknown error';
       throw new MetadataStoreError(`failed to fetch metadata: ${errorMessage}`);
     }

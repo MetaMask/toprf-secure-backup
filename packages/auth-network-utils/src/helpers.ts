@@ -1,5 +1,4 @@
 import BN from 'bn.js';
-import type { ec as EC } from 'elliptic';
 
 /**
  * Generates an array of empty BN objects
@@ -31,16 +30,4 @@ export async function waitFor(ms: number = 2_000): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
-}
-
-/**
- * Generates a random nonce
- *
- * @param curve - The elliptic curve to use
- * @returns The random nonce
- */
-export function getRandomNonce(curve: EC): BN {
-  const privateKey = curve.genKeyPair().getPrivate();
-  const privateKeyBuffer = privateKey.toArrayLike(Buffer, undefined, 32);
-  return new BN(privateKeyBuffer);
 }

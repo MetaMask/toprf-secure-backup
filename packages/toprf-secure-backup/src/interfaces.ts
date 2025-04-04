@@ -292,7 +292,7 @@ export type IBatchSetData = {
 /**
  * Payload structure for storing secret data
  */
-export type IBaseSetSecretDataRequestBody<T> = IBaseMetadataRequestBody & {
+export type IBaseSetSecretDataRequestBody<TData> = IBaseMetadataRequestBody & {
   /**
    * The authentication token of the user issued by the SSS services
    */
@@ -317,7 +317,7 @@ export type IBaseSetSecretDataRequestBody<T> = IBaseMetadataRequestBody & {
    * ];
    * ```
    */
-  data: T;
+  data: TData;
   /**
    * The signature produced by signing the payload (without pubKey field) using the user's private key.
    *

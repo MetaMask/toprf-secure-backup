@@ -1,4 +1,5 @@
-import { getSecp256K1Curve, thresholdSame } from '@metamask/auth-network-utils';
+import { thresholdSame } from '@metamask/auth-network-utils';
+import { secp256k1 } from '@noble/curves/secp256k1';
 import { sha256 } from '@noble/hashes/sha256';
 import { toBytes } from '@noble/hashes/utils';
 import type {
@@ -68,12 +69,11 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    */
   async authenticate(params: AuthenticateParams): Promise<AuthenticateResult> {
     const { nodeEndpoints, nodeEndpointsMap } = await this.#getNodeDetails();
-    const curve = getSecp256K1Curve();
-    const sessionKeyPair = curve.genKeyPair();
-    const sessionPrivKeyBuffer = sessionKeyPair.getPrivate().toBuffer();
-    const sessionPubKey = sessionKeyPair.getPublic();
-    const sessionPubKeyX = sessionPubKey.getX().toString('hex');
-    const sessionPubKeyY = sessionPubKey.getY().toString('hex');
+    const sessionPrivKey = secp256k1.utils.randomPrivateKey();
+    const sessionPubKey =
+      secp256k1.ProjectivePoint.fromPrivateKey(sessionPrivKey);
+    const sessionPubKeyX = sessionPubKey.x.toString(16);
+    const sessionPubKeyY = sessionPubKey.y.toString(16);
 
     // commit idToken to nodes
     const commitmentResults = await commitIdToken({
@@ -97,7 +97,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       idToken: params.idTokens[0],
       verifier: params.verifier,
       verifierID: params.verifierID,
-      sessionPrivateKey: sessionPrivKeyBuffer,
+      sessionPrivateKey: sessionPrivKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
     });

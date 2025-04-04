@@ -1,4 +1,5 @@
-import { getSecp256K1Curve, TOPRFError } from '@metamask/auth-network-utils';
+import { TOPRFError } from '@metamask/auth-network-utils';
+import { secp256k1 } from '@noble/curves/secp256k1';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import {
@@ -149,15 +150,14 @@ describe('authenticate request', function () {
   });
 
   it('should create a authenticate request', async function () {
-    const curve = getSecp256K1Curve();
-    const keyPair = curve.genKeyPair();
-    const pubPoint = keyPair.getPublic();
+    const privKey = secp256k1.utils.randomPrivateKey();
+    const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
     const verifier = 'torus-test-health';
     const verifierID = 'test-verifier-id';
     const idToken = generateIdToken(verifierID, 'ES256');
-    const sessionPubKeyX = pubPoint.getX().toString('hex');
-    const sessionPubKeyY = pubPoint.getY().toString('hex');
+    const sessionPubKeyX = pubKey.x.toString(16);
+    const sessionPubKeyY = pubKey.y.toString(16);
     const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
       await nodeDetailManager.getNodeDetails({
         verifier,
@@ -189,7 +189,7 @@ describe('authenticate request', function () {
       idToken,
       verifier,
       verifierID,
-      sessionPrivateKey: keyPair.getPrivate().toBuffer(),
+      sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
     });

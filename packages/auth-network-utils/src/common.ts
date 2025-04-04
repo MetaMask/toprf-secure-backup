@@ -1,3 +1,4 @@
+import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
 import type { JRPCResponse } from '@toruslabs/constants';
 import BN from 'bn.js';
 import { keccak256 } from 'ethereum-cryptography/keccak';
@@ -273,7 +274,6 @@ export async function Some<Input, Output>(
   callbackFn: (resultArr: Input[], errorArr?: Error[]) => Promise<Output>,
 ): Promise<Output> {
   let predicateError: Error | undefined; // to keep track of the latest error thrown by the callbackFn
-  let finishedCount = 0;
   const resultArr: Input[] = new Array(promises.length).fill(undefined);
   const errorArr: Error[] = new Array(promises.length).fill(undefined);
 
@@ -281,6 +281,7 @@ export async function Some<Input, Output>(
     try {
       resultArr[i] = await promise;
     } catch (error: unknown) {
+      console.log('error in promise', error);
       errorArr[i] = error as Error;
     }
 
@@ -291,19 +292,12 @@ export async function Some<Input, Output>(
       }
     } catch (error: unknown) {
       predicateError = error as Error;
-    } finally {
-      finishedCount += 1;
-    }
-    // Check if we've processed all promises
-    if (finishedCount === promises.length) {
-      // If we still don't have a result, handle the error
-      handleSomeCallBackFnError(errorArr, resultArr, predicateError);
-      // If handleSomeCallBackFnError doesn't throw, throw a generic error
-      throw new Error('Some function failed to produce a valid result');
     }
   }
-  // This should never be reached due to the finishedCount check above
-  throw new Error('Unexpected end of Some function');
+  // If we still don't have a result, handle the error
+  handleSomeCallBackFnError(errorArr, resultArr, predicateError);
+  // This should never be reached due to the handleSomeCallBackFnError above
+  throw new Error('Failed to produce a valid result');
 }
 
 export type Primitive = string | number | boolean | null;
@@ -371,3 +365,80 @@ export const toCamelCaseKeys = (obj: JSONValue): JSONValue =>
  */
 export const toSnakeCaseKeys = (obj: JSONValue): JSONValue =>
   convertKeys(obj, toSnake);
+
+/**
+ * Processes an array of promises that resolve to byte arrays and finds threshold-matching values.
+ *
+ * @description
+ * This function:
+ * 1. Waits for promises to resolve into arrays of Uint8Array
+ * 2. Counts occurrences of unique values across all arrays
+ * 3. Returns values that appear at least `thresholdCount` times
+ *
+ * @param promises - Array of promises that resolve to arrays of Uint8Array
+ * @param thresholdCount - Minimum number of occurrences required for a value to be included
+ *
+ * @returns Promise that resolves to:
+ * - Array of Uint8Array values that meet the threshold requirement
+ * - It returns as soon as it finds the threshold-matching values.
+ * - It keeps on checking all the nodes until it finds the threshold-matching values for all the items.
+ *
+ * @example
+ *const data = [[1, 2, 3], [1, 2], [1, 2], [1, 3], [1, 3]];
+ *const threshold = 3;
+ *const result = await #thresholdReadSecretData(data, threshold);
+ *console.log(result); // [1, 2, 3]
+ */
+//  [[{"0":49},{"0":50},{"0":51}],[{"0":49},{"0":50},{"0":51},{"0":52}],[{"0":49},{"0":50},{"0":51},{"0":52}],[{"0":49},{"0":50},{"0":51}],[{"0":49},{"0":50},{"0":51}]]
+export const thresholdReadSecretData = async (
+  promises: Promise<Uint8Array[]>[],
+  thresholdCount: number,
+): Promise<Uint8Array[]> => {
+  return Some<Uint8Array[], Uint8Array[]>(
+    promises,
+    async (resultArray: Uint8Array[][], errorArray?: Error[]) => {
+      const count: Record<string, number> = {};
+      const allItems = new Set<string>();
+      // First pass: collect all unique items
+      for (const nodeData of resultArray) {
+        if (!nodeData) {
+          continue;
+        }
+        for (const item of nodeData) {
+          allItems.add(bytesToHex(item));
+        }
+      }
+
+      // Second pass: count occurrences
+      for (const nodeData of resultArray) {
+        if (!nodeData) {
+          continue;
+        }
+        const unique = new Set([...nodeData]);
+        for (const item of unique) {
+          const hexItem = bytesToHex(item);
+          count[hexItem] = (count[hexItem] || 0) + 1;
+        }
+      }
+
+      // Only return result when we've checked all nodes or found threshold matches for all items
+      const thresholdMatches = Object.keys(count)
+        .filter((item) => count[item] >= thresholdCount)
+        .map((item) => hexToBytes(item));
+
+      // If we've found all items meeting threshold already, return the result
+      if (thresholdMatches.length === allItems.size) {
+        return thresholdMatches;
+      }
+
+      const isErrorPresent = errorArray?.some((error) => Boolean(error));
+      const allResultPresent = resultArray.every((result) => Boolean(result));
+      // if we have checked all the nodes and no error found return thresholdMatches
+      if (!isErrorPresent && allResultPresent) {
+        return thresholdMatches;
+      }
+      // throw and wait for result from other nodes.
+      throw new Error('Unable to resolve threshold for data');
+    },
+  );
+};

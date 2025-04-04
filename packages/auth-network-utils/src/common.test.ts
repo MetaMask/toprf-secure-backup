@@ -1,8 +1,10 @@
+import { utf8ToBytes } from '@noble/hashes/utils';
 import { keccak256 } from 'ethereum-cryptography/keccak';
 
 import {
   keccak256AndHexify,
   Some,
+  thresholdReadSecretData,
   toCamel,
   toCamelCaseKeys,
   toSnake,
@@ -131,5 +133,70 @@ describe('common utils', function () {
       commitment_signatures: [],
       client_time: 'test',
     });
+  });
+});
+
+describe('thresholdReadSecretData', () => {
+  /**
+   * Creates a promise that resolves to an array of Uint8Arrays from strings
+   *
+   * @param data - Array of strings to be converted to Uint8Arrays
+   * @returns Promise resolving to array of Uint8Arrays
+   */
+  const createPromise = async (data: string[]): Promise<Uint8Array[]> => {
+    return Promise.resolve(data.map((str) => utf8ToBytes(str)));
+  };
+
+  it('should return data that meets threshold count', async () => {
+    const commonData = ['1', '2', '3'];
+    const promises = [
+      createPromise(commonData),
+      createPromise(commonData),
+      createPromise(commonData),
+    ];
+
+    const result = await thresholdReadSecretData(promises, 3);
+    expect(result).toHaveLength(3);
+    expect(result.map((res) => Buffer.from(res).toString())).toStrictEqual(
+      commonData,
+    );
+  });
+
+  it('should return data that meets threshold when nodes have 2 versions of data', async () => {
+    const commonData = ['1', '2', '3'];
+    const extendedData = [...commonData, '4'];
+    const promises = [
+      createPromise(commonData),
+      createPromise(extendedData),
+      createPromise(extendedData),
+      createPromise(commonData),
+      createPromise(commonData),
+    ];
+
+    const result = await thresholdReadSecretData(promises, 3);
+    expect(result).toHaveLength(3);
+    expect(result.map((res) => Buffer.from(res).toString())).toStrictEqual(
+      commonData,
+    );
+  });
+
+  it('should return v1 data when v1 and v2 data is not available in threshold number of promises', async () => {
+    const v1Data = ['1', '2', '3'];
+    const v2Data = [...v1Data, '4'];
+    const v3Data = [...v1Data, '5'];
+
+    const promises = [
+      createPromise(v1Data),
+      createPromise(v1Data),
+      createPromise(v2Data),
+      createPromise(v2Data),
+      createPromise(v3Data),
+    ];
+
+    const result = await thresholdReadSecretData(promises, 3);
+    expect(result).toHaveLength(3);
+    expect(result.map((res) => Buffer.from(res).toString())).toStrictEqual(
+      v1Data,
+    );
   });
 });
