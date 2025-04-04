@@ -3,10 +3,5 @@
   "compilerOptions": {
     "baseUrl": "./"
   },
-  "references": [
-    {
-      "path": "../auth-network-utils/tsconfig.json"
-    }
-  ],
   "include": ["./src", "./tests"]
 }
