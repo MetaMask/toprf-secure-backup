@@ -177,7 +177,7 @@ describe('authenticate request', function () {
       idToken,
       verifier,
       verifierID,
-      sessionPrivateKey: keyPair.getPrivate().toString('hex'),
+      sessionPrivateKey: keyPair.getPrivate().toBuffer(),
       endpoints: torusNodeSSSEndpoints,
       commitmentSignatures: commitmentResults,
     });

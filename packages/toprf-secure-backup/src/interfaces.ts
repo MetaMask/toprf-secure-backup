@@ -1,6 +1,5 @@
 /**
  * SEC1 encoded public key
- * Where x and y are 32-byte coordinates in big-endian format
  */
 export type SEC1EncodedPublicKey = Uint8Array;
 

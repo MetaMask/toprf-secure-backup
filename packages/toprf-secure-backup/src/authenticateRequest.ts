@@ -19,7 +19,8 @@ import { decryptAuthToken, postJRPCRequest } from './utils';
  * Creates the parameters for the authenticate request
  *
  * @param idToken - The idToken to be used for the authenticate request
- * @param verifier - The verifier to be used for the authenticate request
+ * @param verifier - The verifier
+ * to be used for the authenticate request
  * @param verifierID - The verifierID to be used for the authenticate request
  * @param commitmentSignatures - The idToken commitment signatures to be used for the authenticate request.
  *
@@ -161,9 +162,6 @@ export const authenticateUser = async (params: {
       validateThresholdAuthenticateResponses(responses),
   );
 
-  if (!results || results.length === 0) {
-    throw new Error('Invalid authenticate request results');
-  }
   const decryptedAuthResults = await Promise.all(
     results.map(async (result: AuthRequestResult) => {
       const { authToken, nodeIndex, nodePubKey, pubKey, keyIndex } = result;

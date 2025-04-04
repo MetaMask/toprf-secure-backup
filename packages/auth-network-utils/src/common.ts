@@ -247,7 +247,7 @@ function handleSomeCallBackFnError<K>(
 export async function Some<K, T>(
   promises: Promise<K>[],
   callbackFn: (resultArr: K[], params?: { resolved: boolean }) => Promise<T>,
-): Promise<T | void> {
+): Promise<T> {
   let predicateError: Error | undefined; // to keep track of the latest error thrown by the callbackFn
   let finishedCount = 0;
   const resultArr: K[] = new Array(promises.length).fill(undefined);
@@ -270,12 +270,16 @@ export async function Some<K, T>(
     } finally {
       finishedCount += 1;
     }
+    // Check if we've processed all promises
+    if (finishedCount === promises.length) {
+      // If we still don't have a result, handle the error
+      handleSomeCallBackFnError(errorArr, resultArr, predicateError);
+      // If handleSomeCallBackFnError doesn't throw, throw a generic error
+      throw new Error('Some function failed to produce a valid result');
+    }
   }
-  if (finishedCount === promises.length) {
-    // handle error if the output of the callbackFn cannot be determined
-    // after all promises are settled
-    handleSomeCallBackFnError(errorArr, resultArr, predicateError);
-  }
+  // This should never be reached due to the finishedCount check above
+  throw new Error('Unexpected end of Some function');
 }
 
 export type Primitive = string | number | boolean | null;

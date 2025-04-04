@@ -46,7 +46,7 @@ export const bigIntToBN = (value: bigint): BN => {
  */
 export const postJRPCRequest = async <
   Response extends {
-    result?: JSONValue;
+    result?: JSONValue | undefined;
   },
 >(
   endpoint: string,
