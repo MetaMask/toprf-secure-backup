@@ -55,7 +55,10 @@ describe('store shares request', function () {
     // use only the node indexes that returned valid commitment responses
     const selectedEndpointsMap = commitmentResults.reduce<Map<number, string>>(
       (acc, result) => {
-        acc.set(result.nodeIndex, nodeEndpointsMap.get(result.nodeIndex) ?? '');
+        acc.set(
+          Number(result.nodeIndex),
+          nodeEndpointsMap.get(Number(result.nodeIndex)) ?? '',
+        );
         return acc;
       },
       new Map(),
@@ -129,7 +132,10 @@ describe('store shares request', function () {
     // use only the node indexes that returned valid commitment responses
     const selectedEndpointsMap = commitmentResults.reduce<Map<number, string>>(
       (acc, result) => {
-        acc.set(result.nodeIndex, nodeEndpointsMap.get(result.nodeIndex) ?? '');
+        acc.set(
+          Number(result.nodeIndex),
+          nodeEndpointsMap.get(Number(result.nodeIndex)) ?? '',
+        );
         return acc;
       },
       new Map(),

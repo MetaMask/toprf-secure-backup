@@ -142,7 +142,7 @@ describe('validateThresholdCommitmentResponses', () => {
     nodeIndex: number,
   ): CommitmentRequestResult => ({
     signature: 'mockSignature',
-    nodeIndex,
+    nodeIndex: nodeIndex.toString(),
     nodePubX: 'mockNodePubX',
     nodePubY: 'mockNodePubY',
     data: 'mockData',

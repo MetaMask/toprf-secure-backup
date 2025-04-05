@@ -22,7 +22,7 @@ const secretData = utf8ToBytes('test-secret-data');
  */
 async function getNodeEndpointsMap(
   network: TORUS_SAPPHIRE_NETWORK_TYPE = 'sapphire_devnet',
-): Promise<{ [nodeIndex: string]: string }> {
+): Promise<Map<number, string>> {
   const nodeDetailManager = new NodeDetailManager({
     network,
   });
@@ -38,10 +38,10 @@ async function getNodeEndpointsMap(
     torusNodeSSSEndpoints,
     torusIndexes,
   );
-  const metadataEndpointsMap: { [nodeIndex: string]: string } = {};
-  Object.entries(nodeEndpointsMap).forEach(([key, value]) => {
+  const metadataEndpointsMap = new Map<number, string>();
+  nodeEndpointsMap.forEach((value, key) => {
     const url = new URL(value);
-    metadataEndpointsMap[key] = `${url.origin}/metadata`;
+    metadataEndpointsMap.set(key, `${url.origin}/metadata`);
   });
   return metadataEndpointsMap;
 }
@@ -52,12 +52,12 @@ async function getNodeEndpointsMap(
  * @param nodeEndpointsMap - The map of node endpoints which includes node index as key and node endpoint as value.
  * @returns A mock MetadataStore instance.
  */
-async function createMetadataStore(nodeEndpointsMap?: {
-  [nodeIndex: string]: string;
-}): Promise<MetadataStore> {
+async function createMetadataStore(
+  nodeEndpointsMap?: Map<number, string>,
+): Promise<MetadataStore> {
   let nodeEndpoints = nodeEndpointsMap;
   nodeEndpoints ??= await getNodeEndpointsMap();
-  const node1MetadataEndpoint = nodeEndpoints['1'];
+  const node1MetadataEndpoint = nodeEndpoints.get(1) ?? '';
 
   return new MetadataStore({ metadataEndpoint: node1MetadataEndpoint });
 }

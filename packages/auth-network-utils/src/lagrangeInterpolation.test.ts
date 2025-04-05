@@ -44,7 +44,7 @@ describe('lagrange interpolation', function () {
     );
     const shareMap = polynomial.generateShares(shareIndexes);
 
-    const shares = Object.values(shareMap).map(({ share }) => share);
+    const shares = Array.from(shareMap.values()).map((share) => share.share);
     const reconstructedSecret = lagrangeInterpolation(
       curve,
       shares,
@@ -68,7 +68,7 @@ describe('lagrange interpolation', function () {
     );
     const shareMap = polynomial.generateShares(shareIndexes);
 
-    const points = Object.values(shareMap).map(
+    const points = Array.from(shareMap.values()).map(
       ({ share, shareIndex }) => new Point(shareIndex, share, curve),
     );
     const reconstructedPolynomial = lagrangeInterpolatePolynomial(

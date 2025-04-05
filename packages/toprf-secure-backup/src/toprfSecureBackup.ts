@@ -84,7 +84,10 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     // use only the node indexes that returned valid commitment responses
     const selectedEndpointsMap = commitmentResults.reduce<Map<number, string>>(
       (acc, result) => {
-        acc.set(result.nodeIndex, nodeEndpointsMap.get(result.nodeIndex) ?? '');
+        acc.set(
+          Number(result.nodeIndex),
+          nodeEndpointsMap.get(Number(result.nodeIndex)) ?? '',
+        );
         return acc;
       },
       new Map(),
@@ -137,8 +140,8 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     const selectedEndpointsMap = nodeAuthTokens.reduce<Map<number, string>>(
       (acc, tokenData) => {
         acc.set(
-          tokenData.nodeIndex,
-          nodeEndpointsMap.get(tokenData.nodeIndex) ?? '',
+          Number(tokenData.nodeIndex),
+          nodeEndpointsMap.get(Number(tokenData.nodeIndex)) ?? '',
         );
         return acc;
       },

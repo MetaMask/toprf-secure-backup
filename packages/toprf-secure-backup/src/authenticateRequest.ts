@@ -152,8 +152,8 @@ export const authenticateUser = async (params: {
     commitmentSignatures,
   );
   // start with half the nodes count optimistically.
-  const promiseArr = Object.values(nodeEndpointsMap).map(async (endpoint) =>
-    sendAuthenticateRequest(endpoint, requestParams),
+  const promiseArr = Array.from(nodeEndpointsMap.values()).map(
+    async (endpoint) => sendAuthenticateRequest(endpoint, requestParams),
   );
 
   const results = await Some<AuthJRPCResponse, AuthRequestResult[]>(

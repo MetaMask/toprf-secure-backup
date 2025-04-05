@@ -14,7 +14,7 @@ export type CommitmentRequestResult = {
   data: string;
   nodePubX: string;
   nodePubY: string;
-  nodeIndex: number;
+  nodeIndex: string;
 };
 
 export type CommitmentJRPCResponse = JRPCResponse<

@@ -198,7 +198,7 @@ export const generateShareImportItems = async (
 ): Promise<ShareImportItem[]> => {
   const privKeyBN = bigIntToBN(privKey);
   const ecCurve = getSecp256K1Curve();
-  const threshold = Math.floor(Object.values(nodeEndpointsMap).length / 2) + 1;
+  const threshold = Math.floor(nodeEndpointsMap.size / 2) + 1;
   const allNodeIndexes = Array.from(nodeEndpointsMap.keys());
   // Generate shares for each node
   const shares = generateShares(ecCurve, allNodeIndexes, privKeyBN, threshold);

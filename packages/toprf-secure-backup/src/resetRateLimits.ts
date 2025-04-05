@@ -113,12 +113,6 @@ export const resetRateLimits = async (params: {
 }): Promise<boolean> => {
   const { authTokens, nodeEndpointsMap, verifier, verifierId } = params;
 
-  if (authTokens.length !== nodeEndpointsMap.size) {
-    throw TOPRFError.default(
-      `Invalid auth tokens, expected ${nodeEndpointsMap.size} but got ${authTokens.length}`,
-    );
-  }
-
   // TODO: get signature and signedData from the user authentication key.
   const signature = '0x';
   const signedData = JSON.stringify({

@@ -55,7 +55,10 @@ describe('resetRateLimits', () => {
 
     const selectedEndpointsMap = commitmentResults.reduce<Map<number, string>>(
       (acc, result) => {
-        acc.set(result.nodeIndex, nodeEndpointsMap.get(result.nodeIndex) ?? '');
+        acc.set(
+          Number(result.nodeIndex),
+          nodeEndpointsMap.get(Number(result.nodeIndex)) ?? '',
+        );
         return acc;
       },
       new Map(),
@@ -114,7 +117,10 @@ describe('resetRateLimits', () => {
 
     const selectedEndpointsMap = commitmentResults.reduce<Map<number, string>>(
       (acc, result) => {
-        acc.set(result.nodeIndex, nodeEndpointsMap.get(result.nodeIndex) ?? '');
+        acc.set(
+          Number(result.nodeIndex),
+          nodeEndpointsMap.get(Number(result.nodeIndex)) ?? '',
+        );
         return acc;
       },
       new Map(),
@@ -129,13 +135,12 @@ describe('resetRateLimits', () => {
       commitmentSignatures: commitmentResults,
     });
 
+    const endpointsMap2 = new Map(selectedEndpointsMap);
+    endpointsMap2.delete(Number(authTokens[0].nodeIndex));
     await expect(
       resetRateLimits({
         authTokens,
-        nodeEndpointsMap: {
-          ...selectedEndpointsMap,
-          [authTokens[0].nodeIndex]: '',
-        },
+        nodeEndpointsMap: endpointsMap2,
         verifier,
         verifierId: verifierID,
       }),

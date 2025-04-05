@@ -181,7 +181,10 @@ describe('authenticate request', function () {
 
     const selectedEndpointsMap = commitmentResults.reduce<Map<number, string>>(
       (acc, result) => {
-        acc.set(result.nodeIndex, nodeEndpointsMap.get(result.nodeIndex) ?? '');
+        acc.set(
+          Number(result.nodeIndex),
+          nodeEndpointsMap.get(Number(result.nodeIndex)) ?? '',
+        );
         return acc;
       },
       new Map(),
