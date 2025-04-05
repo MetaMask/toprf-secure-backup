@@ -7,8 +7,6 @@ import {
   deriveEncryptionKey,
 } from './keyDerivation';
 import { MetadataLockStatus, MetadataStore } from './metadata';
-import { ToprfSecureBackup } from './toprfSecureBackup';
-import { generateIdToken } from '../tests/testHelpers';
 
 const MOCK_SEED = randomBytes(32);
 const NODE_ENDPOINTS_MAP = METADATA_NODES_ENDPOINTS_MAP;
@@ -73,17 +71,13 @@ describe('MetadataStore', () => {
   it('should be able to acquire and release metadata lock', async () => {
     const metadataStore = createMockMetadataStore();
 
-    const metadataLock = await metadataStore.acquireMetadataLock(
-      authKeyPair,
-      nodeAuthTokens,
-    );
+    const metadataLock = await metadataStore.acquireMetadataLock(authKeyPair);
 
     expect(metadataLock).not.toBeNull();
 
     const releaseLockStatus = await metadataStore.releaseMetadataLock(
       authKeyPair,
       metadataLock,
-      nodeAuthTokens,
     );
 
     expect(releaseLockStatus).toStrictEqual(MetadataLockStatus.SUCCESS);
@@ -92,21 +86,17 @@ describe('MetadataStore', () => {
   it('should fail to acquire lock if it is already acquired', async () => {
     const metadataStore = createMockMetadataStore();
 
-    const metadataLock = await metadataStore.acquireMetadataLock(
-      authKeyPair,
-      nodeAuthTokens,
-    );
+    const metadataLock = await metadataStore.acquireMetadataLock(authKeyPair);
     expect(metadataLock).toBeDefined();
 
     await expect(
-      metadataStore.acquireMetadataLock(authKeyPair, nodeAuthTokens),
+      metadataStore.acquireMetadataLock(authKeyPair),
     ).rejects.toThrow('Failed to acquire metadata lock');
 
     // release the lock
     const lockStatus = await metadataStore.releaseMetadataLock(
       authKeyPair,
       metadataLock,
-      nodeAuthTokens,
     );
     expect(lockStatus).toBe(MetadataLockStatus.SUCCESS);
   });
@@ -130,7 +120,7 @@ describe('MetadataStore', () => {
     const metadataStore = createMockMetadataStore();
 
     await expect(
-      metadataStore.acquireMetadataLock(authKeyPair, nodeAuthTokens),
+      metadataStore.acquireMetadataLock(authKeyPair),
     ).rejects.toThrow('Failed to acquire metadata lock. Missing lock id');
 
     expect(fetchSpy).toHaveBeenCalled();
@@ -138,21 +128,19 @@ describe('MetadataStore', () => {
   });
 
   it('should throw an error if the lock is not found for the specific nodeIndex (or Endpoint) during release', async () => {
-    const mockNodeEndpointsMap = new Map<number, string>([
-      [1, 'http://localhost:5051'],
-      [2, 'http://localhost:5052'],
-      [3, 'http://localhost:5053'],
-      [4, 'http://localhost:5054'],
-      [5, 'http://localhost:5055'],
-    ]);
+    const mockNodeEndpointsMap = {
+      '1': 'http://localhost:5051',
+      '2': 'http://localhost:5052',
+      '3': 'http://localhost:5053',
+      '4': 'http://localhost:5054',
+      '5': 'http://localhost:5055',
+    };
     const metadataStore = createMockMetadataStore(mockNodeEndpointsMap);
 
     await expect(
-      metadataStore.releaseMetadataLock(
-        authKeyPair,
-        [{ id: 'LOCK_ID_2', nodeIndex: 2 }],
-        nodeAuthTokens,
-      ),
+      metadataStore.releaseMetadataLock(authKeyPair, [
+        { id: 'LOCK_ID_2', nodeIndex: 2 },
+      ]),
     ).rejects.toThrow('Could not find lock for node index 1');
   });
 
@@ -163,7 +151,6 @@ describe('MetadataStore', () => {
       secretData,
       encKey,
       authKeyPair,
-      nodeAuthTokens,
     });
 
     const existingSecretData = await metadataStore.fetchAllSecretDataItems(
@@ -178,17 +165,14 @@ describe('MetadataStore', () => {
     const newAuthKeyPair = deriveAuthenticationKeyPair(newSeed);
 
     // acquire the metadata lock
-    const metadataLock = await metadataStore.acquireMetadataLock(
-      newAuthKeyPair,
-      nodeAuthTokens,
-    );
+    const metadataLock =
+      await metadataStore.acquireMetadataLock(newAuthKeyPair);
     expect(metadataLock).not.toBeNull();
 
     await metadataStore.batchAddSecretData({
       secretData: existingSecretData ?? [], // should not be null, the above `expect` should have failed if it was
       encKey: newEncKey,
       authKeyPair: newAuthKeyPair,
-      nodeAuthTokens,
     });
 
     // the result should be the new encrypted value of the existing secret data
@@ -208,7 +192,6 @@ describe('MetadataStore', () => {
     const releaseLockStatus = await metadataStore.releaseMetadataLock(
       newAuthKeyPair,
       metadataLock,
-      nodeAuthTokens,
     );
 
     expect(releaseLockStatus).toStrictEqual(MetadataLockStatus.SUCCESS);
@@ -316,7 +299,7 @@ describe('MetadataStore', () => {
     ).rejects.toThrow('Threshold not resolved');
 
     await expect(
-      metadataStore.acquireMetadataLock(authKeyPair, nodeAuthTokens),
+      metadataStore.acquireMetadataLock(authKeyPair),
     ).rejects.toThrow('Something went wrong!');
 
     await expect(
@@ -324,22 +307,17 @@ describe('MetadataStore', () => {
         secretData: [utf8ToBytes('SECRET_DATA')],
         encKey,
         authKeyPair,
-        nodeAuthTokens,
       }),
     ).rejects.toThrow('Something went wrong!');
 
     await expect(
-      metadataStore.releaseMetadataLock(
-        authKeyPair,
-        [
-          { id: 'LOCK_ID_1', nodeIndex: 1 },
-          { id: 'LOCK_ID_2', nodeIndex: 2 },
-          { id: 'LOCK_ID_3', nodeIndex: 3 },
-          { id: 'LOCK_ID_4', nodeIndex: 4 },
-          { id: 'LOCK_ID_5', nodeIndex: 5 },
-        ],
-        nodeAuthTokens,
-      ),
+      metadataStore.releaseMetadataLock(authKeyPair, [
+        { id: 'LOCK_ID_1', nodeIndex: 1 },
+        { id: 'LOCK_ID_2', nodeIndex: 2 },
+        { id: 'LOCK_ID_3', nodeIndex: 3 },
+        { id: 'LOCK_ID_4', nodeIndex: 4 },
+        { id: 'LOCK_ID_5', nodeIndex: 5 },
+      ]),
     ).rejects.toThrow('Something went wrong!');
 
     expect(fetchSpy).toHaveBeenCalled();

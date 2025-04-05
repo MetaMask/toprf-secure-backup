@@ -96,7 +96,6 @@ export class MetadataStore {
    * @param params - The parameters for storing the secret data.
    * @param params.secretData - The secret data to be stored.
    * @param params.encKey - The encryption key to be used for encrypting the secret data.
-   * @param params.nodeAuthTokens - The array of auth tokens to be used for authenticating against the metadata server.
    * @returns A promise that resolves when the secret data is stored.
    */
   async addSecretDataItem(params: AddSecretDataItemParams): Promise<void> {
@@ -134,29 +133,23 @@ export class MetadataStore {
    * @param params.secretData - The array of secret data to be stored.
    * @param params.encKey - The encryption key to be used for encrypting the secret data.
    * @param params.authKeyPair - The authentication key pair to be used for authenticating the secret data.
-   * @param params.nodeAuthTokens - The array of auth tokens to be used for authenticating against the metadata server.
    * @returns A promise that resolves when the secret data is stored.
    */
   async batchAddSecretData(
     params: BatchAddSecretDataItemParams,
   ): Promise<void> {
     try {
-      const { secretData, encKey, nodeAuthTokens, authKeyPair } = params;
-      const endPointToAuthTokenMap =
-        this.#getAuthTokenToMetadataEndpointsMap(nodeAuthTokens);
+      const { secretData, encKey, authKeyPair } = params;
 
       await Promise.all(
-        Object.entries(endPointToAuthTokenMap).map(
-          async ([endpoint, { authToken }]) => {
-            return this.#batchAddData({
-              secretData,
-              encKey,
-              authKeyPair,
-              metadataEndpoint: endpoint,
-              authToken,
-            });
-          },
-        ),
+        Object.values(this.#nodeEndpointsMap).map(async (metadataEndpoint) => {
+          return this.#batchAddData({
+            secretData,
+            encKey,
+            authKeyPair,
+            metadataEndpoint,
+          });
+        }),
       );
     } catch (error) {
       throw new MetadataStoreError(
@@ -212,23 +205,15 @@ export class MetadataStore {
    * Acquires a lock on the metadata store.
    *
    * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
-   * @param nodeAuthTokens - The array of auth tokens to be used for authenticating against the metadata server.
    * @returns A promise that resolves with the lock id.
    */
-  async acquireMetadataLock(
-    authKeyPair: KeyPair,
-    nodeAuthTokens: NodeAuthTokens,
-  ): Promise<MetadataLock> {
-    // get metadata endpoints to NodeAuthTokens map
-    const endPointToAuthTokenMap =
-      this.#getAuthTokenToMetadataEndpointsMap(nodeAuthTokens);
-
+  async acquireMetadataLock(authKeyPair: KeyPair): Promise<MetadataLock> {
     const lockIndexes: number[] = [];
     const lockResult = await Promise.all(
-      Object.entries(endPointToAuthTokenMap).map(
-        async ([endpoint, { nodeIndex }]) => {
-          lockIndexes.push(nodeIndex);
-          return this.#acquireLock(endpoint, authKeyPair);
+      Object.entries(this.#nodeEndpointsMap).map(
+        async ([nodeIndex, metadataEndpoint]) => {
+          lockIndexes.push(parseInt(nodeIndex, 10));
+          return this.#acquireLock(metadataEndpoint, authKeyPair);
         },
       ),
     );
@@ -262,24 +247,18 @@ export class MetadataStore {
    *
    * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
    * @param metadataLock - The lock to be released.
-   * @param nodeAuthTokens - The array of auth tokens to be used for authenticating against the metadata server.
    * @returns A promise that resolves with the lock status.
    */
   async releaseMetadataLock(
     authKeyPair: KeyPair,
     metadataLock: MetadataLock,
-    nodeAuthTokens: NodeAuthTokens,
   ): Promise<MetadataLockStatus> {
-    // get metadata endpoints to NodeAuthTokens map
-    const endPointToAuthTokenMap =
-      this.#getAuthTokenToMetadataEndpointsMap(nodeAuthTokens);
-
     await Promise.all(
-      Object.entries(endPointToAuthTokenMap).map(
-        async ([metadataEndpoint, { nodeIndex }]) => {
+      Object.entries(this.#nodeEndpointsMap).map(
+        async ([nodeIndex, metadataEndpoint]) => {
           // get lockId for the specific node
           const lockId = metadataLock.find(
-            (lock) => lock.nodeIndex === nodeIndex,
+            (lock) => lock.nodeIndex === parseInt(nodeIndex, 10),
           )?.id;
 
           if (!lockId) {
@@ -318,7 +297,7 @@ export class MetadataStore {
         this.#generatePayloadForSetOrBatchSetSecretDataRequest<Uint8Array>(
           encryptedData,
           params.authKeyPair,
-          );
+        );
       const requestBody = JSON.stringify(payload);
 
       const response = await fetch(url, {
@@ -352,7 +331,6 @@ export class MetadataStore {
    * @param params.encKey - The encryption key to be used for encrypting the secret data.
    * @param params.authKeyPair - The authentication key pair to be used for authenticating the secret data.
    * @param params.metadataEndpoint - The metadata server endpoint to be used for storing the secret data.
-   * @param params.authToken - The auth token to be used for authentication for the metadata server.
    * @returns A promise that resolves when the secret data is stored.
    */
   async #batchAddData(params: {
@@ -360,7 +338,6 @@ export class MetadataStore {
     encKey: Uint8Array;
     authKeyPair: KeyPair;
     metadataEndpoint: string;
-    authToken: string;
   }): Promise<boolean> {
     try {
       const url = `${params.metadataEndpoint}/enc_account_data/batch_set`;
@@ -369,7 +346,7 @@ export class MetadataStore {
       }));
       const payload = this.#generatePayloadForSetOrBatchSetSecretDataRequest<
         { data: Uint8Array }[]
-      >(encryptedDataArray, params.authKeyPair, params.authToken);
+      >(encryptedDataArray, params.authKeyPair);
 
       const response = await fetch(url, {
         headers: {
