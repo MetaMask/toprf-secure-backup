@@ -94,6 +94,7 @@ describe('toprf secret backup', function () {
     expect(recoveredEncKey.authKeyPair.sk).toBeDefined();
     expect(recoveredEncKey.authKeyPair.pk).toBeDefined();
     expect(recoveredEncKey.encKey).toBeDefined();
+    expect(await recoveredEncKey.rateLimitResetResult).toBeUndefined();
 
     expect(recoveredEncKey.authKeyPair.sk).toStrictEqual(encKey.authKeyPair.sk);
     expect(recoveredEncKey.encKey).toStrictEqual(encKey.encKey);

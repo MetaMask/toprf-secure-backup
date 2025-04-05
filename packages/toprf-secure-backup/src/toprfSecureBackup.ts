@@ -186,13 +186,19 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     });
     const authKeyPair = deriveAuthenticationKeyPair(seed);
     const encKeyPair = deriveEncryptionKey(seed);
-    resetRateLimits({
-      authTokens: nodeAuthTokens,
-      nodeEndpointsMap,
-      verifier,
-      verifierId,
-    }).catch((error) => {
-      console.error('Error resetting rate limits', error);
+    const rateLimitResetResult = new Promise<void>((resolve, reject) => {
+      resetRateLimits({
+        authTokens: nodeAuthTokens,
+        nodeEndpointsMap,
+        verifier,
+        verifierId,
+      })
+        .then(() => {
+          return resolve();
+        })
+        .catch((error) => {
+          reject(error as Error);
+        });
     });
     return {
       authKeyPair: {
@@ -200,6 +206,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
         pk: authKeyPair.pk,
       },
       encKey: encKeyPair,
+      rateLimitResetResult,
     };
   }
 

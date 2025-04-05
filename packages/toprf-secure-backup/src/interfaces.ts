@@ -119,11 +119,14 @@ export type RecoverEncryptionKeyParams = {
 };
 
 /**
- * keyPair - The encryption/decryption key pair which is used to decrypt the secret data.
+ * authKeyPair - The authentication key pair which is used to authenticate the user.
+ * encKey - The encryption key which is used to encrypt the secret data.
+ * rateLimitResetResult - A promise that resolves when the rate limit is reset.
  */
 export type RecoverEncryptionKeyResult = {
   authKeyPair: KeyPair;
   encKey: Uint8Array;
+  rateLimitResetResult: Promise<void>;
 };
 
 /**
