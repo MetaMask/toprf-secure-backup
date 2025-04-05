@@ -57,9 +57,9 @@ async function createMetadataStore(nodeEndpointsMap?: {
 }): Promise<MetadataStore> {
   let nodeEndpoints = nodeEndpointsMap;
   nodeEndpoints ??= await getNodeEndpointsMap();
-  console.log('nodeEndpoints', nodeEndpoints);
+  const node1MetadataEndpoint = nodeEndpoints['1'];
 
-  return new MetadataStore({ nodeEndpointsMap: nodeEndpoints });
+  return new MetadataStore({ metadataEndpoint: node1MetadataEndpoint });
 }
 
 describe('MetadataStore', () => {
@@ -106,7 +106,7 @@ describe('MetadataStore', () => {
     expect(result?.[0]).toStrictEqual(secretData);
   });
 
-  it('should get null if metadata key not found', async () => {
+  it('should get empty array if metadata key not found', async () => {
     const metadataStore = await createMetadataStore();
 
     const randomSeed = randomBytes(32);
@@ -115,7 +115,8 @@ describe('MetadataStore', () => {
       deriveEncryptionKey(randomSeed),
       randomAuthKeyPair,
     );
-    expect(result).toBeNull();
+    expect(result).not.toBeNull();
+    expect(result?.length).toBe(0);
   });
 
   it('should an error if the data is not present in the metadata response', async () => {
@@ -138,42 +139,10 @@ describe('MetadataStore', () => {
 
     await expect(
       metadataStore.fetchAllSecretDataItems(encKey, authKeyPair),
-    ).rejects.toThrow('Threshold not resolved');
+    ).rejects.toThrow('Failed to fetch metadata');
 
     expect(fetchSpy).toHaveBeenCalled();
 
-    jest.restoreAllMocks();
-  });
-
-  it('should throw an error if the threshold is not met', async () => {
-    const metadataStore = await createMetadataStore();
-
-    const fetchSpy = jest
-      .spyOn(global, 'fetch')
-      .mockImplementation(async (input) => {
-        const url = new URL(input as string);
-        const nodeIndex = url.pathname.split('/')[1];
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          statusText: 'OK',
-          /**
-           * @returns json object
-           */
-          json: async () =>
-            Promise.resolve({
-              data: [`SECRET_DATA_${nodeIndex}`],
-              success: true,
-            }),
-          // eslint-disable-next-line no-restricted-globals
-        } as Response);
-      });
-
-    await expect(
-      metadataStore.fetchAllSecretDataItems(encKey, authKeyPair),
-    ).rejects.toThrow('Threshold not resolved');
-
-    expect(fetchSpy).toHaveBeenCalledTimes(5);
     jest.restoreAllMocks();
   });
 
@@ -201,11 +170,11 @@ describe('MetadataStore', () => {
         encKey,
         authKeyPair,
       }),
-    ).rejects.toThrow('Threshold not resolved');
+    ).rejects.toThrow('Something went wrong!');
 
     await expect(
       metadataStore.fetchAllSecretDataItems(encKey, authKeyPair),
-    ).rejects.toThrow('Threshold not resolved');
+    ).rejects.toThrow('Something went wrong!');
 
     expect(fetchSpy).toHaveBeenCalled();
 
@@ -227,11 +196,11 @@ describe('MetadataStore', () => {
         encKey,
         authKeyPair,
       }),
-    ).rejects.toThrow('Threshold not resolved');
+    ).rejects.toThrow('Unknown error');
 
     await expect(
       metadataStore.fetchAllSecretDataItems(encKey, authKeyPair),
-    ).rejects.toThrow('Threshold not resolved');
+    ).rejects.toThrow('Unknown error');
 
     expect(fetchSpy).toHaveBeenCalled();
 

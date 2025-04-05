@@ -314,8 +314,9 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     const { nodeEndpointsMap } = await this.#getNodeDetails();
     const metadataEndpointsMap =
       await this.#getMetadataEndpointsMap(nodeEndpointsMap);
+    const node1MetadataEndpoint = metadataEndpointsMap['1'];
     const metadataStore = new MetadataStore({
-      nodeEndpointsMap: metadataEndpointsMap,
+      metadataEndpoint: node1MetadataEndpoint,
     });
 
     this.#metadataStoreCache = metadataStore;
