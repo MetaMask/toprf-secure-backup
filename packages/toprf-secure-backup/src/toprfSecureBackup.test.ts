@@ -1,3 +1,5 @@
+import { utf8ToBytes } from '@noble/ciphers/utils';
+
 import { ToprfSecureBackup } from './toprfSecureBackup';
 import { generateIdToken } from '../tests/testHelpers';
 
