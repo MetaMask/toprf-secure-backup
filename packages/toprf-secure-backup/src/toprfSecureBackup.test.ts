@@ -1,5 +1,3 @@
-import { utf8ToBytes } from '@noble/curves/abstract/utils';
-
 import { ToprfSecureBackup } from './toprfSecureBackup';
 import { generateIdToken } from '../tests/testHelpers';
 
@@ -40,7 +38,7 @@ describe('toprf secret backup', function () {
     });
     const encKey = await toprfSecureBackup.createEncKey({
       nodeAuthTokens: result.nodeAuthTokens,
-      password: utf8ToBytes('test-password'),
+      password: 'test-password',
       verifier,
       verifierId: verifierID,
     });
@@ -66,14 +64,14 @@ describe('toprf secret backup', function () {
     });
     const encKey = await toprfSecureBackup.createEncKey({
       nodeAuthTokens: result.nodeAuthTokens,
-      password: utf8ToBytes('test-password'),
+      password: 'test-password',
       verifier,
       verifierId: verifierID,
     });
 
     const recoveredEncKey = await toprfSecureBackup.recoverEncKey({
       nodeAuthTokens: result.nodeAuthTokens,
-      password: utf8ToBytes('test-password'),
+      password: 'test-password',
       verifier,
       verifierId: verifierID,
     });
@@ -97,7 +95,7 @@ describe('toprf secret backup', function () {
     await expect(
       toprfSecureBackup.createEncKey({
         nodeAuthTokens: [],
-        password: utf8ToBytes('test-password'),
+        password: 'test-password',
         verifier,
         verifierId: verifierID,
       }),
@@ -120,7 +118,7 @@ describe('toprf secret backup', function () {
     });
     const encKey = await toprfSecureBackup.createEncKey({
       nodeAuthTokens: result.nodeAuthTokens,
-      password: utf8ToBytes('test-password'),
+      password: 'test-password',
       verifier,
       verifierId: verifierID,
     });
@@ -133,7 +131,7 @@ describe('toprf secret backup', function () {
     await expect(
       toprfSecureBackup.createEncKey({
         nodeAuthTokens: result.nodeAuthTokens.slice(0, 2),
-        password: utf8ToBytes('test-password'),
+        password: 'test-password',
         verifier,
         verifierId: verifierID,
       }),
