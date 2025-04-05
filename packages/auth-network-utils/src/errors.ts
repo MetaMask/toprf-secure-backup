@@ -180,6 +180,7 @@ export class TOPRFError extends AbstractTOPRFError {
     1004: 'Insufficient valid responses.',
     1005: 'Could not derive threshold auth pub key.',
     1006: 'Could not derive encryption key.',
+    1007: 'Endpoint not found.',
   };
 
   /**
@@ -275,5 +276,14 @@ export class TOPRFError extends AbstractTOPRFError {
    */
   public static couldNotDeriveEncryptionKey(extraMessage = ''): ITOPRFError {
     return TOPRFError.fromCode(1006, extraMessage);
+  }
+
+  /**
+   *
+   * @param extraMessage - The extra message of the error.
+   * @returns - The error instance for endpoint not found.
+   */
+  public static endpointNotFound(extraMessage = ''): ITOPRFError {
+    return TOPRFError.fromCode(1007, extraMessage);
   }
 }
