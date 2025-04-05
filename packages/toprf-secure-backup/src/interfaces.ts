@@ -67,7 +67,7 @@ export type CreateEncryptionKeyParams = {
   verifier: string;
   verifierId: string;
   nodeAuthTokens: NodeAuthTokens;
-  password: Uint8Array;
+  password: string;
 };
 
 /**
@@ -102,7 +102,7 @@ export type StoreSecretDataParams = {
  */
 export type RecoverEncryptionKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
-  password: Uint8Array;
+  password: string;
   verifier: string;
   verifierId: string;
 };
@@ -125,7 +125,7 @@ export type RecoverEncryptionKeyResult = {
  */
 export type ChangeEncryptionKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
-  newPassword: Uint8Array;
+  newPassword: string;
   keyPair: KeyPair;
 };
 
