@@ -121,11 +121,6 @@ export type CreateEncryptionKeyResult = {
  */
 export type AddSecretDataItemParams = {
   /**
-   * The node auth tokens issued by the nodes on authenticating the user.
-   */
-  nodeAuthTokens: NodeAuthTokens;
-
-  /**
    * The secret data to be stored.
    */
   secretData: Uint8Array;
@@ -294,39 +289,36 @@ export type IBatchSetData = {
 /**
  * Payload structure for storing secret data
  */
-export type IBaseSetSecretDataRequestBody<T> = IBaseMetadataRequestBody & {
-  /**
-   * The authentication token of the user issued by the SSS services
-   */
-  authToken: string;
-  /**
-   * The secret data to be stored.
-   *
-   * For storing the single secret data, the data should be base64-encoded string.
-   *
-   * @example
-   * ```ts
-   * const data = Buffer.from('SECRET_DATA').toString('base64');
-   * ```
-   *
-   * For storing the batch of secret data, the data should be an array of `IBatchSetData`.
-   *
-   * @example
-   * ```ts
-   * const data = [
-   *   { data: Buffer.from('SECRET_DATA_1').toString('base64') },
-   *   { data: Buffer.from('SECRET_DATA_2').toString('base64') },
-   * ];
-   * ```
-   */
-  data: T;
-  /**
-   * The signature produced by signing the payload (without pubKey field) using the user's private key.
-   *
-   * Sample signature: sign(keccak256(data, feature, authToken, timestamp))
-   */
-  signature: string;
-};
+export type IBaseSetSecretDataRequestBody<DataType> =
+  IBaseMetadataRequestBody & {
+    /**
+     * The secret data to be stored.
+     *
+     * For storing the single secret data, the data should be base64-encoded string.
+     *
+     * @example
+     * ```ts
+     * const data = Buffer.from('SECRET_DATA').toString('base64');
+     * ```
+     *
+     * For storing the batch of secret data, the data should be an array of `IBatchSetData`.
+     *
+     * @example
+     * ```ts
+     * const data = [
+     *   { data: Buffer.from('SECRET_DATA_1').toString('base64') },
+     *   { data: Buffer.from('SECRET_DATA_2').toString('base64') },
+     * ];
+     * ```
+     */
+    data: DataType;
+    /**
+     * The signature produced by signing the payload (without pubKey field) using the user's private key.
+     *
+     * Sample signature: sign(keccak256(data, feature, authToken, timestamp))
+     */
+    signature: string;
+  };
 
 /**
  * Payload structure for storing secret data for single secret data

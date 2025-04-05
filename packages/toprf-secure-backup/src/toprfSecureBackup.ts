@@ -223,7 +223,6 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * This function encrypts the secret data using the encryption key and stores it nodes metadata store in encrypted form.
    *
    * @param params - The parameters for registering new secret data.
-   * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
    * @param params.encKey - The encryption key which is used to encrypt the secret data before storing it.
    * @param params.secretData - The array of secret data to be registered.
    * @param params.authKeyPair - The authentication key pair which is used to authenticate the user to the storage service.
@@ -321,11 +320,11 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    */
   async #getMetadataEndpointsMap(
     nodeEndpointsMap: Record<number, string>,
-  ): Promise<Map<number, string>> {
-    const metadataEndpointsMap = new Map<number, string>();
+  ): Promise<{ [nodeIndex: string]: string }> {
+    const metadataEndpointsMap: { [nodeIndex: string]: string } = {};
     Object.entries(nodeEndpointsMap).forEach(([key, value]) => {
       const url = new URL(value);
-      metadataEndpointsMap.set(Number(key), `${url.origin}/metadata`);
+      metadataEndpointsMap[key] = `${url.origin}/metadata`;
     });
     return metadataEndpointsMap;
   }

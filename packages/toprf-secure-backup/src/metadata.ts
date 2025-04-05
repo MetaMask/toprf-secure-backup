@@ -15,12 +15,11 @@ import type {
   IGetSecretDataRequestBody,
   KeyPair,
   AddSecretDataItemParams,
-  NodeAuthTokens,
   ISetSecretDataRequestBody,
 } from './interfaces';
 
 type MetadataStoreOptions = {
-  nodeEndpointsMap: Map<number, string>;
+  nodeEndpointsMap: { [nodeIndex: string]: string };
 };
 
 export type AuthTokenToMetadataEndpointsMap = Record<string, string>;
@@ -50,7 +49,7 @@ export class MetadataStoreError extends Error {
 export class MetadataStore {
   readonly #feature = 'srp-backup';
 
-  readonly #nodeEndpointsMap: Map<number, string>;
+  readonly #nodeEndpointsMap: { [nodeIndex: string]: string };
 
   readonly #thresholdValues: { [operation: string]: number } = {
     /**
@@ -79,24 +78,20 @@ export class MetadataStore {
    * @param params - The parameters for storing the secret data.
    * @param params.secretData - The secret data to be stored.
    * @param params.encKey - The encryption key to be used for encrypting the secret data.
-   * @param params.authKeyPair - The authentication key pair to be used for authenticating the secret data.
    * @param params.nodeAuthTokens - The array of auth tokens to be used for authenticating against the metadata server.
    * @returns A promise that resolves when the secret data is stored.
    */
   async addSecretDataItem(params: AddSecretDataItemParams): Promise<void> {
     try {
-      const { secretData, encKey, nodeAuthTokens, authKeyPair } = params;
-      const endPointToAuthTokenMap =
-        this.#getAuthTokenToMetadataEndpointsMap(nodeAuthTokens);
+      const { secretData, encKey, authKeyPair } = params;
 
-      const promises = Object.entries(endPointToAuthTokenMap).map(
-        async ([endpoint, authToken]) => {
+      const promises = Object.values(this.#nodeEndpointsMap).map(
+        async (metadataEndpoint) => {
           return this.#addData({
             secretData,
             encKey,
             authKeyPair,
-            metadataEndpoint: endpoint,
-            authToken,
+            metadataEndpoint,
           });
         },
       );
@@ -126,7 +121,7 @@ export class MetadataStore {
     authKeyPair: KeyPair,
   ): Promise<FetchSecretDataResult> {
     try {
-      const promises = Array.from(this.#nodeEndpointsMap.values()).map(
+      const promises = Object.values(this.#nodeEndpointsMap).map(
         async (metadataEndpoint) => {
           return this.#getAllDataItems({
             encKey,
@@ -165,7 +160,6 @@ export class MetadataStore {
    * @param params.encKey - The encryption key to be used for encrypting the secret data.
    * @param params.authKeyPair - The authentication key pair to be used for authenticating the secret data.
    * @param params.metadataEndpoint - The metadata server endpoint to be used for storing the secret data.
-   * @param params.authToken - The auth token to be used for authentication for the metadata server.
    * @returns A promise that resolves when the secret data is stored.
    */
   async #addData(params: {
@@ -173,7 +167,6 @@ export class MetadataStore {
     encKey: Uint8Array;
     authKeyPair: KeyPair;
     metadataEndpoint: string;
-    authToken: string;
   }): Promise<boolean> {
     try {
       const url = `${params.metadataEndpoint}/enc_account_data/set`;
@@ -181,7 +174,6 @@ export class MetadataStore {
       const payload = this.#generatePayloadForSetOrBatchSetSecretDataRequest(
         encryptedData,
         params.authKeyPair,
-        params.authToken,
       );
 
       const requestBody = JSON.stringify(payload);
@@ -293,13 +285,11 @@ export class MetadataStore {
    *
    * @param rawData - The encrypted secret data to be stored.
    * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
-   * @param authToken - The auth token to be used for authentication for the metadata server.
    * @returns The payload for the batch set secret data request.
    */
   #generatePayloadForSetOrBatchSetSecretDataRequest(
     rawData: Uint8Array,
     authKeyPair: KeyPair,
-    authToken: string,
   ): ISetSecretDataRequestBody {
     const timestamp = Date.now().toString();
     const feature = this.#feature;
@@ -307,7 +297,7 @@ export class MetadataStore {
 
     const { pk, sk } = authKeyPair;
     const signature = this.#generatePayloadSignature(
-      { data: base64Data, timestamp, feature, authToken },
+      { data: base64Data, timestamp, feature },
       sk,
     );
 
@@ -318,7 +308,6 @@ export class MetadataStore {
       signature,
       feature,
       timestamp,
-      authToken,
       pubKey,
     };
   }
@@ -367,30 +356,6 @@ export class MetadataStore {
     const signature = secp256k1.sign(hash, privKey);
 
     return signature.toCompactHex();
-  }
-
-  /**
-   * Get the auth token to metadata endpoints map.
-   *
-   * @param nodeAuthTokens - The node auth tokens.
-   * @returns The auth token to metadata endpoints map.
-   */
-  #getAuthTokenToMetadataEndpointsMap(
-    nodeAuthTokens: NodeAuthTokens,
-  ): AuthTokenToMetadataEndpointsMap {
-    const endPointToAuthTokenMap: AuthTokenToMetadataEndpointsMap = {};
-    nodeAuthTokens.forEach(({ nodeIndex, authToken }) => {
-      const endpoint = this.#nodeEndpointsMap.get(nodeIndex);
-      if (!endpoint) {
-        throw new MetadataStoreError(
-          `Endpoint not found for node index: ${nodeIndex}`,
-        );
-      }
-
-      endPointToAuthTokenMap[endpoint] = authToken;
-    });
-
-    return endPointToAuthTokenMap;
   }
 
   /**
