@@ -1,6 +1,8 @@
 import { thresholdSame } from '@metamask/auth-network-utils';
 import { utf8ToBytes } from '@noble/curves/abstract/utils';
 import { secp256k1 } from '@noble/curves/secp256k1';
+import { sha256 } from '@noble/hashes/sha256';
+import { toBytes } from '@noble/hashes/utils';
 import type {
   INodePub,
   TORUS_SAPPHIRE_NETWORK_TYPE,
@@ -21,6 +23,8 @@ import type {
   RecoverEncryptionKeyParams,
   RecoverEncryptionKeyResult,
   AddSecretDataItemParams,
+  CreateLocalEncryptionKeyParams,
+  CreateLocalEncryptionKeyResult,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -112,6 +116,38 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
         nodePubKey: tokenData.nodePubKey,
       })),
       hasValidEncKey: Boolean(hasValidEncKey),
+    };
+  }
+
+  /**
+   * This function locally creates an OPRF key without storing it at the key
+   * management service. It returns the OPRF key, derives the corresponding key
+   * seed and application keys.
+   *
+   * @param params - The parameters for creating the encryption key.
+   * @param params.password - New password of the user.
+   *
+   * @returns The OPRF key, seed, and application keys.
+   */
+  createLocalEncKey(
+    params: CreateLocalEncryptionKeyParams,
+  ): CreateLocalEncryptionKeyResult {
+    const { password } = params;
+    const passwordBytes = toBytes(password);
+    const hashedInput = sha256(passwordBytes);
+    const oprfKey = generateRandomScalar();
+    const seed = OPRF.localEval(oprfKey, hashedInput);
+    const authKeyPair = deriveAuthenticationKeyPair(seed);
+    const encKey = deriveEncryptionKey(seed);
+
+    return {
+      oprfKey,
+      seed,
+      authKeyPair: {
+        sk: authKeyPair.sk,
+        pk: authKeyPair.pk,
+      },
+      encKey,
     };
   }
 
