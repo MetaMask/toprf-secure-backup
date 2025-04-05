@@ -116,7 +116,6 @@ describe('toprf secret backup', function () {
     });
 
     await toprfSecureBackup.addSecretDataItem({
-      nodeAuthTokens: result.nodeAuthTokens,
       encKey: encKeyResult.encKey,
       secretData,
       authKeyPair: encKeyResult.authKeyPair,
