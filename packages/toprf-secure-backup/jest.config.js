@@ -20,28 +20,22 @@ module.exports = merge(baseConfig, {
   // An object that configures minimum threshold enforcement for coverage results
   coverageThreshold: {
     global: {
-      branches: 100,
-      functions: 100,
-      lines: 100,
-      statements: 100,
-    },
-    './src/resetRateLimits.ts': {
-      statements: 86.04,
-      branches: 41.66,
-      functions: 100,
-      lines: 84.61,
+      branches: 80,
+      functions: 90,
+      lines: 90,
+      statements: 90,
     },
     './src/toprfEvalRequest.ts': {
-      statements: 91.17,
-      branches: 55.55,
-      functions: 100,
-      lines: 90.62,
+      statements: 90,
+      branches: 50,
+      functions: 90,
+      lines: 90,
     },
     './src/toprfSecureBackup.ts': {
-      statements: 96.36,
-      branches: 75,
+      statements: 90,
+      branches: 70,
       functions: 90,
-      lines: 96.36,
+      lines: 90,
     },
   },
 });

@@ -10,9 +10,10 @@ export type EciesHex = {
   [key in keyof Ecies]: string;
 } & { mode?: string };
 
+export type JsonRpcVersion = '2.0';
 export type JRPCResponse<T> = {
   id: number;
-  jsonrpc: '2.0';
+  jsonrpc: JsonRpcVersion;
   result?: T;
   error?: {
     code: number;

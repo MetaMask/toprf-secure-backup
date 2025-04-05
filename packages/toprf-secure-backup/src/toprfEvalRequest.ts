@@ -207,7 +207,8 @@ export const recoverTOPRFSeed = async (params: {
   }
   const { a, r } = OPRF.blind(userInput);
 
-  const promiseArr = authTokens.map(async (authToken) => {
+  const promises: Promise<ToprfEvalJRPCResponse>[] = [];
+  for (const authToken of authTokens) {
     const endpoint = nodeEndpointsMap[authToken.nodeIndex];
     if (!endpoint) {
       throw new Error(
@@ -222,11 +223,10 @@ export const recoverTOPRFSeed = async (params: {
       verifier,
       verifierId,
     );
-    return sendToprfEvalRequest(endpoint, requestParams);
-  });
+    promises.push(sendToprfEvalRequest(endpoint, requestParams));
+  }
 
-  return Some<ToprfEvalJRPCResponse, Uint8Array>(
-    promiseArr,
-    async (resultArr) => validateSeed(userInput, r, resultArr),
+  return Some<ToprfEvalJRPCResponse, Uint8Array>(promises, async (resultArr) =>
+    validateSeed(userInput, r, resultArr),
   );
 };
