@@ -1,16 +1,50 @@
 import { randomBytes, utf8ToBytes } from '@noble/hashes/utils';
+import type { TORUS_SAPPHIRE_NETWORK_TYPE } from '@toruslabs/constants';
+import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
-import { METADATA_NODES_ENDPOINTS_MAP } from './constants';
 import type { KeyPair } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
   deriveEncryptionKey,
 } from './keyDerivation';
 import { MetadataStore } from './metadata';
+import { createNodeEndpointsMap } from './utils';
 
 const MOCK_SEED = randomBytes(32);
-const NODE_ENDPOINTS_MAP = METADATA_NODES_ENDPOINTS_MAP;
 const secretData = utf8ToBytes('test-secret-data');
+
+/**
+ * Gets the node endpoints map.
+ *
+ * @param network - The network to get the node endpoints map for.
+ *
+ * @returns The node endpoints map.
+ */
+async function getNodeEndpointsMap(
+  network: TORUS_SAPPHIRE_NETWORK_TYPE = 'sapphire_devnet',
+): Promise<{ [nodeIndex: string]: string }> {
+  const nodeDetailManager = new NodeDetailManager({
+    network,
+  });
+  const { torusNodeSSSEndpoints, torusIndexes } =
+    await nodeDetailManager.getNodeDetails({
+      verifier: 'DEFAULT_VERIFIER',
+      verifierId: 'DEFAULT_VERIFIER_ID',
+    });
+  if (!torusNodeSSSEndpoints || !torusIndexes) {
+    throw new Error('Failed to get node details');
+  }
+  const nodeEndpointsMap = createNodeEndpointsMap(
+    torusNodeSSSEndpoints,
+    torusIndexes,
+  );
+  const metadataEndpointsMap: { [nodeIndex: string]: string } = {};
+  Object.entries(nodeEndpointsMap).forEach(([key, value]) => {
+    const url = new URL(value);
+    metadataEndpointsMap[key] = `${url.origin}/metadata`;
+  });
+  return metadataEndpointsMap;
+}
 
 /**
  * Creates a mock MetadataStore instance.
@@ -18,10 +52,14 @@ const secretData = utf8ToBytes('test-secret-data');
  * @param nodeEndpointsMap - The map of node endpoints which includes node index as key and node endpoint as value.
  * @returns A mock MetadataStore instance.
  */
-function createMockMetadataStore(
-  nodeEndpointsMap: { [nodeIndex: string]: string } = NODE_ENDPOINTS_MAP,
-): MetadataStore {
-  return new MetadataStore({ nodeEndpointsMap });
+async function createMetadataStore(nodeEndpointsMap?: {
+  [nodeIndex: string]: string;
+}): Promise<MetadataStore> {
+  let nodeEndpoints = nodeEndpointsMap;
+  nodeEndpoints ??= await getNodeEndpointsMap();
+  console.log('nodeEndpoints', nodeEndpoints);
+
+  return new MetadataStore({ nodeEndpointsMap: nodeEndpoints });
 }
 
 describe('MetadataStore', () => {
@@ -34,7 +72,7 @@ describe('MetadataStore', () => {
   });
 
   it('should be able to store/fetch data', async () => {
-    const metadataStore = createMockMetadataStore();
+    const metadataStore = await createMetadataStore();
 
     await metadataStore.addSecretDataItem({
       secretData,
@@ -51,8 +89,8 @@ describe('MetadataStore', () => {
   });
 
   it('should be able to store/fetch data with different instances', async () => {
-    const metadataStore1 = createMockMetadataStore();
-    const metadataStore2 = createMockMetadataStore();
+    const metadataStore1 = await createMetadataStore();
+    const metadataStore2 = await createMetadataStore();
 
     await metadataStore1.addSecretDataItem({
       secretData,
@@ -69,7 +107,7 @@ describe('MetadataStore', () => {
   });
 
   it('should get null if metadata key not found', async () => {
-    const metadataStore = createMockMetadataStore();
+    const metadataStore = await createMetadataStore();
 
     const randomSeed = randomBytes(32);
     const randomAuthKeyPair = deriveAuthenticationKeyPair(randomSeed);
@@ -96,7 +134,7 @@ describe('MetadataStore', () => {
         } as Response);
       });
 
-    const metadataStore = createMockMetadataStore();
+    const metadataStore = await createMetadataStore();
 
     await expect(
       metadataStore.fetchAllSecretDataItems(encKey, authKeyPair),
@@ -108,7 +146,7 @@ describe('MetadataStore', () => {
   });
 
   it('should throw an error if the threshold is not met', async () => {
-    const metadataStore = createMockMetadataStore();
+    const metadataStore = await createMetadataStore();
 
     const fetchSpy = jest
       .spyOn(global, 'fetch')
@@ -155,7 +193,7 @@ describe('MetadataStore', () => {
         } as Response);
       });
 
-    const metadataStore = createMockMetadataStore();
+    const metadataStore = await createMetadataStore();
 
     await expect(
       metadataStore.addSecretDataItem({
@@ -181,7 +219,7 @@ describe('MetadataStore', () => {
         throw new Error();
       });
 
-    const metadataStore = createMockMetadataStore();
+    const metadataStore = await createMetadataStore();
 
     await expect(
       metadataStore.addSecretDataItem({
