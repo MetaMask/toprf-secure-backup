@@ -1,4 +1,5 @@
 import { thresholdSame } from '@metamask/auth-network-utils';
+import { utf8ToBytes } from '@noble/curves/abstract/utils';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { sha256 } from '@noble/hashes/sha256';
 import { toBytes } from '@noble/hashes/utils';
@@ -163,7 +164,8 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     const { nodeAuthTokens, password, verifier, verifierId } = params;
     const { nodeEndpointsMap } = await this.#getNodeDetails();
     const oprfKey = generateRandomScalar();
-    const seed = OPRF.localEval(oprfKey, password);
+    const pwBytes = utf8ToBytes(password);
+    const seed = OPRF.localEval(oprfKey, pwBytes);
     const authKeyPair = deriveAuthenticationKeyPair(seed);
     const selectedEndpointsMap = nodeAuthTokens.reduce<Record<number, string>>(
       (acc, tokenData) => {
@@ -208,12 +210,13 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   ): Promise<RecoverEncryptionKeyResult> {
     const { nodeAuthTokens, password, verifier, verifierId } = params;
     const { nodeEndpointsMap } = await this.#getNodeDetails();
+    const pwBytes = utf8ToBytes(password);
     const seed = await recoverTOPRFSeed({
       authTokens: nodeAuthTokens,
       nodeEndpointsMap,
       verifier,
       verifierId,
-      userInput: password,
+      userInput: pwBytes,
     });
     const authKeyPair = deriveAuthenticationKeyPair(seed);
     const encKeyPair = deriveEncryptionKey(seed);
