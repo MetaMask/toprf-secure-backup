@@ -3,6 +3,16 @@ import { utf8ToBytes } from '@noble/ciphers/utils';
 import { ToprfSecureBackup } from './toprfSecureBackup';
 import { generateIdToken } from '../tests/testHelpers';
 
+/**
+ * Generates a random password for testing purposes.
+ *
+ * @returns A random password.
+ */
+function generateRandomPassword(): string {
+  const length = Math.random() * 10 + 8;
+  return Math.random().toString(36).slice(2, length);
+}
+
 describe('toprf secret backup', function () {
   it('should be able to authenticate user', async function () {
     const verifier = 'torus-test-health';
@@ -40,7 +50,7 @@ describe('toprf secret backup', function () {
     });
     const encKey = await toprfSecureBackup.createEncKey({
       nodeAuthTokens: result.nodeAuthTokens,
-      password: 'test-password',
+      password: generateRandomPassword(),
       verifier,
       verifierId: verifierID,
     });
@@ -64,16 +74,18 @@ describe('toprf secret backup', function () {
       verifier,
       verifierID,
     });
+
+    const password = generateRandomPassword();
     const encKey = await toprfSecureBackup.createEncKey({
       nodeAuthTokens: result.nodeAuthTokens,
-      password: 'test-password',
+      password,
       verifier,
       verifierId: verifierID,
     });
 
     const recoveredEncKey = await toprfSecureBackup.recoverEncKey({
       nodeAuthTokens: result.nodeAuthTokens,
-      password: 'test-password',
+      password,
       verifier,
       verifierId: verifierID,
     });
@@ -87,6 +99,7 @@ describe('toprf secret backup', function () {
     expect(recoveredEncKey.encKey).toStrictEqual(encKey.encKey);
     expect(recoveredEncKey.authKeyPair.pk).toStrictEqual(encKey.authKeyPair.pk);
   });
+
   it('should throw error if user is not authenticated while creating enc key', async function () {
     const verifier = 'torus-test-health';
     const verifierID = `test-verifier-id-${Math.random()}`;
@@ -97,12 +110,13 @@ describe('toprf secret backup', function () {
     await expect(
       toprfSecureBackup.createEncKey({
         nodeAuthTokens: [],
-        password: 'test-password',
+        password: generateRandomPassword(),
         verifier,
         verifierId: verifierID,
       }),
     ).rejects.toBeDefined();
   });
+
   // somehow this test fails, need to check backend logs,.
   // eslint-disable-next-line jest/no-disabled-tests
   it.skip('should throw error if user is not authenticated by enough nodes while creating enc key', async function () {
@@ -120,7 +134,7 @@ describe('toprf secret backup', function () {
     });
     const encKey = await toprfSecureBackup.createEncKey({
       nodeAuthTokens: result.nodeAuthTokens,
-      password: 'test-password',
+      password: generateRandomPassword(),
       verifier,
       verifierId: verifierID,
     });
@@ -133,7 +147,7 @@ describe('toprf secret backup', function () {
     await expect(
       toprfSecureBackup.createEncKey({
         nodeAuthTokens: result.nodeAuthTokens.slice(0, 2),
-        password: 'test-password',
+        password: generateRandomPassword(),
         verifier,
         verifierId: verifierID,
       }),
@@ -157,7 +171,7 @@ describe('toprf secret backup', function () {
     });
     const encKeyResult = await toprfSecureBackup.createEncKey({
       nodeAuthTokens: result.nodeAuthTokens,
-      password: 'test-password',
+      password: generateRandomPassword(),
       verifier,
       verifierId: verifierID,
     });
