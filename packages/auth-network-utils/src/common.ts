@@ -42,14 +42,14 @@ export function thresholdSame<Type>(
   arr: Type[],
   threshold: number,
 ): Type | undefined {
-  const hashMap: Record<string, number> = {};
+  const hashMap: Map<string, number> = new Map();
   for (const item of arr) {
     const str = JsonStringify(item);
     if (!str) {
       continue;
     }
-    hashMap[str] = hashMap[str] ? hashMap[str] + 1 : 1;
-    if (hashMap[str] === threshold) {
+    hashMap.set(str, (hashMap.get(str) ?? 0) + 1);
+    if (hashMap.get(str) === threshold) {
       return item;
     }
   }

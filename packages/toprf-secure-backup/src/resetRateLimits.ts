@@ -107,11 +107,17 @@ export const validateThresholdResetRateLimitResponses = (
  */
 export const resetRateLimits = async (params: {
   authTokens: NodeAuthTokens;
-  nodeEndpointsMap: Record<number, string>;
+  nodeEndpointsMap: Map<number, string>;
   verifier: string;
   verifierId: string;
 }): Promise<boolean> => {
   const { authTokens, nodeEndpointsMap, verifier, verifierId } = params;
+
+  if (authTokens.length !== nodeEndpointsMap.size) {
+    throw TOPRFError.default(
+      `Invalid auth tokens, expected ${nodeEndpointsMap.size} but got ${authTokens.length}`,
+    );
+  }
 
   // TODO: get signature and signedData from the user authentication key.
   const signature = '0x';
@@ -123,7 +129,7 @@ export const resetRateLimits = async (params: {
 
   const promises: Promise<ResetRateLimitJRPCResponse>[] = [];
   for (const authToken of authTokens) {
-    const endpoint = nodeEndpointsMap[authToken.nodeIndex];
+    const endpoint = nodeEndpointsMap.get(authToken.nodeIndex);
     if (!endpoint) {
       throw TOPRFError.endpointNotFound(
         `Endpoint not found for node index ${authToken.nodeIndex}`,

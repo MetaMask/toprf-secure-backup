@@ -5,9 +5,7 @@ import { ec as EC } from 'elliptic';
 import type { BNString } from './interfaces';
 import Share from './share';
 
-export type ShareMap = {
-  [x: string]: Share;
-};
+export type ShareMap = Map<string, Share>;
 
 /**
  * Class representing a polynomial over a finite field
@@ -141,11 +139,11 @@ class Polynomial {
       return index;
     });
 
-    const shares: ShareMap = {};
+    const shares: ShareMap = new Map();
     for (const index of newShareIndexes) {
-      shares[index.toString('hex', 64)] = new Share(
-        index,
-        this.polyEval(index),
+      shares.set(
+        index.toString('hex', 64),
+        new Share(index, this.polyEval(index)),
       );
     }
     return shares;

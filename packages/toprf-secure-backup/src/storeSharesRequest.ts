@@ -15,7 +15,7 @@ import type {
 import { generateShareImportItems, postJRPCRequest } from './utils';
 
 export type CreateStoreKeySharesRequestParamsInput = {
-  nodeEndpointsMap: Record<number, string>;
+  nodeEndpointsMap: Map<number, string>;
   authTokens: NodeAuthTokens;
   keyIndex: number;
   verifier: string;
@@ -126,7 +126,7 @@ export const storeKeyShares = async (
     verifier,
     verifierId,
   );
-  const proxyNodeEndpoint = nodeEndpointsMap[proxyNodeEndpointIndex];
+  const proxyNodeEndpoint = nodeEndpointsMap.get(proxyNodeEndpointIndex) ?? '';
   const storeReqPromise = await sendStoreKeySharesRequest(
     proxyNodeEndpoint,
     requestParams,

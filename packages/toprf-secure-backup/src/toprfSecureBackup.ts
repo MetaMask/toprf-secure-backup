@@ -82,12 +82,13 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     });
 
     // use only the node indexes that returned valid commitment responses
-    const selectedEndpointsMap = commitmentResults.reduce<
-      Record<number, string>
-    >((acc, result) => {
-      acc[result.nodeIndex] = nodeEndpointsMap[result.nodeIndex];
-      return acc;
-    }, {});
+    const selectedEndpointsMap = commitmentResults.reduce<Map<number, string>>(
+      (acc, result) => {
+        acc.set(result.nodeIndex, nodeEndpointsMap.get(result.nodeIndex) ?? '');
+        return acc;
+      },
+      new Map(),
+    );
 
     // get auth tokens from nodes
     const authTokens = await authenticateUser({
@@ -133,12 +134,15 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     const pwBytes = utf8ToBytes(password);
     const seed = OPRF.localEval(oprfKey, pwBytes);
     const authKeyPair = deriveAuthenticationKeyPair(seed);
-    const selectedEndpointsMap = nodeAuthTokens.reduce<Record<number, string>>(
+    const selectedEndpointsMap = nodeAuthTokens.reduce<Map<number, string>>(
       (acc, tokenData) => {
-        acc[tokenData.nodeIndex] = nodeEndpointsMap[tokenData.nodeIndex];
+        acc.set(
+          tokenData.nodeIndex,
+          nodeEndpointsMap.get(tokenData.nodeIndex) ?? '',
+        );
         return acc;
       },
-      {},
+      new Map(),
     );
     await storeKeyShares({
       nodeEndpointsMap: selectedEndpointsMap,
@@ -250,7 +254,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    */
   async #getNodeDetails(): Promise<{
     nodeEndpoints: string[];
-    nodeEndpointsMap: Record<number, string>;
+    nodeEndpointsMap: Map<number, string>;
     nodeIndexes: number[];
     nodePubkeys: INodePub[];
   }> {
@@ -288,7 +292,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     const { nodeEndpointsMap } = await this.#getNodeDetails();
     const metadataEndpointsMap =
       await this.#getMetadataEndpointsMap(nodeEndpointsMap);
-    const node1MetadataEndpoint = metadataEndpointsMap['1'];
+    const node1MetadataEndpoint = metadataEndpointsMap.get(1) ?? '';
     const metadataStore = new MetadataStore({
       metadataEndpoint: node1MetadataEndpoint,
     });
@@ -306,12 +310,12 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @returns The metadata endpoints map with node index as key and metadata endpoint as value.
    */
   async #getMetadataEndpointsMap(
-    nodeEndpointsMap: Record<number, string>,
-  ): Promise<{ [nodeIndex: string]: string }> {
-    const metadataEndpointsMap: { [nodeIndex: string]: string } = {};
-    Object.entries(nodeEndpointsMap).forEach(([key, value]) => {
+    nodeEndpointsMap: Map<number, string>,
+  ): Promise<Map<number, string>> {
+    const metadataEndpointsMap: Map<number, string> = new Map();
+    nodeEndpointsMap.forEach((value, key) => {
       const url = new URL(value);
-      metadataEndpointsMap[key] = `${url.origin}/metadata`;
+      metadataEndpointsMap.set(key, `${url.origin}/metadata`);
     });
     return metadataEndpointsMap;
   }

@@ -164,7 +164,7 @@ const createShareImportItem = async (
   authToken: string,
   nodePubKey: Buffer,
   nodeIndex: number,
-  nodeEndpointsMap: Record<number, string>,
+  nodeEndpointsMap: Map<number, string>,
 ): Promise<ShareImportItem> => {
   const encryptedAuthToken = await encryptData(
     Buffer.from(authToken, 'base64'),
@@ -176,7 +176,7 @@ const createShareImportItem = async (
     encryptedAuthToken: JSON.stringify(encryptedAuthToken),
     shareKeyIndex: keyIndex,
     nodeIndex,
-    sssEndpoint: nodeEndpointsMap[nodeIndex],
+    sssEndpoint: nodeEndpointsMap.get(nodeIndex) ?? '',
   };
 };
 
@@ -191,7 +191,7 @@ const createShareImportItem = async (
  * @returns The share import items containing the encrypted shares, the key index, the node index, and the sss endpoint.
  */
 export const generateShareImportItems = async (
-  nodeEndpointsMap: Record<number, string>,
+  nodeEndpointsMap: Map<number, string>,
   authTokens: NodeAuthTokens,
   privKey: bigint,
   keyIndex: number,
@@ -199,9 +199,7 @@ export const generateShareImportItems = async (
   const privKeyBN = bigIntToBN(privKey);
   const ecCurve = getSecp256K1Curve();
   const threshold = Math.floor(Object.values(nodeEndpointsMap).length / 2) + 1;
-  const allNodeIndexes = Object.keys(nodeEndpointsMap).map((val: string) =>
-    parseInt(val, 10),
-  );
+  const allNodeIndexes = Array.from(nodeEndpointsMap.keys());
   // Generate shares for each node
   const shares = generateShares(ecCurve, allNodeIndexes, privKeyBN, threshold);
 
@@ -209,11 +207,11 @@ export const generateShareImportItems = async (
   const encryptionPromises = authTokens.map(async (authTokenData) => {
     const { nodePubKey, nodeIndex } = authTokenData;
 
-    const share = shares[new BN(nodeIndex).toString('hex', 64)];
+    const share = shares.get(new BN(nodeIndex).toString('hex', 64)) ?? null;
 
-    const shareJson = share.toJSON() as Record<string, string>;
+    const shareJson = share?.toJSON() as Record<string, string>;
     return encryptData(
-      Buffer.from(shareJson.share.padStart(64, '0'), 'hex'),
+      Buffer.from(shareJson?.share.padStart(64, '0') ?? '', 'hex'),
       Buffer.from(nodePubKey, 'hex'),
     );
   });
@@ -246,9 +244,9 @@ export const generateShareImportItems = async (
 export const createNodeEndpointsMap = (
   nodeEndpoints: string[],
   nodeIndexes: number[],
-): Record<number, string> => {
-  return nodeIndexes.reduce<Record<number, string>>((acc, index) => {
-    acc[index] = nodeEndpoints[index - 1];
+): Map<number, string> => {
+  return nodeIndexes.reduce<Map<number, string>>((acc, index) => {
+    acc.set(index, nodeEndpoints[index - 1]);
     return acc;
-  }, {});
+  }, new Map());
 };

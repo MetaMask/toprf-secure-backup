@@ -194,7 +194,7 @@ export const validateSeed = async (
  */
 export const recoverTOPRFSeed = async (params: {
   authTokens: NodeAuthTokens;
-  nodeEndpointsMap: Record<number, string>;
+  nodeEndpointsMap: Map<number, string>;
   verifier: string;
   verifierId: string;
   userInput: Uint8Array;
@@ -209,7 +209,7 @@ export const recoverTOPRFSeed = async (params: {
 
   const promises: Promise<ToprfEvalJRPCResponse>[] = [];
   for (const authToken of authTokens) {
-    const endpoint = nodeEndpointsMap[authToken.nodeIndex];
+    const endpoint = nodeEndpointsMap.get(authToken.nodeIndex);
     if (!endpoint) {
       throw new Error(
         `Endpoint not found for node index ${authToken.nodeIndex}`,

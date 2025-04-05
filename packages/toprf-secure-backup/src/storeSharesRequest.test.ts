@@ -53,12 +53,13 @@ describe('store shares request', function () {
     );
 
     // use only the node indexes that returned valid commitment responses
-    const selectedEndpointsMap = commitmentResults.reduce<
-      Record<number, string>
-    >((acc, result) => {
-      acc[result.nodeIndex] = nodeEndpointsMap[result.nodeIndex];
-      return acc;
-    }, {});
+    const selectedEndpointsMap = commitmentResults.reduce<Map<number, string>>(
+      (acc, result) => {
+        acc.set(result.nodeIndex, nodeEndpointsMap.get(result.nodeIndex) ?? '');
+        return acc;
+      },
+      new Map(),
+    );
 
     const authTokens = await authenticateUser({
       idToken,
@@ -126,12 +127,13 @@ describe('store shares request', function () {
     });
 
     // use only the node indexes that returned valid commitment responses
-    const selectedEndpointsMap = commitmentResults.reduce<
-      Record<number, string>
-    >((acc, result) => {
-      acc[result.nodeIndex] = nodeEndpointsMap[result.nodeIndex];
-      return acc;
-    }, {});
+    const selectedEndpointsMap = commitmentResults.reduce<Map<number, string>>(
+      (acc, result) => {
+        acc.set(result.nodeIndex, nodeEndpointsMap.get(result.nodeIndex) ?? '');
+        return acc;
+      },
+      new Map(),
+    );
     const authTokens = await authenticateUser({
       idToken,
       verifier,

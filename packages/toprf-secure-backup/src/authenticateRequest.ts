@@ -134,7 +134,7 @@ export const authenticateUser = async (params: {
   verifier: string;
   verifierID: string;
   sessionPrivateKey: Uint8Array;
-  nodeEndpointsMap: Record<number, string>;
+  nodeEndpointsMap: Map<number, string>;
   commitmentSignatures: CommitmentRequestResult[];
 }): Promise<AuthRequestResult[]> => {
   const {

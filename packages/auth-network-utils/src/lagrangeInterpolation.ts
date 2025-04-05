@@ -151,27 +151,25 @@ export function generateRandomPolynomial(
       'deterministicShares in generateRandomPolynomial should be less or equal than degree to ensure an element of randomness',
     );
   }
-  const points: Record<string, Point> = {};
+  const points: Map<string, Point> = new Map();
   deterministicShares.forEach((share) => {
-    points[share.shareIndex.toString('hex', 64)] = new Point(
-      share.shareIndex,
-      share.share,
-      ecCurve,
+    points.set(
+      share.shareIndex.toString('hex', 64),
+      new Point(share.shareIndex, share.share, ecCurve),
     );
   });
   for (let i = 0; i < degree - deterministicShares.length; i += 1) {
     let shareIndex = generatePrivateExcludingIndexes([new BN(0)], ecCurve);
-    while (points[shareIndex.toString('hex', 64)] !== undefined) {
+    while (points.get(shareIndex.toString('hex', 64)) !== undefined) {
       shareIndex = generatePrivateExcludingIndexes([new BN(0)], ecCurve);
     }
-    points[shareIndex.toString('hex', 64)] = new Point(
-      shareIndex,
-      generatePrivateKey(ecCurve),
-      ecCurve,
+    points.set(
+      shareIndex.toString('hex', 64),
+      new Point(shareIndex, generatePrivateKey(ecCurve), ecCurve),
     );
   }
-  points['0'] = new Point(new BN(0), actualS, ecCurve);
-  return lagrangeInterpolatePolynomial(ecCurve, Object.values(points));
+  points.set('0', new Point(new BN(0), actualS, ecCurve));
+  return lagrangeInterpolatePolynomial(ecCurve, Array.from(points.values()));
 }
 
 /**

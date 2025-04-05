@@ -17,8 +17,6 @@ type MetadataStoreOptions = {
   metadataEndpoint: string;
 };
 
-export type AuthTokenToMetadataEndpointsMap = Record<string, string>;
-
 /**
  * Error class for metadata store.
  */
