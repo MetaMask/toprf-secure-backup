@@ -5,6 +5,10 @@
     "outDir": "./dist",
     "rootDir": "./src"
   },
-  "references": [{ "path": "../auth-network-utils/tsconfig.build.json" }],
+  "references": [
+    {
+      "path": "../auth-network-utils/tsconfig.build.json"
+    }
+  ],
   "include": ["./src"]
 }

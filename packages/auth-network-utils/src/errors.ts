@@ -36,6 +36,7 @@ export class SomeError<TResponse> extends Error {
     this.errors = errors;
     this.responses = responses;
     this.predicate = predicate;
+    Object.setPrototypeOf(this, SomeError.prototype);
   }
 
   /**

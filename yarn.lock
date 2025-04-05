@@ -1494,6 +1494,7 @@ __metadata:
     "@babel/runtime": "npm:^7.26.10"
     "@metamask/auth-network-utils": "npm:^0.0.0"
     "@metamask/auto-changelog": "npm:^3.4.4"
+    "@noble/ciphers": "npm:^1.2.1"
     "@noble/curves": "npm:^1.8.1"
     "@noble/hashes": "npm:^1.7.1"
     "@sentry/core": "npm:^9.10.0"
@@ -1562,7 +1563,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@noble/ciphers@npm:1.2.1":
+"@noble/ciphers@npm:1.2.1, @noble/ciphers@npm:^1.2.1":
   version: 1.2.1
   resolution: "@noble/ciphers@npm:1.2.1"
   checksum: 10/7fa0d32529d8da6323b08afec97218f6d6bc0d1e135243bf10f7587a2819495c3f3f4a5af1f41045501bb1ade94238c76960366a5d6441970e49ba9cacb88740

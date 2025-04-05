@@ -13,16 +13,20 @@ import { EXISTING_USER_AUTHENTICATION_THRESHOLD } from './constants';
 import type {
   AuthenticateParams,
   AuthenticateResult,
-  IToprfSecureBackup,
   CreateEncryptionKeyParams,
   CreateEncryptionKeyResult,
-  RecoverEncryptionKeyResult,
+  FetchAllSecretDataParams,
+  FetchSecretDataResult,
+  IToprfSecureBackup,
   RecoverEncryptionKeyParams,
+  RecoverEncryptionKeyResult,
+  AddSecretDataItemParams,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
   deriveEncryptionKey,
 } from './keyDerivation';
+import { MetadataStore } from './metadata';
 import { OPRF, generateRandomScalar } from './oprf';
 import { resetRateLimits } from './resetRateLimits';
 import { storeKeyShares } from './storeSharesRequest';
@@ -34,6 +38,8 @@ import { createNodeEndpointsMap } from './utils';
  */
 export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   readonly #nodeDetailManager: NodeDetailManager;
+
+  #metadataStoreCache: MetadataStore | undefined;
 
   /**
    *
@@ -116,7 +122,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
    * @param params.password - New password of the user.
    *
-   * @returns A promise that resolves with the encryption key.
+   * @returns The encryption key.
    */
   async createEncKey(
     params: CreateEncryptionKeyParams,
@@ -163,7 +169,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @param params.verifier - The verifier name used for authentication.
    * @param params.verifierId - The verifierId/userID of the user.
    *
-   * @returns A promise that resolves with the encryption key.
+   * @returns The encryption key.
    */
   async recoverEncKey(
     params: RecoverEncryptionKeyParams,
@@ -180,13 +186,19 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     });
     const authKeyPair = deriveAuthenticationKeyPair(seed);
     const encKeyPair = deriveEncryptionKey(seed);
-    resetRateLimits({
-      authTokens: nodeAuthTokens,
-      nodeEndpointsMap,
-      verifier,
-      verifierId,
-    }).catch((error) => {
-      console.error('Error resetting rate limits', error);
+    const rateLimitResetResult = new Promise<void>((resolve, reject) => {
+      resetRateLimits({
+        authTokens: nodeAuthTokens,
+        nodeEndpointsMap,
+        verifier,
+        verifierId,
+      })
+        .then(() => {
+          return resolve();
+        })
+        .catch((error) => {
+          reject(error as Error);
+        });
     });
     return {
       authKeyPair: {
@@ -194,7 +206,41 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
         pk: authKeyPair.pk,
       },
       encKey: encKeyPair,
+      rateLimitResetResult,
     };
+  }
+
+  /**
+   * This function encrypts the secret data using the encryption key and stores it nodes metadata store in encrypted form.
+   *
+   * @param params - The parameters for registering new secret data.
+   * @param params.encKey - The encryption key which is used to encrypt the secret data before storing it.
+   * @param params.secretData - The array of secret data to be registered.
+   * @param params.authKeyPair - The authentication key pair which is used to authenticate the user to the storage service.
+   */
+  async addSecretDataItem(params: AddSecretDataItemParams): Promise<void> {
+    const metadataStore = await this.#createMetadataStore();
+    await metadataStore.addSecretDataItem(params);
+  }
+
+  /**
+   * This function fetches all secret data items associated with the given
+   * auth pub key, decrypts, and returns them.
+   *
+   * @param params - The parameters for fetching the secret data.
+   * @param params.decKey - The decryption key to be used to decrypt the secret data.
+   * @param params.authKeyPair - The authentication key to be used to provide valid signature for fetching the secret data.
+   *
+   * @returns The decrypted secret data. Returns an empty array if no secret data is found.
+   */
+  async fetchAllSecretDataItems(
+    params: FetchAllSecretDataParams,
+  ): Promise<FetchSecretDataResult> {
+    const metadataStore = await this.#createMetadataStore();
+    return metadataStore.fetchAllSecretDataItems(
+      params.decKey,
+      params.authKeyPair,
+    );
   }
 
   /**
@@ -227,5 +273,46 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       nodeIndexes: torusIndexes,
       nodePubkeys: torusNodePub,
     };
+  }
+
+  /**
+   * Creates and caches the metadata store instance.
+   *
+   * @returns The metadata store.
+   */
+  async #createMetadataStore(): Promise<MetadataStore> {
+    if (this.#metadataStoreCache) {
+      return this.#metadataStoreCache;
+    }
+
+    const { nodeEndpointsMap } = await this.#getNodeDetails();
+    const metadataEndpointsMap =
+      await this.#getMetadataEndpointsMap(nodeEndpointsMap);
+    const node1MetadataEndpoint = metadataEndpointsMap['1'];
+    const metadataStore = new MetadataStore({
+      metadataEndpoint: node1MetadataEndpoint,
+    });
+
+    this.#metadataStoreCache = metadataStore;
+
+    return metadataStore;
+  }
+
+  /**
+   * Gets the metadata endpoints.
+   *
+   * @param nodeEndpointsMap - The node endpoints map.
+   *
+   * @returns The metadata endpoints map with node index as key and metadata endpoint as value.
+   */
+  async #getMetadataEndpointsMap(
+    nodeEndpointsMap: Record<number, string>,
+  ): Promise<{ [nodeIndex: string]: string }> {
+    const metadataEndpointsMap: { [nodeIndex: string]: string } = {};
+    Object.entries(nodeEndpointsMap).forEach(([key, value]) => {
+      const url = new URL(value);
+      metadataEndpointsMap[key] = `${url.origin}/metadata`;
+    });
+    return metadataEndpointsMap;
   }
 }

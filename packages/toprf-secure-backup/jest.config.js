@@ -32,10 +32,10 @@ module.exports = merge(baseConfig, {
       lines: 90.9,
     },
     './src/toprfSecureBackup.ts': {
-      statements: 96.36,
-      branches: 75,
-      functions: 90,
-      lines: 96.36,
+      statements: 97.36,
+      branches: 80,
+      functions: 94.11,
+      lines: 97.36,
     },
   },
 });
