@@ -162,9 +162,8 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   ): Promise<CreateEncryptionKeyResult> {
     const { nodeAuthTokens, password, verifier, verifierId } = params;
     const { nodeEndpointsMap } = await this.#getNodeDetails();
-    const passwordBytes = toBytes(password);
     const oprfKey = generateRandomScalar();
-    const seed = OPRF.localEval(oprfKey, passwordBytes);
+    const seed = OPRF.localEval(oprfKey, password);
     const authKeyPair = deriveAuthenticationKeyPair(seed);
     const selectedEndpointsMap = nodeAuthTokens.reduce<Record<number, string>>(
       (acc, tokenData) => {
@@ -209,13 +208,12 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   ): Promise<RecoverEncryptionKeyResult> {
     const { nodeAuthTokens, password, verifier, verifierId } = params;
     const { nodeEndpointsMap } = await this.#getNodeDetails();
-    const passwordBytes = toBytes(password);
     const seed = await recoverTOPRFSeed({
       authTokens: nodeAuthTokens,
       nodeEndpointsMap,
       verifier,
       verifierId,
-      userPassword: passwordBytes,
+      userInput: password,
     });
     const authKeyPair = deriveAuthenticationKeyPair(seed);
     const encKeyPair = deriveEncryptionKey(seed);

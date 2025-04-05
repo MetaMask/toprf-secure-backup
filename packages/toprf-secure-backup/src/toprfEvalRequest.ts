@@ -1,5 +1,6 @@
 import {
   Some,
+  TOPRFError,
   kCombinations,
   lagrangeInterpolationForPoints,
   thresholdSame,
@@ -37,7 +38,7 @@ type BlindedOutputShare = {
  *
  * @returns The parameters for the toprf eval jrpc request.
  */
-export const createToprfEvalRequestParams = (
+const createToprfEvalRequestParams = (
   authToken: string,
   blindedInputX: string,
   blindedInputY: string,
@@ -46,7 +47,7 @@ export const createToprfEvalRequestParams = (
 ): ToprfEvalJRPCRequestParams => {
   return {
     authToken,
-    shareCoefficient: '1',
+    shareCoefficient: '1', // We apply share coefficient after evaluation so that we can select the share subset after we have responses.
     blindedInputX,
     blindedInputY,
     verifier,
@@ -74,15 +75,15 @@ const sendToprfEvalRequest = async (
 };
 
 /**
- * Evaluates the seed from the toprf eval responses
+ * Validates the seed from the toprf eval responses
  *
- * @param hashedInput - The hashed input i.e. hash of the password.
+ * @param userInput - The user input i.e. the password.
  * @param randomScalar - The random scalar used to blind the input.
  * @param resultArr - The toprf eval request result
  * @returns The toprf eval request result
  */
-export const evaluateSeed = async (
-  hashedInput: Uint8Array,
+export const validateSeed = async (
+  userInput: Uint8Array,
   randomScalar: bigint,
   resultArr: ToprfEvalJRPCResponse[],
 ): Promise<Uint8Array> => {
@@ -99,10 +100,8 @@ export const evaluateSeed = async (
   );
 
   if (completedRequests.length < EXISTING_USER_AUTHENTICATION_THRESHOLD) {
-    return Promise.reject(
-      new Error(
-        `Insufficient toprf eval request results, expected ${EXISTING_USER_AUTHENTICATION_THRESHOLD} but got ${completedRequests.length}`,
-      ),
+    throw TOPRFError.insufficientValidResponses(
+      `Insufficient toprf eval request results, expected ${EXISTING_USER_AUTHENTICATION_THRESHOLD} but got ${completedRequests.length}`,
     );
   }
   const thresholdAuthPubKey = thresholdSame(
@@ -111,10 +110,10 @@ export const evaluateSeed = async (
   );
 
   if (!thresholdAuthPubKey) {
-    return Promise.reject(new Error('could not derive threshold auth pub key'));
+    throw TOPRFError.couldNotDeriveThresholdAuthPubKey();
   }
 
-  const blindedServerPoints = completedRequests
+  const blindedOutputs = completedRequests
     .map((resp): BlindedOutputShare | null => {
       const { blindedOutputX, blindedOutputY, nodeIndex } = resp.result ?? {};
 
@@ -142,24 +141,26 @@ export const evaluateSeed = async (
   let seed: Uint8Array | null = null;
 
   for (const currentCombi of allCombis) {
-    const currentCombiPoints = blindedServerPoints.filter((_, index) =>
+    const currentCombiPoints = blindedOutputs.filter((_, index) =>
       currentCombi.includes(index),
     );
-    const curvePoints = currentCombiPoints.map((point) => point.blindedOutput);
+    const selectedBlindedOutputs = currentCombiPoints.map(
+      (point) => point.blindedOutput,
+    );
     const nodeIndexes = currentCombiPoints.map((point) =>
       BigInt(point.nodeIndex),
     );
     // Interpolate the curve points directly using Lagrange interpolation
-    const reconstructedPoint = lagrangeInterpolationForPoints(
+    const blindedOutput = lagrangeInterpolationForPoints(
       secp256k1.CURVE.n,
-      curvePoints,
+      selectedBlindedOutputs,
       nodeIndexes,
     );
 
     // Unblind and hash the result
     const recoveredSeed = OPRF.unblindAndHash(
-      hashedInput,
-      reconstructedPoint,
+      userInput,
+      blindedOutput,
       randomScalar,
     );
     const { pk } = deriveAuthenticationKeyPair(recoveredSeed);
@@ -173,21 +174,21 @@ export const evaluateSeed = async (
   }
 
   if (!seed) {
-    return Promise.reject(new Error('could not derive encryption key'));
+    throw TOPRFError.couldNotDeriveEncryptionKey();
   }
 
   return Promise.resolve(seed);
 };
 
 /**
- * Resets the rate limit of user's authentication key recovery attempts.
+ * Recovers the seed from the toprf eval responses.
  *
- * @param params - The parameters for the reset rate limit request
+ * @param params - The parameters for the toprf eval request
  * @param params.authTokens - The auth tokens issued by the nodes on authenticating the user.
  * @param params.verifier - The verifier name used for authentication.
  * @param params.verifierId - The verifierId issued to user after authentication.
- * @param params.nodeEndpointsMap - Map of node index to endpoint to be used for the reset rate limit request.
- * @param params.userPassword - The password of the user.
+ * @param params.nodeEndpointsMap - Map of node index to endpoint to be used for the toprf eval request.
+ * @param params.userInput - The user input i.e. the password.
  *
  * @returns - A promise that resolves with the key pair seed successfully.
  */
@@ -196,15 +197,15 @@ export const recoverTOPRFSeed = async (params: {
   nodeEndpointsMap: Record<number, string>;
   verifier: string;
   verifierId: string;
-  userPassword: Uint8Array;
+  userInput: Uint8Array;
 }): Promise<Uint8Array> => {
-  const { authTokens, nodeEndpointsMap, verifier, verifierId, userPassword } =
+  const { authTokens, nodeEndpointsMap, verifier, verifierId, userInput } =
     params;
 
   if (authTokens.length < 3) {
     throw new Error('At least 3 auth tokens are required');
   }
-  const { a, r } = OPRF.blind(userPassword);
+  const { a, r } = OPRF.blind(userInput);
 
   const promiseArr = authTokens.map(async (authToken) => {
     const endpoint = nodeEndpointsMap[authToken.nodeIndex];
@@ -226,6 +227,6 @@ export const recoverTOPRFSeed = async (params: {
 
   return Some<ToprfEvalJRPCResponse, Uint8Array>(
     promiseArr,
-    async (resultArr) => evaluateSeed(userPassword, r, resultArr),
+    async (resultArr) => validateSeed(userInput, r, resultArr),
   );
 };

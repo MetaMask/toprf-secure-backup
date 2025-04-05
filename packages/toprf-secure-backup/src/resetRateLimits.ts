@@ -21,7 +21,7 @@ import { postJRPCRequest } from './utils';
  *
  * @returns The parameters for the reset rate limit jrpc request.
  */
-export const createResetRateLimitRequestParams = (
+const createResetRateLimitRequestParams = (
   authToken: string,
   signature: string,
   signedData: string,
@@ -66,10 +66,10 @@ export const sendResetRateLimitRequest = async (
  * @param threshold - The threshold for the number reset rate limit responses to be valid
  * @returns The reset rate limit request result
  */
-export const validateThresholdResetRateLimitResponses = async (
+export const validateThresholdResetRateLimitResponses = (
   resultArr: ResetRateLimitJRPCResponse[],
   threshold: number,
-): Promise<boolean> => {
+): boolean => {
   const completedRequests = resultArr.filter(
     (res): res is ResetRateLimitJRPCResponse => {
       if (!res || typeof res !== 'object') {
@@ -83,11 +83,11 @@ export const validateThresholdResetRateLimitResponses = async (
   );
 
   if (completedRequests.length < threshold) {
-    throw TOPRFError.invalidAuthenticateResults(
+    throw TOPRFError.insufficientValidResponses(
       `invalid reset rate limit results, expected ${threshold} but got ${completedRequests.length}`,
     );
   }
-  return Promise.resolve(true);
+  return true;
 };
 
 /**

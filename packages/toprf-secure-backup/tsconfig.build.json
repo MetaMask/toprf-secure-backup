@@ -8,7 +8,7 @@
   "references": [
     {
       "path": "../auth-network-utils/tsconfig.build.json"
-      }
-    ],
+    }
+  ],
   "include": ["./src"]
 }
