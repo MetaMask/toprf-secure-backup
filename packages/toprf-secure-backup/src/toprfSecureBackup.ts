@@ -120,12 +120,14 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   }
 
   /**
-   * This function creates the oprf encryption key seed and authentication key pair.
+   * This function locally creates an OPRF key without storing it at the key
+   * management service. It returns the OPRF key, derives the corresponding key
+   * seed and application keys.
    *
    * @param params - The parameters for creating the encryption key.
    * @param params.password - New password of the user.
    *
-   * @returns A promise that resolves with the encryption key.
+   * @returns The OPRF key, seed, and application keys.
    */
   createLocalEncKey(
     params: CreateLocalEncryptionKeyParams,
@@ -156,7 +158,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
    * @param params.password - New password of the user.
    *
-   * @returns A promise that resolves with the encryption key.
+   * @returns The encryption key.
    */
   async createEncKey(
     params: CreateEncryptionKeyParams,
@@ -203,7 +205,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @param params.verifier - The verifier name used for authentication.
    * @param params.verifierId - The verifierId/userID of the user.
    *
-   * @returns A promise that resolves with the encryption key.
+   * @returns The encryption key.
    */
   async recoverEncKey(
     params: RecoverEncryptionKeyParams,
@@ -244,8 +246,6 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @param params.encKey - The encryption key which is used to encrypt the secret data before storing it.
    * @param params.secretData - The array of secret data to be registered.
    * @param params.authKeyPair - The authentication key pair which is used to authenticate the user to the storage service.
-   *
-   * @returns A promise that resolves when the secret data is stored.
    */
   async addSecretDataItem(params: AddSecretDataItemParams): Promise<void> {
     const metadataStore = await this.#createMetadataStore();
@@ -260,11 +260,11 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @param params.decKey - The decryption key to be used to decrypt the secret data.
    * @param params.authKeyPair - The authentication key to be used to provide valid signature for fetching the secret data.
    *
-   * @returns A promise that resolves with the decrypted secret data. Null if no secret data is found.
+   * @returns The decrypted secret data. Returns an empty array if no secret data is found.
    */
   async fetchAllSecretDataItems(
     params: FetchAllSecretDataParams,
-  ): Promise<FetchSecretDataResult | null> {
+  ): Promise<FetchSecretDataResult> {
     const metadataStore = await this.#createMetadataStore();
     return metadataStore.fetchAllSecretDataItems(
       params.decKey,
