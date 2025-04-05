@@ -1,35 +1,153 @@
-import cli from './cli';
-import { commands } from './commands';
+/* eslint-disable @typescript-eslint/naming-convention */
+import { createSandbox, writeFile, readFile } from '@metamask/utils/node';
+import { promises as fs } from 'fs';
+import path from 'path';
 
-jest.mock('./cli');
+import { readAllFiles, writeFiles } from './fs-utils';
 
-describe('create-package/index', () => {
-  let originalProcess: typeof globalThis.process;
-  beforeEach(() => {
-    originalProcess = globalThis.process;
-    // TODO: Replace with `jest.replaceProperty` after Jest v29 update.
-    globalThis.process = { ...globalThis.process };
+const { withinSandbox } = createSandbox('create-package/fs-utils');
+
+describe('create-package/fs-utils', () => {
+  describe('readAllFiles', () => {
+    it('should read all files and sub-directories in the specified directory', async () => {
+      expect.assertions(1);
+
+      await withinSandbox(async (sandbox) => {
+        const dirPath = path.join(sandbox.directoryPath, 'dir/');
+        await Promise.all(
+          (
+            [
+              ['file1.txt', 'foo'],
+              ['file2.txt', 'bar'],
+              ['file3.txt', 'baz'],
+              ['subdir1/file4.txt', 'qux'],
+            ] as const
+          ).map(async ([filePath, content]) => {
+            await writeFile(path.join(dirPath, filePath), content);
+          }),
+        );
+
+        const files = await readAllFiles(dirPath);
+
+        expect(files).toStrictEqual({
+          'file1.txt': 'foo',
+          'file2.txt': 'bar',
+          'file3.txt': 'baz',
+          'subdir1/file4.txt': 'qux',
+        });
+      });
+    });
+
+    it('should read all files and sub-directories in the specified directory (deeply nested)', async () => {
+      expect.assertions(1);
+
+      await withinSandbox(async (sandbox) => {
+        const dirPath = path.join(sandbox.directoryPath, 'dir/');
+        await Promise.all(
+          (
+            [
+              ['file1.txt', 'foo'],
+              ['file2.txt', 'bar'],
+              ['file3.txt', 'baz'],
+              ['subdir1/file4.txt', 'qux'],
+              ['subdir1/subdir2/subdir3/file5.txt', 'quux'],
+            ] as const
+          ).map(async ([filePath, content]) => {
+            await writeFile(path.join(dirPath, filePath), content);
+          }),
+        );
+
+        const files = await readAllFiles(dirPath);
+
+        expect(files).toStrictEqual({
+          'file1.txt': 'foo',
+          'file2.txt': 'bar',
+          'file3.txt': 'baz',
+          'subdir1/file4.txt': 'qux',
+          'subdir1/subdir2/subdir3/file5.txt': 'quux',
+        });
+      });
+    });
+
+    it('should ignore file system entities that are neither files nor directories', async () => {
+      expect.assertions(1);
+
+      await withinSandbox(async (sandbox) => {
+        const dirPath = path.join(sandbox.directoryPath, 'dir/');
+        await writeFile(path.join(dirPath, 'file1.txt'), 'foo');
+        await fs.symlink(
+          path.join(dirPath, 'file1.txt'),
+          path.join(dirPath, 'file2.txt'),
+        );
+
+        const files = await readAllFiles(dirPath);
+
+        expect(files).toStrictEqual({
+          'file1.txt': 'foo',
+        });
+      });
+    });
   });
 
-  afterEach(() => {
-    globalThis.process = originalProcess;
-  });
+  describe('writeFiles', () => {
+    it('should write all files to the specified directory', async () => {
+      expect.assertions(4);
 
-  it('executes the CLI application', async () => {
-    const mock = cli as jest.MockedFunction<typeof cli>;
-    mock.mockRejectedValue('foo');
+      await withinSandbox(async (sandbox) => {
+        const dirPath = path.join(sandbox.directoryPath, 'dir/');
+        await writeFiles(dirPath, {
+          'file1.txt': 'foo',
+          'file2.txt': 'bar',
+          'file3.txt': 'baz',
+          'subdir1/file4.txt': 'qux',
+        });
 
-    jest.spyOn(console, 'error').mockImplementation();
+        await Promise.all(
+          (
+            [
+              ['file1.txt', 'foo'],
+              ['file2.txt', 'bar'],
+              ['file3.txt', 'baz'],
+              ['subdir1/file4.txt', 'qux'],
+            ] as const
+          ).map(async ([filePath, content]) => {
+            expect(await readFile(path.join(dirPath, filePath))).toStrictEqual(
+              content,
+            );
+          }),
+        );
+      });
+    });
 
-    /* eslint-disable */
-    require('.');
-    /* eslint-enable */
-    await new Promise((resolve) => setImmediate(resolve));
+    it('should write all files to the specified directory (deeply nested)', async () => {
+      expect.assertions(5);
 
-    expect(cli).toHaveBeenCalledTimes(1);
-    expect(cli).toHaveBeenCalledWith(process.argv, commands);
-    expect(console.error).toHaveBeenCalledTimes(1);
-    expect(console.error).toHaveBeenCalledWith('foo');
-    expect(process.exitCode).toBe(1);
+      await withinSandbox(async (sandbox) => {
+        const dirPath = path.join(sandbox.directoryPath, 'dir/');
+        await writeFiles(dirPath, {
+          'file1.txt': 'foo',
+          'file2.txt': 'bar',
+          'file3.txt': 'baz',
+          'subdir1/file4.txt': 'qux',
+          'subdir1/subdir2/subdir3/file5.txt': 'quux',
+        });
+
+        await Promise.all(
+          (
+            [
+              ['file1.txt', 'foo'],
+              ['file2.txt', 'bar'],
+              ['file3.txt', 'baz'],
+              ['subdir1/file4.txt', 'qux'],
+              ['subdir1/subdir2/subdir3/file5.txt', 'quux'],
+            ] as const
+          ).map(async ([filePath, content]) => {
+            expect(await readFile(path.join(dirPath, filePath))).toStrictEqual(
+              content,
+            );
+          }),
+        );
+      });
+    });
   });
 });

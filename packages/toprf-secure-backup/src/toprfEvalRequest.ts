@@ -1,12 +1,13 @@
 import {
   Some,
+  TOPRFError,
   kCombinations,
   lagrangeInterpolationForPoints,
-  pubKeyToSec1,
   thresholdSame,
 } from '@metamask/auth-network-utils';
+import type { ProjPointType } from '@noble/curves/abstract/weierstrass';
+import { secp256k1 } from '@noble/curves/secp256k1';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
-import { secp256k1 } from 'ethereum-cryptography/secp256k1';
 
 import {
   EXISTING_USER_AUTHENTICATION_THRESHOLD,
@@ -22,9 +23,8 @@ import { deriveAuthenticationKeyPair } from './keyDerivation';
 import { OPRF } from './oprf';
 import { postJRPCRequest } from './utils';
 
-type BlindedPoint = {
-  x: string;
-  y: string;
+type BlindedOutputShare = {
+  blindedOutput: ProjPointType<bigint>;
   nodeIndex: number;
 };
 /**
@@ -38,7 +38,7 @@ type BlindedPoint = {
  *
  * @returns The parameters for the toprf eval jrpc request.
  */
-export const createToprfEvalRequestParams = (
+const createToprfEvalRequestParams = (
   authToken: string,
   blindedInputX: string,
   blindedInputY: string,
@@ -47,7 +47,7 @@ export const createToprfEvalRequestParams = (
 ): ToprfEvalJRPCRequestParams => {
   return {
     authToken,
-    shareCoefficient: '1',
+    shareCoefficient: '1', // We apply share coefficient after evaluation so that we can select the share subset after we have responses.
     blindedInputX,
     blindedInputY,
     verifier,
@@ -56,13 +56,13 @@ export const createToprfEvalRequestParams = (
 };
 
 /**
- * Creates a toprf eval request to the given endpoint
+ * Sends a toprf eval request to the given endpoint
  *
  * @param endpoint - The endpoint to be used for the toprf eval request
  * @param params - The parameters for the toprf eval request
  * @returns Array of toprf eval request promises
  */
-export const createToprfEvalRequest = async (
+const sendToprfEvalRequest = async (
   endpoint: string,
   params: ToprfEvalJRPCRequestParams,
 ): Promise<ToprfEvalJRPCResponse> => {
@@ -75,15 +75,15 @@ export const createToprfEvalRequest = async (
 };
 
 /**
- * Evaluates the seed from the toprf eval responses
+ * Validates the seed from the toprf eval responses
  *
- * @param hashedInput - The hashed input i.e. hash of the password.
+ * @param userInput - The user input i.e. the password.
  * @param randomScalar - The random scalar used to blind the input.
  * @param resultArr - The toprf eval request result
  * @returns The toprf eval request result
  */
-export const evaluateSeed = async (
-  hashedInput: Uint8Array,
+export const validateSeed = async (
+  userInput: Uint8Array,
   randomScalar: bigint,
   resultArr: ToprfEvalJRPCResponse[],
 ): Promise<Uint8Array> => {
@@ -99,90 +99,96 @@ export const evaluateSeed = async (
     },
   );
 
-  if (completedRequests.length >= EXISTING_USER_AUTHENTICATION_THRESHOLD) {
-    const thresholdAuthPubKey = thresholdSame(
-      completedRequests.map((res) => res.result?.pubKey),
-      EXISTING_USER_AUTHENTICATION_THRESHOLD,
+  if (completedRequests.length < EXISTING_USER_AUTHENTICATION_THRESHOLD) {
+    throw TOPRFError.insufficientValidResponses(
+      `Insufficient toprf eval request results, expected ${EXISTING_USER_AUTHENTICATION_THRESHOLD} but got ${completedRequests.length}`,
     );
-    if (thresholdAuthPubKey) {
-      const blindedServerPoints = completedRequests
-        .map((resp): BlindedPoint | null => {
-          const { blindedOutputX, blindedOutputY, nodeIndex } =
-            resp.result ?? {};
+  }
+  const thresholdAuthPubKey = thresholdSame(
+    completedRequests.map((res) => res.result?.pubKey),
+    EXISTING_USER_AUTHENTICATION_THRESHOLD,
+  );
 
-          // Check if all required values are defined
-          if (!blindedOutputX || !blindedOutputY || !nodeIndex) {
-            return null;
-          }
+  if (!thresholdAuthPubKey) {
+    throw TOPRFError.couldNotDeriveThresholdAuthPubKey();
+  }
 
-          return {
-            x: blindedOutputX,
-            y: blindedOutputY,
-            nodeIndex,
-          };
-        })
-        .filter((point): point is BlindedPoint => point !== null);
+  const blindedOutputs = completedRequests
+    .map((resp): BlindedOutputShare | null => {
+      const { blindedOutputX, blindedOutputY, nodeIndex } = resp.result ?? {};
 
-      // evaluate auth priv key using oprf and match with the threshold auth pub key
-      const allCombis = kCombinations(
-        completedRequests.length,
-        EXISTING_USER_AUTHENTICATION_THRESHOLD,
-      );
-      let seed: Uint8Array | null = null;
-      for (const currentCombi of allCombis) {
-        const currentCombiPoints = blindedServerPoints.filter((_, index) =>
-          currentCombi.includes(index),
-        );
-        const curvePoints = currentCombiPoints.map((point) =>
-          secp256k1.ProjectivePoint.fromHex(`04${point.x}${point.y}`),
-        );
-        const nodeIndexes = currentCombiPoints.map((point) =>
-          BigInt(point.nodeIndex),
-        );
-        // Interpolate the curve points directly using Lagrange interpolation
-        const reconstructedPoint = lagrangeInterpolationForPoints(
-          secp256k1.CURVE.n,
-          curvePoints,
-          nodeIndexes,
-        );
-
-        // Unblind and hash the result
-        const recoveredSeed = OPRF.unblindAndHash(
-          hashedInput,
-          reconstructedPoint,
-          randomScalar,
-        );
-        console.log('recoveredSeed', recoveredSeed);
-        const { pk } = deriveAuthenticationKeyPair(recoveredSeed);
-        const authPubKey = pubKeyToSec1(pk);
-        if (authPubKey === thresholdAuthPubKey) {
-          seed = recoveredSeed;
-          break;
-        }
+      // Check if all required values are defined
+      if (!blindedOutputX || !blindedOutputY || !nodeIndex) {
+        return null;
       }
+      const blindedOutput = secp256k1.ProjectivePoint.fromAffine({
+        x: BigInt(`0x${blindedOutputX}`),
+        y: BigInt(`0x${blindedOutputY}`),
+      });
 
-      if (!seed) {
-        throw new Error('could not derive encryption key');
-      }
+      return {
+        blindedOutput,
+        nodeIndex,
+      };
+    })
+    .filter((point): point is BlindedOutputShare => point !== null);
 
-      return Promise.resolve(seed);
+  // evaluate auth priv key using oprf and match with the threshold auth pub key
+  const allCombis = kCombinations(
+    completedRequests.length,
+    EXISTING_USER_AUTHENTICATION_THRESHOLD,
+  );
+  let seed: Uint8Array | null = null;
+
+  for (const currentCombi of allCombis) {
+    const currentCombiPoints = blindedOutputs.filter((_, index) =>
+      currentCombi.includes(index),
+    );
+    const selectedBlindedOutputs = currentCombiPoints.map(
+      (point) => point.blindedOutput,
+    );
+    const nodeIndexes = currentCombiPoints.map((point) =>
+      BigInt(point.nodeIndex),
+    );
+    // Interpolate the curve points directly using Lagrange interpolation
+    const blindedOutput = lagrangeInterpolationForPoints(
+      secp256k1.CURVE.n,
+      selectedBlindedOutputs,
+      nodeIndexes,
+    );
+
+    // Unblind and hash the result
+    const recoveredSeed = OPRF.unblindAndHash(
+      userInput,
+      blindedOutput,
+      randomScalar,
+    );
+    const { pk } = deriveAuthenticationKeyPair(recoveredSeed);
+    const derivedPubKey = secp256k1.ProjectivePoint.fromHex(pk);
+    const thresholdPubKey =
+      secp256k1.ProjectivePoint.fromHex(thresholdAuthPubKey);
+    if (derivedPubKey.equals(thresholdPubKey)) {
+      seed = recoveredSeed;
+      break;
     }
   }
 
-  return Promise.reject(
-    new Error(`invalid toprf eval results ${JSON.stringify(resultArr)}`),
-  );
+  if (!seed) {
+    throw TOPRFError.couldNotDeriveEncryptionKey();
+  }
+
+  return Promise.resolve(seed);
 };
 
 /**
- * Resets the rate limit of user's authentication key recovery attempts.
+ * Recovers the seed from the toprf eval responses.
  *
- * @param params - The parameters for the reset rate limit request
+ * @param params - The parameters for the toprf eval request
  * @param params.authTokens - The auth tokens issued by the nodes on authenticating the user.
  * @param params.verifier - The verifier name used for authentication.
  * @param params.verifierId - The verifierId issued to user after authentication.
- * @param params.nodeEndpointsMap - Map of node index to endpoint to be used for the reset rate limit request.
- * @param params.userPasswordHash - The password of the user.
+ * @param params.nodeEndpointsMap - Map of node index to endpoint to be used for the toprf eval request.
+ * @param params.userInput - The user input i.e. the password.
  *
  * @returns - A promise that resolves with the key pair seed successfully.
  */
@@ -191,28 +197,15 @@ export const recoverTOPRFSeed = async (params: {
   nodeEndpointsMap: Record<number, string>;
   verifier: string;
   verifierId: string;
-  userPasswordHash: Uint8Array;
+  userInput: Uint8Array;
 }): Promise<Uint8Array> => {
-  const {
-    authTokens,
-    nodeEndpointsMap,
-    verifier,
-    verifierId,
-    userPasswordHash,
-  } = params;
-
-  if (authTokens.length === 0) {
-    throw new Error('No auth tokens provided');
-  }
-
-  if (Object.keys(nodeEndpointsMap).length === 0) {
-    throw new Error('No endpoints provided');
-  }
+  const { authTokens, nodeEndpointsMap, verifier, verifierId, userInput } =
+    params;
 
   if (authTokens.length < 3) {
     throw new Error('At least 3 auth tokens are required');
   }
-  const { a, r } = OPRF.blind(userPasswordHash);
+  const { a, r } = OPRF.blind(userInput);
 
   const promiseArr = authTokens.map(async (authToken) => {
     const endpoint = nodeEndpointsMap[authToken.nodeIndex];
@@ -229,17 +222,11 @@ export const recoverTOPRFSeed = async (params: {
       verifier,
       verifierId,
     );
-    return createToprfEvalRequest(endpoint, requestParams);
+    return sendToprfEvalRequest(endpoint, requestParams);
   });
 
-  const result = await Some<ToprfEvalJRPCResponse, Uint8Array>(
+  return Some<ToprfEvalJRPCResponse, Uint8Array>(
     promiseArr,
-    async (resultArr) => evaluateSeed(userPasswordHash, r, resultArr),
+    async (resultArr) => validateSeed(userInput, r, resultArr),
   );
-
-  if (!result) {
-    throw new Error('Insufficient toprf eval request results');
-  }
-
-  return result;
 };

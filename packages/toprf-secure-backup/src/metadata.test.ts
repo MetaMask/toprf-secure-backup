@@ -1,7 +1,7 @@
 import { randomBytes, utf8ToBytes } from '@noble/hashes/utils';
 
 import { METADATA_NODES_ENDPOINTS_MAP } from './constants';
-import type { KeyPair, NodeAuthTokens } from './interfaces';
+import type { KeyPair } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
   deriveEncryptionKey,
@@ -10,14 +10,9 @@ import { MetadataLockStatus, MetadataStore } from './metadata';
 import { ToprfSecureBackup } from './toprfSecureBackup';
 import { generateIdToken } from '../tests/testHelpers';
 
-const toprfSecureBackup = new ToprfSecureBackup({
-  network: 'sapphire_devnet',
-});
 const MOCK_SEED = randomBytes(32);
 const NODE_ENDPOINTS_MAP = METADATA_NODES_ENDPOINTS_MAP;
 const secretData = utf8ToBytes('test-secret-data');
-const verifier = 'torus-test-health';
-const verifierID = `test-verifier-id-${Math.random()}`;
 
 /**
  * Creates a mock MetadataStore instance.
@@ -26,43 +21,18 @@ const verifierID = `test-verifier-id-${Math.random()}`;
  * @returns A mock MetadataStore instance.
  */
 function createMockMetadataStore(
-  nodeEndpointsMap: Map<number, string> = NODE_ENDPOINTS_MAP,
+  nodeEndpointsMap: { [nodeIndex: string]: string } = NODE_ENDPOINTS_MAP,
 ): MetadataStore {
   return new MetadataStore({ nodeEndpointsMap });
 }
 
 describe('MetadataStore', () => {
-  let nodeAuthTokens: NodeAuthTokens;
   let encKey: Uint8Array;
   let authKeyPair: KeyPair;
 
   beforeAll(async () => {
-    const idToken = generateIdToken(verifierID, 'ES256');
-
-    const result = await toprfSecureBackup.authenticate({
-      idTokens: [idToken],
-      verifier,
-      verifierID,
-    });
-
-    nodeAuthTokens = result.nodeAuthTokens;
     encKey = deriveEncryptionKey(MOCK_SEED);
     authKeyPair = deriveAuthenticationKeyPair(MOCK_SEED);
-  });
-
-  it('should throw an error if endpoint is not found for the node auth token', async () => {
-    const metadataStore = new MetadataStore({
-      nodeEndpointsMap: new Map([[3, 'http://localhost:5051']]),
-    });
-
-    await expect(async () =>
-      metadataStore.addSecretDataItem({
-        secretData: utf8ToBytes('SECRET_DATA'),
-        encKey,
-        authKeyPair,
-        nodeAuthTokens,
-      }),
-    ).rejects.toThrow('Endpoint not found for node index: 1');
   });
 
   it('should be able to store/fetch data', async () => {
@@ -72,7 +42,6 @@ describe('MetadataStore', () => {
       secretData,
       encKey,
       authKeyPair,
-      nodeAuthTokens,
     });
 
     const result = await metadataStore.fetchAllSecretDataItems(
@@ -91,7 +60,6 @@ describe('MetadataStore', () => {
       secretData,
       encKey,
       authKeyPair,
-      nodeAuthTokens,
     });
 
     const result = await metadataStore2.fetchAllSecretDataItems(
@@ -313,7 +281,7 @@ describe('MetadataStore', () => {
       metadataStore.fetchAllSecretDataItems(encKey, authKeyPair),
     ).rejects.toThrow('Threshold not resolved');
 
-    expect(fetchSpy).toHaveBeenCalledTimes(NODE_ENDPOINTS_MAP.size);
+    expect(fetchSpy).toHaveBeenCalledTimes(5);
     jest.restoreAllMocks();
   });
 
@@ -340,7 +308,6 @@ describe('MetadataStore', () => {
         secretData: utf8ToBytes('SECRET_DATA'),
         encKey,
         authKeyPair,
-        nodeAuthTokens,
       }),
     ).rejects.toThrow('Threshold not resolved');
 
@@ -394,7 +361,6 @@ describe('MetadataStore', () => {
         secretData: utf8ToBytes('SECRET_DATA'),
         encKey,
         authKeyPair,
-        nodeAuthTokens,
       }),
     ).rejects.toThrow('Threshold not resolved');
 

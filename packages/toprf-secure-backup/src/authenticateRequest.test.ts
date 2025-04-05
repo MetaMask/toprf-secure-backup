@@ -1,4 +1,5 @@
-import { getSecp256K1Curve, TOPRFError } from '@metamask/auth-network-utils';
+import { TOPRFError } from '@metamask/auth-network-utils';
+import { secp256k1 } from '@noble/curves/secp256k1';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import {
@@ -7,6 +8,7 @@ import {
 } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
 import type { AuthJRPCResponse, AuthRequestResult } from './jrpcInterfaces';
+import { createNodeEndpointsMap } from './utils';
 import { generateIdToken } from '../tests/testHelpers';
 
 describe('validateThresholdAuthenticateResponses', () => {
@@ -148,15 +150,14 @@ describe('authenticate request', function () {
   });
 
   it('should create a authenticate request', async function () {
-    const curve = getSecp256K1Curve();
-    const keyPair = curve.genKeyPair();
-    const pubPoint = keyPair.getPublic();
+    const privKey = secp256k1.utils.randomPrivateKey();
+    const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
     const verifier = 'torus-test-health';
     const verifierID = 'test-verifier-id';
     const idToken = generateIdToken(verifierID, 'ES256');
-    const sessionPubKeyX = pubPoint.getX().toString('hex');
-    const sessionPubKeyY = pubPoint.getY().toString('hex');
+    const sessionPubKeyX = pubKey.x.toString(16);
+    const sessionPubKeyY = pubKey.y.toString(16);
     const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
       await nodeDetailManager.getNodeDetails({
         verifier,
@@ -173,12 +174,23 @@ describe('authenticate request', function () {
       sessionPubKeyY,
       endpoints: torusNodeSSSEndpoints,
     });
+    const nodeEndpointsMap = createNodeEndpointsMap(
+      torusNodeSSSEndpoints,
+      torusIndexes,
+    );
+
+    const selectedEndpointsMap = commitmentResults.reduce<
+      Record<number, string>
+    >((acc, result) => {
+      acc[result.nodeIndex] = nodeEndpointsMap[result.nodeIndex];
+      return acc;
+    }, {});
     const authResult = await authenticateUser({
       idToken,
       verifier,
       verifierID,
-      sessionPrivateKey: keyPair.getPrivate().toBuffer(),
-      endpoints: torusNodeSSSEndpoints,
+      sessionPrivateKey: privKey,
+      nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
     });
     expect(authResult).toBeDefined();

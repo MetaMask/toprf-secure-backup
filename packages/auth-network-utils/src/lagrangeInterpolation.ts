@@ -6,7 +6,7 @@ import { randomBytes } from '@noble/hashes/utils';
 import BN from 'bn.js';
 import type { ec as EC } from 'elliptic';
 
-import { generate32BytesPrivateKeyBuffer } from './cryptoUtils';
+import { generatePrivateKey } from './cryptoUtils';
 import { generateEmptyBNArray } from './helpers';
 import Point from './point';
 import Polynomial, { PolynomialNoble } from './polynomial';
@@ -22,7 +22,7 @@ import type Share from './share';
  * @returns The private key
  */
 function generatePrivateExcludingIndexes(shareIndexes: BN[], ecCurve: EC): BN {
-  const key = new BN(generate32BytesPrivateKeyBuffer(ecCurve));
+  const key = generatePrivateKey(ecCurve);
   if (shareIndexes.find((el) => el.eq(key))) {
     return generatePrivateExcludingIndexes(shareIndexes, ecCurve);
   }
@@ -166,7 +166,7 @@ export function generateRandomPolynomial(
     }
     points[shareIndex.toString('hex', 64)] = new Point(
       shareIndex,
-      new BN(generate32BytesPrivateKeyBuffer(ecCurve)),
+      generatePrivateKey(ecCurve),
       ecCurve,
     );
   }
