@@ -65,3 +65,36 @@ export type StoreKeySharesJRPCRequest =
   JRPCRequest<StoreKeySharesJRPCRequestParams>;
 
 export type StoreKeySharesJRPCResponse = JRPCResponse<null>;
+
+export type ResetRateLimitJRPCRequestParams = {
+  authToken: string;
+  signature: string;
+  signedData: string;
+  verifier: string;
+  verifierId: string;
+};
+
+export type ResetRateLimitJRPCRequest =
+  JRPCRequest<ResetRateLimitJRPCRequestParams>;
+
+export type ResetRateLimitJRPCResponse = JRPCResponse<boolean>;
+
+export type ToprfEvalJRPCRequestParams = {
+  authToken: string;
+  shareCoefficient: string;
+  blindedInputX: string;
+  blindedInputY: string;
+  verifier: string;
+  verifierId: string;
+};
+
+export type ToprfEvalJRPCRequest = JRPCRequest<ToprfEvalJRPCRequestParams>;
+
+export type ToprfEvalResult = {
+  blindedOutputX: string;
+  blindedOutputY: string;
+  nodeIndex: number;
+  pubKey: string;
+};
+
+export type ToprfEvalJRPCResponse = JRPCResponse<ToprfEvalResult>;

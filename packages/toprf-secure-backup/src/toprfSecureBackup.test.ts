@@ -49,6 +49,42 @@ describe('toprf secret backup', function () {
     expect(encKey.encKey).toBeDefined();
   });
 
+  it('should be able to recover enc key', async function () {
+    const verifier = 'torus-test-health';
+    const verifierID = `test-verifier-id-${Math.random()}`;
+    const idToken = generateIdToken(verifierID, 'ES256');
+    const toprfSecureBackup = new ToprfSecureBackup({
+      network: 'sapphire_devnet',
+    });
+
+    const result = await toprfSecureBackup.authenticate({
+      idTokens: [idToken],
+      verifier,
+      verifierID,
+    });
+    const encKey = await toprfSecureBackup.createEncKey({
+      nodeAuthTokens: result.nodeAuthTokens,
+      password: 'test-password',
+      verifier,
+      verifierId: verifierID,
+    });
+
+    const recoveredEncKey = await toprfSecureBackup.recoverEncKey({
+      nodeAuthTokens: result.nodeAuthTokens,
+      password: 'test-password',
+      verifier,
+      verifierId: verifierID,
+    });
+    expect(recoveredEncKey).toBeDefined();
+    expect(recoveredEncKey.authKeyPair).toBeDefined();
+    expect(recoveredEncKey.authKeyPair.sk).toBeDefined();
+    expect(recoveredEncKey.authKeyPair.pk).toBeDefined();
+    expect(recoveredEncKey.encKey).toBeDefined();
+
+    expect(recoveredEncKey.authKeyPair.sk).toStrictEqual(encKey.authKeyPair.sk);
+    expect(recoveredEncKey.encKey).toStrictEqual(encKey.encKey);
+    expect(recoveredEncKey.authKeyPair.pk).toStrictEqual(encKey.authKeyPair.pk);
+  });
   it('should throw error if user is not authenticated while creating enc key', async function () {
     const verifier = 'torus-test-health';
     const verifierID = `test-verifier-id-${Math.random()}`;
@@ -80,6 +116,17 @@ describe('toprf secret backup', function () {
       verifier,
       verifierID,
     });
+    const encKey = await toprfSecureBackup.createEncKey({
+      nodeAuthTokens: result.nodeAuthTokens,
+      password: 'test-password',
+      verifier,
+      verifierId: verifierID,
+    });
+    expect(encKey).toBeDefined();
+    expect(encKey.authKeyPair).toBeDefined();
+    expect(encKey.authKeyPair.sk).toBeDefined();
+    expect(encKey.authKeyPair.pk).toBeDefined();
+    expect(encKey.encKey).toBeDefined();
 
     await expect(
       toprfSecureBackup.createEncKey({

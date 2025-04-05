@@ -1,4 +1,5 @@
-import { getSecp256K1Curve, TOPRFError } from '@metamask/auth-network-utils';
+import { TOPRFError } from '@metamask/auth-network-utils';
+import { secp256k1 } from '@noble/curves/secp256k1';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import {
@@ -13,21 +14,22 @@ import { generateIdToken } from '../tests/testHelpers';
 
 describe('commitment request', function () {
   let nodeDetailManager: NodeDetailManager;
+
   beforeAll(async function () {
     nodeDetailManager = new NodeDetailManager({
       network: 'sapphire_devnet',
     });
   });
+
   it('should create a commitment request', async function () {
-    const curve = getSecp256K1Curve();
-    const keyPair = curve.genKeyPair();
-    const pubPoint = keyPair.getPublic();
+    const privKey = secp256k1.utils.randomPrivateKey();
+    const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
     const verifier = 'torus-test-health';
     const verifierID = 'test-verifier-id';
     const idToken = generateIdToken(verifierID, 'ES256');
-    const sessionPubKeyX = pubPoint.getX().toString('hex');
-    const sessionPubKeyY = pubPoint.getY().toString('hex');
+    const sessionPubKeyX = pubKey.x.toString(16);
+    const sessionPubKeyY = pubKey.y.toString(16);
     const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
       await nodeDetailManager.getNodeDetails({
         verifier,
@@ -54,15 +56,14 @@ describe('commitment request', function () {
   });
 
   it('should work when only 1 node is down', async function () {
-    const curve = getSecp256K1Curve();
-    const keyPair = curve.genKeyPair();
-    const pubPoint = keyPair.getPublic();
+    const privKey = secp256k1.utils.randomPrivateKey();
+    const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
     const verifier = 'torus-test-health';
     const verifierID = 'test-verifier-id';
     const idToken = generateIdToken(verifierID, 'ES256');
-    const sessionPubKeyX = pubPoint.getX().toString('hex');
-    const sessionPubKeyY = pubPoint.getY().toString('hex');
+    const sessionPubKeyX = pubKey.x.toString(16);
+    const sessionPubKeyY = pubKey.y.toString(16);
     const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
       await nodeDetailManager.getNodeDetails({
         verifier,
@@ -93,15 +94,14 @@ describe('commitment request', function () {
   });
 
   it('should throw an error if more than 1 node is down', async function () {
-    const curve = getSecp256K1Curve();
-    const keyPair = curve.genKeyPair();
-    const pubPoint = keyPair.getPublic();
+    const privKey = secp256k1.utils.randomPrivateKey();
+    const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
     const verifier = 'torus-test-health';
     const verifierID = 'test-verifier-id';
     const idToken = generateIdToken(verifierID, 'ES256');
-    const sessionPubKeyX = pubPoint.getX().toString('hex');
-    const sessionPubKeyY = pubPoint.getY().toString('hex');
+    const sessionPubKeyX = pubKey.x.toString(16);
+    const sessionPubKeyY = pubKey.y.toString(16);
     const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
       await nodeDetailManager.getNodeDetails({
         verifier,

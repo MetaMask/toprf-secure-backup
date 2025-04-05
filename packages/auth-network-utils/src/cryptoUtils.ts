@@ -18,17 +18,15 @@ export function getSecp256K1Curve(): EC {
   return secp256k1Curve;
 }
 
-// generate a 32 bytes private key buffer
 /**
- * Generates a 32 bytes private key buffer
+ * Generates a private key for the given curve.
  *
  * @param ecCurve - The elliptic curve to use
- * @returns The 32 bytes private key buffer
+ * @returns The private key
  */
-export function generate32BytesPrivateKeyBuffer(ecCurve: EC): Buffer {
+export function generatePrivateKey(ecCurve: EC): BN {
   const privateKey = ecCurve.genKeyPair().getPrivate();
-  const privateKeyBuffer = privateKey.toArrayLike(Buffer, undefined, 32);
-  return privateKeyBuffer;
+  return privateKey;
 }
 
 /**

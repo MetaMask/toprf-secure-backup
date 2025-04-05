@@ -1,7 +1,6 @@
-import { getSecp256K1Curve } from '@metamask/auth-network-utils';
+import { secp256k1 } from '@noble/curves/secp256k1';
 import { toBytes } from '@noble/hashes/utils';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
-import { sha256 } from 'ethereum-cryptography/sha256';
 
 import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
@@ -16,15 +15,13 @@ describe('store shares request', function () {
   beforeAll(async function () {
     nodeDetailManager = new NodeDetailManager({
       network: 'sapphire_devnet',
-      keyType: 'secp256k1',
-      sigType: 'ecdsa-secp256k1',
     });
   });
 
   it('should be able to store shares for a new user', async function () {
-    const curve = getSecp256K1Curve();
-    const keyPair = curve.genKeyPair();
-    const pubPoint = keyPair.getPublic();
+    const privKey = secp256k1.utils.randomPrivateKey();
+    const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
+
     const verifier = 'torus-test-health';
     // generate a random verifierID string
     const verifierID = `test-verifier-id-${Math.random()}`;
@@ -39,8 +36,8 @@ describe('store shares request', function () {
     }
 
     const idToken = generateIdToken(verifierID, 'ES256');
-    const sessionPubKeyX = pubPoint.getX().toString('hex');
-    const sessionPubKeyY = pubPoint.getY().toString('hex');
+    const sessionPubKeyX = pubKey.x.toString(16);
+    const sessionPubKeyY = pubKey.y.toString(16);
 
     const commitmentResults = await commitIdToken({
       idToken,
@@ -67,15 +64,14 @@ describe('store shares request', function () {
       idToken,
       verifier,
       verifierID,
-      sessionPrivateKey: keyPair.getPrivate().toBuffer(),
+      sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
     });
     expect(authTokens).toBeDefined();
     const passwordBytes = toBytes('test-input');
-    const hashedInput = sha256(passwordBytes);
     const oprfKey = generateRandomScalar();
-    const seed = OPRF.localEval(oprfKey, hashedInput);
+    const seed = OPRF.localEval(oprfKey, passwordBytes);
     const authKeyPair = deriveAuthenticationKeyPair(seed);
 
     const storeSharesResponse = await storeKeyShares({
@@ -93,9 +89,9 @@ describe('store shares request', function () {
   });
 
   it('should be able to store shares even when 1 node is down', async function () {
-    const curve = getSecp256K1Curve();
-    const keyPair = curve.genKeyPair();
-    const pubPoint = keyPair.getPublic();
+    const privKey = secp256k1.utils.randomPrivateKey();
+    const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
+
     const verifier = 'torus-test-health';
     // generate a random verifierID string
     const verifierID = `test-verifier-id-${Math.random()}`;
@@ -118,8 +114,8 @@ describe('store shares request', function () {
     endpoints[0] = endpoints[0].replace('/jrpc', '');
 
     const idToken = generateIdToken(verifierID, 'ES256');
-    const sessionPubKeyX = pubPoint.getX().toString('hex');
-    const sessionPubKeyY = pubPoint.getY().toString('hex');
+    const sessionPubKeyX = pubKey.x.toString(16);
+    const sessionPubKeyY = pubKey.y.toString(16);
 
     const commitmentResults = await commitIdToken({
       idToken,
@@ -140,16 +136,15 @@ describe('store shares request', function () {
       idToken,
       verifier,
       verifierID,
-      sessionPrivateKey: keyPair.getPrivate().toBuffer(),
+      sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
     });
 
     expect(authTokens).toBeDefined();
     const passwordBytes = toBytes('test-input');
-    const hashedInput = sha256(passwordBytes);
     const oprfKey = generateRandomScalar();
-    const seed = OPRF.localEval(oprfKey, hashedInput);
+    const seed = OPRF.localEval(oprfKey, passwordBytes);
     const authKeyPair = deriveAuthenticationKeyPair(seed);
 
     const storeSharesResponse = await storeKeyShares({

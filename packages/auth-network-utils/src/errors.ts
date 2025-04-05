@@ -176,6 +176,11 @@ export class TOPRFError extends AbstractTOPRFError {
     1000: 'Something went wrong.',
     1001: 'Invalid authenticate results.',
     1002: 'Invalid commit results.',
+    1003: 'Rate limit exceeded for password input attempts.',
+    1004: 'Insufficient valid responses.',
+    1005: 'Could not derive threshold auth pub key.',
+    1006: 'Could not derive encryption key.',
+    1007: 'Endpoint not found.',
   };
 
   /**
@@ -233,5 +238,52 @@ export class TOPRFError extends AbstractTOPRFError {
    */
   public static invalidCommitResults(extraMessage = ''): ITOPRFError {
     return TOPRFError.fromCode(1002, extraMessage);
+  }
+
+  /**
+   *
+   * @param extraMessage - The extra message of the error.
+   * @returns - The error instance for rate limit exceeded for password input attempts.
+   */
+  public static pwdInputRateLimitExceeded(extraMessage = ''): ITOPRFError {
+    return TOPRFError.fromCode(1003, extraMessage);
+  }
+
+  /**
+   *
+   * @param extraMessage - The extra message of the error.
+   * @returns - The error instance for insufficient valid responses.
+   */
+  public static insufficientValidResponses(extraMessage = ''): ITOPRFError {
+    return TOPRFError.fromCode(1004, extraMessage);
+  }
+
+  /**
+   *
+   * @param extraMessage - The extra message of the error.
+   * @returns - The error instance for could not derive threshold auth pub key.
+   */
+  public static couldNotDeriveThresholdAuthPubKey(
+    extraMessage = '',
+  ): ITOPRFError {
+    return TOPRFError.fromCode(1005, extraMessage);
+  }
+
+  /**
+   *
+   * @param extraMessage - The extra message of the error.
+   * @returns - The error instance for could not derive encryption key.
+   */
+  public static couldNotDeriveEncryptionKey(extraMessage = ''): ITOPRFError {
+    return TOPRFError.fromCode(1006, extraMessage);
+  }
+
+  /**
+   *
+   * @param extraMessage - The extra message of the error.
+   * @returns - The error instance for endpoint not found.
+   */
+  public static endpointNotFound(extraMessage = ''): ITOPRFError {
+    return TOPRFError.fromCode(1007, extraMessage);
   }
 }

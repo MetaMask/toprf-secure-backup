@@ -103,13 +103,16 @@ export type StoreSecretDataParams = {
 export type RecoverEncryptionKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
   password: string;
+  verifier: string;
+  verifierId: string;
 };
 
 /**
  * keyPair - The encryption/decryption key pair which is used to decrypt the secret data.
  */
 export type RecoverEncryptionKeyResult = {
-  keyPair: KeyPair;
+  authKeyPair: KeyPair;
+  encKey: Uint8Array;
 };
 
 /**
@@ -118,6 +121,7 @@ export type RecoverEncryptionKeyResult = {
  * newPassword - The new password of the user.
  *
  * keyPair - The current encryption key of the user.
+ *
  */
 export type ChangeEncryptionKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
@@ -153,15 +157,6 @@ export type IToprfSecureBackup = {
     params: CreateEncryptionKeyParams,
   ) => Promise<CreateEncryptionKeyResult>;
 
-  /**
-   * This function recovers the encryption key which is used to decrypt the secret data.
-   *
-   * @param params - The parameters for recovering the encryption key.
-   * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
-   * @param params.password - The password of the user.
-   *
-   * @returns {RecoverEncryptionKeyResult} A promise that resolves with the encryption key.
-   */
   recoverEncKey: (
     params: RecoverEncryptionKeyParams,
   ) => Promise<RecoverEncryptionKeyResult>;

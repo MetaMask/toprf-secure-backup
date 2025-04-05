@@ -1,6 +1,6 @@
-import { getSecp256K1Curve, thresholdSame } from '@metamask/auth-network-utils';
-import { sha256 } from '@noble/hashes/sha256';
-import { toBytes } from '@noble/hashes/utils';
+import { thresholdSame } from '@metamask/auth-network-utils';
+import { utf8ToBytes } from '@noble/curves/abstract/utils';
+import { secp256k1 } from '@noble/curves/secp256k1';
 import type {
   INodePub,
   TORUS_SAPPHIRE_NETWORK_TYPE,
@@ -16,13 +16,17 @@ import type {
   IToprfSecureBackup,
   CreateEncryptionKeyParams,
   CreateEncryptionKeyResult,
+  RecoverEncryptionKeyResult,
+  RecoverEncryptionKeyParams,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
   deriveEncryptionKey,
 } from './keyDerivation';
 import { OPRF, generateRandomScalar } from './oprf';
+import { resetRateLimits } from './resetRateLimits';
 import { storeKeyShares } from './storeSharesRequest';
+import { recoverTOPRFSeed } from './toprfEvalRequest';
 import { createNodeEndpointsMap } from './utils';
 
 /**
@@ -56,12 +60,11 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    */
   async authenticate(params: AuthenticateParams): Promise<AuthenticateResult> {
     const { nodeEndpoints, nodeEndpointsMap } = await this.#getNodeDetails();
-    const curve = getSecp256K1Curve();
-    const sessionKeyPair = curve.genKeyPair();
-    const sessionPrivKeyBuffer = sessionKeyPair.getPrivate().toBuffer();
-    const sessionPubKey = sessionKeyPair.getPublic();
-    const sessionPubKeyX = sessionPubKey.getX().toString('hex');
-    const sessionPubKeyY = sessionPubKey.getY().toString('hex');
+    const sessionPrivKey = secp256k1.utils.randomPrivateKey();
+    const sessionPubKey =
+      secp256k1.ProjectivePoint.fromPrivateKey(sessionPrivKey);
+    const sessionPubKeyX = sessionPubKey.x.toString(16);
+    const sessionPubKeyY = sessionPubKey.y.toString(16);
 
     // commit idToken to nodes
     const commitmentResults = await commitIdToken({
@@ -85,7 +88,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       idToken: params.idTokens[0],
       verifier: params.verifier,
       verifierID: params.verifierID,
-      sessionPrivateKey: sessionPrivKeyBuffer,
+      sessionPrivateKey: sessionPrivKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
     });
@@ -120,10 +123,9 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   ): Promise<CreateEncryptionKeyResult> {
     const { nodeAuthTokens, password, verifier, verifierId } = params;
     const { nodeEndpointsMap } = await this.#getNodeDetails();
-    const passwordBytes = toBytes(password);
-    const hashedInput = sha256(passwordBytes);
     const oprfKey = generateRandomScalar();
-    const seed = OPRF.localEval(oprfKey, hashedInput);
+    const pwBytes = utf8ToBytes(password);
+    const seed = OPRF.localEval(oprfKey, pwBytes);
     const authKeyPair = deriveAuthenticationKeyPair(seed);
     const selectedEndpointsMap = nodeAuthTokens.reduce<Record<number, string>>(
       (acc, tokenData) => {
@@ -149,6 +151,49 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
         pk: authKeyPair.pk,
       },
       encKey,
+    };
+  }
+
+  /**
+   * This function recovers the encryption key which is used to decrypt the secret data.
+   *
+   * @param params - The parameters for recovering the encryption key.
+   * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
+   * @param params.password - The password of the user.
+   * @param params.verifier - The verifier name used for authentication.
+   * @param params.verifierId - The verifierId/userID of the user.
+   *
+   * @returns A promise that resolves with the encryption key.
+   */
+  async recoverEncKey(
+    params: RecoverEncryptionKeyParams,
+  ): Promise<RecoverEncryptionKeyResult> {
+    const { nodeAuthTokens, password, verifier, verifierId } = params;
+    const { nodeEndpointsMap } = await this.#getNodeDetails();
+    const pwBytes = utf8ToBytes(password);
+    const seed = await recoverTOPRFSeed({
+      authTokens: nodeAuthTokens,
+      nodeEndpointsMap,
+      verifier,
+      verifierId,
+      userInput: pwBytes,
+    });
+    const authKeyPair = deriveAuthenticationKeyPair(seed);
+    const encKeyPair = deriveEncryptionKey(seed);
+    resetRateLimits({
+      authTokens: nodeAuthTokens,
+      nodeEndpointsMap,
+      verifier,
+      verifierId,
+    }).catch((error) => {
+      console.error('Error resetting rate limits', error);
+    });
+    return {
+      authKeyPair: {
+        sk: authKeyPair.sk,
+        pk: authKeyPair.pk,
+      },
+      encKey: encKeyPair,
     };
   }
 
