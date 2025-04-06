@@ -14,8 +14,6 @@ function generateRandomPassword(): string {
 }
 
 describe('toprf secret backup', function () {
-  const password = utf8ToBytes('test-password');
-
   it('should be able to authenticate user', async function () {
     const verifier = 'torus-test-health';
     const verifierID = 'test-verifier-id-xyz-123';
