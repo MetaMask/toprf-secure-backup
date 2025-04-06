@@ -114,16 +114,12 @@ export class MetadataStore {
     try {
       const { secretData, encKey, authKeyPair } = params;
 
-      await Promise.all(
-        Object.values(this.#nodeEndpointsMap).map(async (metadataEndpoint) => {
-          return this.#batchAddData({
-            secretData,
-            encKey,
-            authKeyPair,
-            metadataEndpoint,
-          });
-        }),
-      );
+      await this.#batchAddData({
+        secretData,
+        encKey,
+        authKeyPair,
+        metadataEndpoint: this.#metadataEndpoint,
+      });
     } catch (error) {
       throw new MetadataStoreError(
         `failed to add batch metadata: ${(error as Error).message}`,
@@ -162,71 +158,47 @@ export class MetadataStore {
    * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
    * @returns A promise that resolves with the lock id.
    */
-  async acquireMetadataLock(authKeyPair: KeyPair): Promise<MetadataLock> {
-    const lockIndexes: number[] = [];
-    const lockResult = await Promise.all(
-      Object.entries(this.#nodeEndpointsMap).map(
-        async ([nodeIndex, metadataEndpoint]) => {
-          lockIndexes.push(parseInt(nodeIndex, 10));
-          return this.#acquireLock(metadataEndpoint, authKeyPair);
-        },
-      ),
+  async acquireMetadataLock(authKeyPair: KeyPair): Promise<string> {
+    const { status: lockStatus, id: lockId } = await this.#acquireLock(
+      this.#metadataEndpoint,
+      authKeyPair,
     );
-
-    const allLockAcquired = lockResult.every(
-      (result) => result.status === MetadataLockStatus.SUCCESS,
-    );
-
-    if (!allLockAcquired) {
+    if (lockStatus !== MetadataLockStatus.SUCCESS) {
       throw new MetadataStoreError('Failed to acquire metadata lock');
     }
+    if (!lockId) {
+      throw new MetadataStoreError(
+        'Failed to acquire metadata lock. Missing lock id',
+      );
+    }
 
-    const lock: MetadataLock = lockResult.map((result, idx) => {
-      if (!result.id) {
-        throw new MetadataStoreError(
-          'Failed to acquire metadata lock. Missing lock id',
-        );
-      }
-
-      return {
-        id: result.id,
-        nodeIndex: lockIndexes[idx],
-      };
-    });
-
-    return lock;
+    return lockId;
   }
 
   /**
    * Releases the lock on the metadata store.
    *
    * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
-   * @param metadataLock - The lock to be released.
+   * @param lockId - The lock id to be released.
    * @returns A promise that resolves with the lock status.
    */
   async releaseMetadataLock(
     authKeyPair: KeyPair,
-    metadataLock: MetadataLock,
+    lockId: string,
   ): Promise<MetadataLockStatus> {
-    await Promise.all(
-      Object.entries(this.#nodeEndpointsMap).map(
-        async ([nodeIndex, metadataEndpoint]) => {
-          // get lockId for the specific node
-          const lockId = metadataLock.find(
-            (lock) => lock.nodeIndex === parseInt(nodeIndex, 10),
-          )?.id;
-
-          if (!lockId) {
-            throw new MetadataStoreError(
-              `Could not find lock for node index ${nodeIndex}`,
-            );
-          }
-          return this.#releaseLock(metadataEndpoint, authKeyPair, lockId);
-        },
-      ),
+    const lockStatus = await this.#releaseLock(
+      this.#metadataEndpoint,
+      authKeyPair,
+      lockId,
     );
 
-    return MetadataLockStatus.SUCCESS;
+    if (lockStatus !== MetadataLockStatus.SUCCESS) {
+      throw new MetadataStoreError(
+        `Failed to release metadata lock with id ${lockId}`,
+      );
+    }
+
+    return lockStatus;
   }
 
   /**

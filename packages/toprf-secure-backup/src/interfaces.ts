@@ -254,7 +254,7 @@ export type IBaseMetadataRequestBody = {
 /**
  * The array of secret data to be stored in batch request
  */
-export type IBatchSetData = {
+export type IBatchAddData = {
   /**
    * The base64-encoded string of the secret data
    */
@@ -284,7 +284,7 @@ export type IBaseAddSecretDataRequestBody<DataType> =
      * const data = Buffer.from('SECRET_DATA').toString('base64');
      * ```
      *
-     * For storing the batch of secret data, the data should be an array of `IBatchSetData`.
+     * For storing the batch of secret data, the data should be an array of `IBatchAddData`.
      *
      * @example
      * ```ts
@@ -318,7 +318,7 @@ export type ISetSecretDataRequestBody =
  * Payload structure for storing secret data in batch request
  */
 export type IBatchSetSecretDataRequestBody =
-  IBaseAddSecretDataRequestBody<IBatchSetData>;
+  IBaseAddSecretDataRequestBody<IBatchAddData>;
 
 /**
  * Payload structure for fetching secret data
