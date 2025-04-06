@@ -82,18 +82,11 @@ export type CreateEncryptionKeyResult = {
   encKey: Uint8Array;
 };
 
-/**
- * nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
- *
- * keyPair - The encryption/decryption key pair which is used to encrypt the secret data before storing it.
- *
- * secretData - The secret data to be registered.
- */
-export type AddSecretDataItemParams = {
+export type BaseAddSecretDataItemParams<SecretDataType> = {
   /**
    * The secret data to be stored.
    */
-  secretData: Uint8Array;
+  secretData: SecretDataType;
 
   /**
    * The encryption key to be used to encrypt the secret data.
@@ -105,6 +98,19 @@ export type AddSecretDataItemParams = {
    */
   authKeyPair: KeyPair;
 };
+
+/**
+ * nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
+ *
+ * keyPair - The encryption/decryption key pair which is used to encrypt the secret data before storing it.
+ *
+ * secretData - The secret data to be registered.
+ */
+export type AddSecretDataItemParams = BaseAddSecretDataItemParams<Uint8Array>;
+
+export type BatchAddSecretDataItemParams = BaseAddSecretDataItemParams<
+  Uint8Array[]
+>;
 
 /**
  * nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
@@ -248,7 +254,7 @@ export type IBaseMetadataRequestBody = {
 /**
  * The array of secret data to be stored in batch request
  */
-export type IBatchSetData = {
+export type IBatchAddData = {
   /**
    * The base64-encoded string of the secret data
    */
@@ -262,8 +268,12 @@ export type IBatchSetData = {
 /**
  * Payload structure for storing secret data
  */
-export type IBaseSetSecretDataRequestBody<DataType> =
+export type IBaseAddSecretDataRequestBody<DataType> =
   IBaseMetadataRequestBody & {
+    /**
+     * The authentication token of the user issued by the SSS services
+     */
+    authToken: string;
     /**
      * The secret data to be stored.
      *
@@ -274,7 +284,7 @@ export type IBaseSetSecretDataRequestBody<DataType> =
      * const data = Buffer.from('SECRET_DATA').toString('base64');
      * ```
      *
-     * For storing the batch of secret data, the data should be an array of `IBatchSetData`.
+     * For storing the batch of secret data, the data should be an array of `IBatchAddData`.
      *
      * @example
      * ```ts
@@ -297,7 +307,7 @@ export type IBaseSetSecretDataRequestBody<DataType> =
  * Payload structure for storing secret data for single secret data
  */
 export type ISetSecretDataRequestBody =
-  IBaseSetSecretDataRequestBody<string> & {
+  IBaseAddSecretDataRequestBody<string> & {
     /**
      * The version of the secret data
      */
@@ -308,7 +318,7 @@ export type ISetSecretDataRequestBody =
  * Payload structure for storing secret data in batch request
  */
 export type IBatchSetSecretDataRequestBody =
-  IBaseSetSecretDataRequestBody<IBatchSetData>;
+  IBaseAddSecretDataRequestBody<IBatchAddData>;
 
 /**
  * Payload structure for fetching secret data
@@ -320,4 +330,31 @@ export type IGetSecretDataRequestBody = IBaseMetadataRequestBody & {
    * Sample signature: sign(keccak256(feature, authToken, timestamp))
    */
   signature: string;
+};
+
+/**
+ * Payload structure for acquiring/releasing a lock on the metadata
+ */
+export type IMetadataLockRequestBody = {
+  /**
+   * The public key of the user
+   */
+  key: string;
+  /**
+   * The Unix timestamp when the request payload is created along with the signature.
+   *
+   */
+  data: {
+    timestamp: number;
+  };
+  /**
+   * The signature produced by signing the payload (without pubKey field) using the user's private key.
+   *
+   * Sample signature: sign(keccak256(feature, authToken, timestamp))
+   */
+  signature: string;
+  /**
+   * The lock id to be released.
+   */
+  id?: string | undefined;
 };
