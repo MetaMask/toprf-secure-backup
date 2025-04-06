@@ -77,7 +77,7 @@ export type ResetRateLimitJRPCRequestParams = {
 export type ResetRateLimitJRPCRequest =
   JRPCRequest<ResetRateLimitJRPCRequestParams>;
 
-export type ResetRateLimitJRPCResponse = JRPCResponse<null>;
+export type ResetRateLimitJRPCResponse = JRPCResponse<boolean>;
 
 export type ToprfEvalJRPCRequestParams = {
   authToken: string;

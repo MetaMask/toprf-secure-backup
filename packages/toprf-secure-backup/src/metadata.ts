@@ -1,9 +1,4 @@
-import {
-  SomeError,
-  Some,
-  safeStringify,
-  thresholdSame,
-} from '@metamask/auth-network-utils';
+import { safeStringify } from '@metamask/auth-network-utils';
 import { gcm } from '@noble/ciphers/aes';
 import { managedNonce } from '@noble/ciphers/webcrypto';
 import { secp256k1 } from '@noble/curves/secp256k1';
@@ -23,7 +18,7 @@ import type {
 } from './interfaces';
 
 type MetadataStoreOptions = {
-  nodeEndpointsMap: { [nodeIndex: string]: string };
+  metadataEndpoint: string;
 };
 
 export type MetadataLock = {
@@ -67,18 +62,7 @@ export class MetadataStoreError extends Error {
 export class MetadataStore {
   readonly #feature = 'srp-backup';
 
-  readonly #nodeEndpointsMap: { [nodeIndex: string]: string };
-
-  readonly #thresholdValues: { [operation: string]: number } = {
-    /**
-     * Minimum number of nodes required to satisfy the threshold check for adding secret data.
-     */
-    addSecretDataItem: 4,
-    /**
-     * Minimum number of nodes required to satisfy the threshold check for fetching all secret data items.
-     */
-    fetchAllSecretDataItems: 3,
-  };
+  readonly #metadataEndpoint: string;
 
   /**
    *
@@ -87,7 +71,7 @@ export class MetadataStore {
    * @param options.storageLocation - The storage location of the metadata.
    */
   constructor(options: MetadataStoreOptions) {
-    this.#nodeEndpointsMap = options.nodeEndpointsMap;
+    this.#metadataEndpoint = options.metadataEndpoint;
   }
 
   /**
@@ -102,24 +86,13 @@ export class MetadataStore {
     try {
       const { secretData, encKey, authKeyPair } = params;
 
-      const promises = Object.values(this.#nodeEndpointsMap).map(
-        async (metadataEndpoint) => {
-          return this.#addData({
-            secretData,
-            encKey,
-            authKeyPair,
-            metadataEndpoint,
-          });
-        },
-      );
-      const thresholdCount = this.#thresholdValues.addSecretDataItem;
-      await this.#thresholdCheck<boolean>(promises, thresholdCount);
+      await this.#addData({
+        secretData,
+        encKey,
+        authKeyPair,
+        metadataEndpoint: this.#metadataEndpoint,
+      });
     } catch (error) {
-      if (error instanceof SomeError) {
-        throw new MetadataStoreError(
-          `failed to add metadata: ${(error as SomeError<boolean>).predicate}`,
-        );
-      }
       throw new MetadataStoreError(
         `failed to add metadata: ${(error as Error).message}`,
       );
@@ -170,31 +143,13 @@ export class MetadataStore {
     authKeyPair: KeyPair,
   ): Promise<FetchSecretDataResult> {
     try {
-      const promises = Object.values(this.#nodeEndpointsMap).map(
-        async (metadataEndpoint) => {
-          return this.#getAllDataItems({
-            encKey,
-            authKeyPair,
-            metadataEndpoint,
-          });
-        },
-      );
-      const thresholdCount = this.#thresholdValues.fetchAllSecretDataItems;
-      const thresholdResult = await this.#thresholdCheck<Uint8Array[]>(
-        promises,
-        thresholdCount,
-      );
-      if (thresholdResult?.length === 0 || !thresholdResult) {
-        return null;
-      }
-
-      return thresholdResult;
+      const result = await this.#getAllDataItems({
+        encKey,
+        authKeyPair,
+        metadataEndpoint: this.#metadataEndpoint,
+      });
+      return result;
     } catch (error) {
-      if (error instanceof SomeError) {
-        throw new MetadataStoreError(
-          `failed to fetch metadata: ${(error as SomeError<Uint8Array[]>).predicate}`,
-        );
-      }
       throw new MetadataStoreError(
         `failed to fetch metadata: ${(error as Error).message}`,
       );
@@ -502,35 +457,6 @@ export class MetadataStore {
         `failed to release metadata lock: ${errorMessage}`,
       );
     }
-  }
-
-  /**
-   * Validates Metadata Responses with threshold check.
-   *
-   * Criteria to be met:
-   * Out of n results, t items must share the same value.
-   *
-   * @param promises - The array of promises to be validated.
-   * @param thresholdCount - The threshold value to be used for the threshold check.
-   * @returns The validated result which satisfies the threshold check.
-   */
-  async #thresholdCheck<DataType>(
-    promises: Promise<DataType>[],
-    thresholdCount: number,
-  ): Promise<DataType | null> {
-    const results = await Some<DataType, DataType>(
-      promises,
-      async (resultArray) => {
-        const tResult = thresholdSame(resultArray, thresholdCount);
-        if (tResult) {
-          return Promise.resolve(tResult);
-        }
-
-        return Promise.reject(new MetadataStoreError('Threshold not resolved'));
-      },
-    );
-
-    return results ?? null;
   }
 
   /**
