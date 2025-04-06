@@ -3,7 +3,6 @@ import type { JRPCResponse, JRPCRequest } from '@metamask/auth-network-utils';
 import type { KeyChangeProof } from './interfaces';
 
 export type CommitmentJRPCRequestParams = {
-  messagePrefix: string;
   tokenCommitment: string;
   verifier: string;
   tempPubKeyX: string;
@@ -20,7 +19,9 @@ export type CommitmentRequestResult = {
   nodeIndex: number;
 };
 
-export type CommitmentJRPCResponse = JRPCResponse<CommitmentRequestResult>;
+export type CommitmentJRPCResponse = JRPCResponse<
+  CommitmentRequestResult | undefined
+>;
 
 export type AuthJRPCRequestParams = {
   authData: {
@@ -88,7 +89,7 @@ export type ResetRateLimitJRPCRequestParams = {
 export type ResetRateLimitJRPCRequest =
   JRPCRequest<ResetRateLimitJRPCRequestParams>;
 
-export type ResetRateLimitJRPCResponse = JRPCResponse<null>;
+export type ResetRateLimitJRPCResponse = JRPCResponse<boolean>;
 
 export type ToprfEvalJRPCRequestParams = {
   authToken: string;

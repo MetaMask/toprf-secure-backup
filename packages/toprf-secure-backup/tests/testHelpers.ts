@@ -1,7 +1,12 @@
-import type { Algorithm as JwtAlgorithm } from 'jsonwebtoken';
 import { sign } from 'jsonwebtoken';
+import type { Algorithm as JwtAlgorithm } from 'jsonwebtoken';
 
 const jwtPrivateKey = `-----BEGIN PRIVATE KEY-----\nMEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCCD7oLrcKae+jVZPGx52Cb/lKhdKxpXjl9eGNa1MlY57A==\n-----END PRIVATE KEY-----`;
+
+// TODO: Replace with the dynamic values
+// Test Private key to be used for generating the auth token
+// Test audience to be used for generating the auth token
+
 /**
  * Generates the id token for the given verifier id and algorithm.
  *

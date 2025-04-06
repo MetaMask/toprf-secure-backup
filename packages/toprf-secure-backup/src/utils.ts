@@ -48,23 +48,40 @@ export const bigIntToBN = (value: bigint): BN => {
  */
 export const postJRPCRequest = async <
   Response extends {
-    result?: JSONValue;
+    id: number;
+    jsonrpc: '2.0';
+    result?: JSONValue | undefined;
+    error?: {
+      code: number;
+      message: string;
+      data?: unknown;
+    };
   },
 >(
   endpoint: string,
   request: JRPCRequest<JSONValue>,
 ): Promise<Response> => {
   const req = { ...request };
-  const params = toSnakeCaseKeys(request.params);
-  req.params = params;
-  return post<Response>(endpoint, req, {}, { logTracingHeader: false }).then(
-    (res) => {
+  req.params = toSnakeCaseKeys(request.params);
+
+  return post<Response>(endpoint, req, {}, { logTracingHeader: false })
+    .then((res) => {
       if (res.result) {
         res.result = toCamelCaseKeys(res.result);
       }
       return res;
-    },
-  );
+    })
+    .catch((er: unknown) => {
+      return {
+        id: request.id,
+        jsonrpc: '2.0',
+        error: {
+          code: -32000,
+          message: 'Internal error',
+          data: er,
+        },
+      } as Response;
+    });
 };
 
 /**
@@ -344,4 +361,22 @@ export const generateShareImportItems = async <
     authTokens,
     keyIndex,
   ) as unknown as ShareImportItem<ShareType>[];
+};
+
+/**
+ * Creates a map of node indexes to endpoints
+ *
+ * @param nodeEndpoints - The endpoints of the nodes.
+ * @param nodeIndexes - The indexes of the nodes.
+ *
+ * @returns A map of node indexes to endpoints.
+ */
+export const createNodeEndpointsMap = (
+  nodeEndpoints: string[],
+  nodeIndexes: number[],
+): Record<number, string> => {
+  return nodeIndexes.reduce<Record<number, string>>((acc, index) => {
+    acc[index] = nodeEndpoints[index - 1];
+    return acc;
+  }, {});
 };

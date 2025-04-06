@@ -1,6 +1,5 @@
 /**
  * SEC1 encoded public key
- * Where x and y are 32-byte coordinates in big-endian format
  */
 export type SEC1EncodedPublicKey = Uint8Array;
 
@@ -83,6 +82,23 @@ export type CreateEncryptionKeyResult = {
   encKey: Uint8Array;
 };
 
+export type BaseAddSecretDataItemParams<SecretDataType> = {
+  /**
+   * The secret data to be stored.
+   */
+  secretData: SecretDataType;
+
+  /**
+   * The encryption key to be used to encrypt the secret data.
+   */
+  encKey: Uint8Array;
+
+  /**
+   * The authentication key to be used to provide valid signature for storing the secret data.
+   */
+  authKeyPair: KeyPair;
+};
+
 /**
  * nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
  *
@@ -90,11 +106,11 @@ export type CreateEncryptionKeyResult = {
  *
  * secretData - The secret data to be registered.
  */
-export type StoreSecretDataParams = {
-  nodeAuthTokens: NodeAuthTokens;
-  keyPair: KeyPair;
-  secretData: string;
-};
+export type AddSecretDataItemParams = BaseAddSecretDataItemParams<Uint8Array>;
+
+export type BatchAddSecretDataItemParams = BaseAddSecretDataItemParams<
+  Uint8Array[]
+>;
 
 /**
  * nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
@@ -109,11 +125,14 @@ export type RecoverEncryptionKeyParams = {
 };
 
 /**
- * keyPair - The encryption/decryption key pair which is used to decrypt the secret data.
+ * authKeyPair - The authentication key pair which is used to authenticate the user.
+ * encKey - The encryption key which is used to encrypt the secret data.
+ * rateLimitResetResult - A promise that resolves when the rate limit is reset.
  */
 export type RecoverEncryptionKeyResult = {
   authKeyPair: KeyPair;
   encKey: Uint8Array;
+  rateLimitResetResult: Promise<void>;
 };
 
 /**
@@ -140,16 +159,25 @@ export type ChangeEncryptionKeyResult = {
 /**
  * keyPair - The encryption/decryption key pair which is used to decrypt the secret data.
  */
-export type FetchSecretDataParams = {
-  keyPair: KeyPair;
+export type FetchAllSecretDataParams = {
+  /**
+   * The decryption key to be used to decrypt the secret data.
+   */
+  decKey: Uint8Array;
+
+  /**
+   * The authentication key to be used to provide valid signature for fetching the secret data.
+   */
+  authKeyPair: KeyPair;
 };
 
 /**
- * secretData - The secret data in decrypted form.
+ * Result from fetching the secret data from the metadata store.
+ *
+ * null - If no secret data is found.
+ * Uint8Array - The secret data in decrypted form.
  */
-export type FetchSecretDataResult = {
-  secretData: string;
-};
+export type FetchSecretDataResult = Uint8Array[] | null;
 
 /**
  * Proof that the user owns the old key when changing to a new password/key
@@ -195,17 +223,147 @@ export type IToprfSecureBackup = {
    *
    * @returns {void}
    */
-  storeSecretData: (params: StoreSecretDataParams) => Promise<void>;
+  addSecretDataItem: (params: AddSecretDataItemParams) => Promise<void>;
 
   /**
-   * This function decrypts the secret data using the encryption key and returns the decrypted secret data.
+   * This function fetches all secret data items associated with the given
+   * auth pub key, decrypts, and returns them.
    *
    * @param params - The parameters for fetching the secret data.
-   * @param params.keyPair - The encryption/decryption key pair which is used to decrypt the secret data.
+   * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
+   * @param params.decKey - The decryption key to be used to decrypt the secret data.
+   * @param params.authKeyPair - The authentication key to be used to provide valid signature for fetching the secret data.
    *
-   * @returns {FetchSecretDataResult} A promise that resolves with the decrypted secret data.
+   * @returns {FetchSecretDataResult} A promise that resolves with the decrypted secret data. Null if no secret data is found.
    */
-  fetchSecretData: (
-    params: FetchSecretDataParams,
-  ) => Promise<FetchSecretDataResult>;
+  fetchAllSecretDataItems: (
+    params: FetchAllSecretDataParams,
+  ) => Promise<FetchSecretDataResult | null>;
+};
+
+/**
+ * Base payload structure for metadata request
+ */
+export type IBaseMetadataRequestBody = {
+  /**
+   * The feature name related to the secret data
+   */
+  feature: string;
+  /**
+   * The public key of the user
+   */
+  pubKey: string;
+  /**
+   * The Unix timestamp when the request payload is created along with the signature.
+   *
+   */
+  timestamp: string;
+};
+
+/**
+ * The array of secret data to be stored in batch request
+ */
+export type IBatchAddData = {
+  /**
+   * The base64-encoded string of the secret data
+   */
+  data: string;
+  /**
+   * The version of the Metadata Store
+   */
+  version?: string;
+}[];
+
+/**
+ * Payload structure for storing secret data
+ */
+export type IBaseAddSecretDataRequestBody<DataType> =
+  IBaseMetadataRequestBody & {
+    /**
+     * The authentication token of the user issued by the SSS services
+     */
+    authToken: string;
+    /**
+     * The secret data to be stored.
+     *
+     * For storing the single secret data, the data should be base64-encoded string.
+     *
+     * @example
+     * ```ts
+     * const data = Buffer.from('SECRET_DATA').toString('base64');
+     * ```
+     *
+     * For storing the batch of secret data, the data should be an array of `IBatchAddData`.
+     *
+     * @example
+     * ```ts
+     * const data = [
+     *   { data: Buffer.from('SECRET_DATA_1').toString('base64') },
+     *   { data: Buffer.from('SECRET_DATA_2').toString('base64') },
+     * ];
+     * ```
+     */
+    data: DataType;
+    /**
+     * The signature produced by signing the payload (without pubKey field) using the user's private key.
+     *
+     * Sample signature: sign(keccak256(data, feature, authToken, timestamp))
+     */
+    signature: string;
+  };
+
+/**
+ * Payload structure for storing secret data for single secret data
+ */
+export type ISetSecretDataRequestBody =
+  IBaseAddSecretDataRequestBody<string> & {
+    /**
+     * The version of the secret data
+     */
+    version?: string;
+  };
+
+/**
+ * Payload structure for storing secret data in batch request
+ */
+export type IBatchSetSecretDataRequestBody =
+  IBaseAddSecretDataRequestBody<IBatchAddData>;
+
+/**
+ * Payload structure for fetching secret data
+ */
+export type IGetSecretDataRequestBody = IBaseMetadataRequestBody & {
+  /**
+   * The signature produced by signing the payload (without pubKey field) using the user's private key.
+   *
+   * Sample signature: sign(keccak256(feature, authToken, timestamp))
+   */
+  signature: string;
+};
+
+/**
+ * Payload structure for acquiring/releasing a lock on the metadata
+ */
+export type IMetadataLockRequestBody = {
+  /**
+   * The public key of the user
+   */
+  key: string;
+  /**
+   * The Unix timestamp when the request payload is created along with the signature.
+   *
+   */
+  data: {
+    timestamp: number;
+  };
+  /**
+   * The signature produced by signing the payload (without pubKey field) using the user's private key.
+   *
+   * Sample signature: sign(keccak256(feature, authToken, timestamp))
+   */
+  signature: string;
+  /**
+   * The lock id to be released.
+   */
+  id?: string | undefined;
 };

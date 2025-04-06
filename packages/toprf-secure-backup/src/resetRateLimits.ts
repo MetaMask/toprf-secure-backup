@@ -21,7 +21,7 @@ import { postJRPCRequest } from './utils';
  *
  * @returns The parameters for the reset rate limit jrpc request.
  */
-export const createResetRateLimitRequestParams = (
+const createResetRateLimitRequestParams = (
   authToken: string,
   signature: string,
   signedData: string,
@@ -64,12 +64,14 @@ export const sendResetRateLimitRequest = async (
  *
  * @param resultArr - The reset rate limit request result
  * @param threshold - The threshold for the number reset rate limit responses to be valid
- * @returns The reset rate limit request result
+ *
+ * @returns true if the number of valid reset rate limit responses is greater than or equal to the threshold.
+ * @throws {TOPRFError.insufficientValidResponses} - If the number of valid reset rate limit responses is less than the threshold.
  */
-export const validateThresholdResetRateLimitResponses = async (
+export const validateThresholdResetRateLimitResponses = (
   resultArr: ResetRateLimitJRPCResponse[],
   threshold: number,
-): Promise<boolean> => {
+): boolean => {
   const completedRequests = resultArr.filter(
     (res): res is ResetRateLimitJRPCResponse => {
       if (!res || typeof res !== 'object') {
@@ -78,16 +80,18 @@ export const validateThresholdResetRateLimitResponses = async (
       if ('error' in res && res.error) {
         return false;
       }
+      if (!res.result) {
+        return false;
+      }
       return true;
     },
   );
-
   if (completedRequests.length < threshold) {
-    throw TOPRFError.invalidAuthenticateResults(
+    throw TOPRFError.insufficientValidResponses(
       `invalid reset rate limit results, expected ${threshold} but got ${completedRequests.length}`,
     );
   }
-  return Promise.resolve(true);
+  return true;
 };
 
 /**
@@ -106,20 +110,8 @@ export const resetRateLimits = async (params: {
   nodeEndpointsMap: Record<number, string>;
   verifier: string;
   verifierId: string;
-}): Promise<void> => {
+}): Promise<boolean> => {
   const { authTokens, nodeEndpointsMap, verifier, verifierId } = params;
-
-  if (authTokens.length === 0) {
-    throw new Error('No auth tokens provided');
-  }
-
-  if (Object.keys(nodeEndpointsMap).length === 0) {
-    throw new Error('No endpoints provided');
-  }
-
-  if (authTokens.length < 3) {
-    throw new Error('At least 3 auth tokens are required');
-  }
 
   // TODO: get signature and signedData from the user authentication key.
   const signature = '0x';
@@ -129,10 +121,11 @@ export const resetRateLimits = async (params: {
     action: 'reset_ratelimit',
   });
 
-  const promiseArr = authTokens.map(async (authToken) => {
+  const promises: Promise<ResetRateLimitJRPCResponse>[] = [];
+  for (const authToken of authTokens) {
     const endpoint = nodeEndpointsMap[authToken.nodeIndex];
     if (!endpoint) {
-      throw new Error(
+      throw TOPRFError.endpointNotFound(
         `Endpoint not found for node index ${authToken.nodeIndex}`,
       );
     }
@@ -143,16 +136,12 @@ export const resetRateLimits = async (params: {
       verifier,
       verifierId,
     );
-    return sendResetRateLimitRequest(endpoint, requestParams);
-  });
+    promises.push(sendResetRateLimitRequest(endpoint, requestParams));
+  }
 
-  const result = await Some<ResetRateLimitJRPCResponse, boolean>(
-    promiseArr,
+  return Some<ResetRateLimitJRPCResponse, boolean>(
+    promises,
     async (resultArr: ResetRateLimitJRPCResponse[]) =>
       validateThresholdResetRateLimitResponses(resultArr, authTokens.length),
   );
-
-  if (!result) {
-    throw new Error('Insufficient reset rate limit request results');
-  }
 };
