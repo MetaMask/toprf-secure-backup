@@ -60,7 +60,7 @@ describe('secure backup operations', function () {
       return acc;
     }, {});
 
-    const authTokens = await authenticateUser({
+    const { authTokensData } = await authenticateUser({
       idToken,
       verifier,
       verifierID,
@@ -68,7 +68,7 @@ describe('secure backup operations', function () {
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
     });
-    expect(authTokens).toBeDefined();
+    expect(authTokensData).toBeDefined();
     const passwordBytes = toBytes('test-input');
     const oprfKey = generateRandomScalar();
     const seed = OPRF.localEval(oprfKey, passwordBytes);
@@ -78,7 +78,7 @@ describe('secure backup operations', function () {
       nodeEndpointsMap: selectedEndpointsMap,
       verifier,
       verifierId: verifierID,
-      authTokens,
+      authTokens: authTokensData,
       keyIndex: 1,
       oprfKey,
       authPubKey: authKeyPair.pk,
@@ -132,7 +132,7 @@ describe('secure backup operations', function () {
       acc[result.nodeIndex] = nodeEndpointsMap[result.nodeIndex];
       return acc;
     }, {});
-    const authTokens = await authenticateUser({
+    const { authTokensData } = await authenticateUser({
       idToken,
       verifier,
       verifierID,
@@ -141,7 +141,7 @@ describe('secure backup operations', function () {
       commitmentSignatures: commitmentResults,
     });
 
-    expect(authTokens).toBeDefined();
+    expect(authTokensData).toBeDefined();
     const passwordBytes = toBytes('test-input');
     const oprfKey = generateRandomScalar();
     const seed = OPRF.localEval(oprfKey, passwordBytes);
@@ -151,7 +151,7 @@ describe('secure backup operations', function () {
       nodeEndpointsMap: selectedEndpointsMap,
       verifier,
       verifierId: verifierID,
-      authTokens,
+      authTokens: authTokensData,
       keyIndex: 1,
       oprfKey,
       authPubKey: authKeyPair.pk,

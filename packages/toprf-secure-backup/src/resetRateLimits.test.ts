@@ -60,7 +60,7 @@ describe('resetRateLimits', () => {
       return acc;
     }, {});
 
-    const authTokens = await authenticateUser({
+    const { authTokensData } = await authenticateUser({
       idToken,
       verifier,
       verifierID,
@@ -70,7 +70,7 @@ describe('resetRateLimits', () => {
     });
 
     const result = await resetRateLimits({
-      authTokens,
+      authTokens: authTokensData,
       nodeEndpointsMap: selectedEndpointsMap,
       verifier,
       verifierId: verifierID,
@@ -118,7 +118,7 @@ describe('resetRateLimits', () => {
       return acc;
     }, {});
 
-    const authTokens = await authenticateUser({
+    const { authTokensData } = await authenticateUser({
       idToken,
       verifier,
       verifierID,
@@ -129,17 +129,17 @@ describe('resetRateLimits', () => {
 
     await expect(
       resetRateLimits({
-        authTokens,
+        authTokens: authTokensData,
         nodeEndpointsMap: {
           ...selectedEndpointsMap,
-          [authTokens[0].nodeIndex]: '',
+          [authTokensData[0].nodeIndex]: '',
         },
         verifier,
         verifierId: verifierID,
       }),
     ).rejects.toThrow(
       TOPRFError.endpointNotFound(
-        `Endpoint not found for node index ${authTokens[0].nodeIndex}`,
+        `Endpoint not found for node index ${authTokensData[0].nodeIndex}`,
       ),
     );
   });
