@@ -9,7 +9,10 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
-import { EXISTING_USER_AUTHENTICATION_THRESHOLD } from './constants';
+import {
+  EXISTING_USER_AUTHENTICATION_THRESHOLD,
+  FIRST_KEY_INDEX,
+} from './constants';
 import type {
   AuthenticateParams,
   AuthenticateResult,
@@ -21,9 +24,9 @@ import type {
   RecoverEncryptionKeyParams,
   RecoverEncryptionKeyResult,
   AddSecretDataItemParams,
-  CreateLocalEncryptionKeyResult,
-  CreateLocalEncryptionKeyParams,
-  BackupOprfKeySharesParams,
+  CreateLocalEncKeyResult,
+  CreateLocalEncKeyParams,
+  PersistLocalEncKeyParams,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -125,15 +128,12 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    *
    * @param params - The parameters for creating the encryption key.
    * @param params.password - New password of the user.
-   * @param params.randomScalar - Optional random scalar to be used for the OPRF key.
+   * @param params.oprfKey - Optional OPRF key to be used for the OPRF evaluation.
    *
    * @returns The OPRF key, seed, and derived keys.
    */
-  createLocalEncKey(
-    params: CreateLocalEncryptionKeyParams,
-  ): CreateLocalEncryptionKeyResult {
-    const { password, randomScalar } = params;
-    const oprfKey = randomScalar ?? generateRandomScalar();
+  createLocalEncKey(params: CreateLocalEncKeyParams): CreateLocalEncKeyResult {
+    const { password, oprfKey = generateRandomScalar() } = params;
     const pwBytes = utf8ToBytes(password);
     const seed = OPRF.localEval(oprfKey, pwBytes);
     const authKeyPair = deriveAuthenticationKeyPair(seed);
@@ -151,25 +151,18 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   }
 
   /**
-   * This function backs up the OPRF key's shares to servers.
+   * This function persists the OPRF key's shares at the servers.
    *
-   * @param params - The parameters for backing up the OPRF key.
+   * @param params - The parameters for persisting the OPRF key.
    * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
-   * @param params.keyIndex - The index of the key to be backed up.
-   * @param params.oprfKey - The OPRF key to be backed up.
-   * @param params.authKeyPair - The authentication key pair to be used for authentication.
+   * @param params.oprfKey - The OPRF key to be persisted.
+   * @param params.authPubKey - The authentication public key.
    * @param params.verifier - The verifier name used for authentication.
    * @param params.verifierId - The verifierId/userID of the user.
    */
-  async backupOprfKeyShares(params: BackupOprfKeySharesParams): Promise<void> {
-    const {
-      nodeAuthTokens,
-      keyIndex,
-      oprfKey,
-      authKeyPair,
-      verifier,
-      verifierId,
-    } = params;
+  async persistLocalEncKey(params: PersistLocalEncKeyParams): Promise<void> {
+    const { nodeAuthTokens, oprfKey, authPubKey, verifier, verifierId } =
+      params;
     const { nodeEndpointsMap } = await this.#getNodeDetails();
 
     const selectedEndpointsMap = nodeAuthTokens.reduce<Record<number, string>>(
@@ -185,9 +178,9 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       verifier,
       verifierId,
       authTokens: nodeAuthTokens,
-      keyIndex,
+      keyIndex: FIRST_KEY_INDEX,
       oprfKey,
-      authPubKey: authKeyPair.pk,
+      authPubKey,
     });
   }
 
@@ -208,11 +201,10 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       password,
     });
 
-    await this.backupOprfKeyShares({
+    await this.persistLocalEncKey({
       nodeAuthTokens,
-      keyIndex: 1,
       oprfKey,
-      authKeyPair,
+      authPubKey: authKeyPair.pk,
       verifier,
       verifierId,
     });

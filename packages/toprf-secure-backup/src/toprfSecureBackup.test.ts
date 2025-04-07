@@ -51,7 +51,7 @@ describe('toprf secret backup', function () {
 
     const encKey2 = toprfSecureBackup.createLocalEncKey({
       password,
-      randomScalar: encKey.oprfKey,
+      oprfKey: encKey.oprfKey,
     });
     expect(encKey2).toBeDefined();
     expect(encKey2.authKeyPair).toBeDefined();
@@ -77,7 +77,7 @@ describe('toprf secret backup', function () {
 
     const encKey4 = toprfSecureBackup.createLocalEncKey({
       password: generateRandomPassword(),
-      randomScalar: encKey3.oprfKey,
+      oprfKey: encKey3.oprfKey,
     });
     expect(encKey4).toBeDefined();
     expect(encKey4.authKeyPair).toBeDefined();
