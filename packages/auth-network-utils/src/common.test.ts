@@ -1,4 +1,4 @@
-import { keccak256 } from 'ethereum-cryptography/keccak';
+import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
 
 import {
   keccak256AndHexify,
