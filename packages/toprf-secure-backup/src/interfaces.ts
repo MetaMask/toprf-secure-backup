@@ -53,15 +53,11 @@ export type AuthenticateResult = {
 };
 
 /**
- * CreateEncryptionKeyParams - The parameters for creating an encryption key.
- *
- * verifier - The verifier of the user.
- *
- * verifierId - The verifier ID of the user.
- *
- * nodeAuthTokens - The tokens issued by the nodes on verifying the idTokens.
+ * CreateLocalEncryptionKeyParams - The parameters for creating an oprf encryption key locally.
  *
  * password - The password of the user.
+ *
+ * randomScalar - Optional random scalar to be used for the OPRF key.
  */
 export type CreateLocalEncryptionKeyParams = {
   password: string;
@@ -69,7 +65,11 @@ export type CreateLocalEncryptionKeyParams = {
 };
 
 /**
- * CreateEncryptionKeyResult - The result of creating an encryption key.
+ * CreateLocalEncryptionKeyResult - The result of creating an encryption key.
+ *
+ * oprfKey - The OPRF key which is used to for local oprf operation.
+ *
+ * seed - The seed which is used to derive the authentication and encryption keys.
  *
  * authKeyPair - The authentication key pair which is used to authenticate the user.
  *
