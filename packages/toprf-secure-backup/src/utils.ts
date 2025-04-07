@@ -12,14 +12,15 @@ import {
   toCamelCaseKeys,
   toSnakeCaseKeys,
 } from '@metamask/auth-network-utils';
+import { secp256k1 as secp256k1Noble } from '@noble/curves/secp256k1';
+import { bytesToHex } from '@noble/hashes/utils';
 import { decrypt, encrypt } from '@toruslabs/eccrypto';
 import { post } from '@toruslabs/http-helpers';
 import BN from 'bn.js';
 import type * as EC from 'elliptic';
 import { keccak256 } from 'ethereum-cryptography/keccak';
-import { secp256k1 } from 'ethereum-cryptography/secp256k1';
 
-import type { NodeAuthTokens, KeyChangeProof } from './interfaces';
+import type { KeyChangeProof, NodeAuthTokens } from './interfaces';
 import type { ShareImportItem } from './jrpcInterfaces';
 
 type EncryptedData = {
@@ -172,13 +173,55 @@ export const prepareNodeShares = (
 };
 
 /**
+ * Formats a share value into a 32-byte buffer with padding and base64 encoding
+ *
+ * @param shareValue - BN share value to format
+ * @returns Base64 string of padded share
+ */
+const formatShareForSigning = (shareValue: BN): string => {
+  // Convert share value to bytes
+  const shareBigInt = BigInt(shareValue.toString());
+  const hexStr = shareBigInt.toString(16);
+  const padded = hexStr.length % 2 === 0 ? hexStr : `0${hexStr}`;
+  const shareBytes = Buffer.from(padded, 'hex');
+
+  // Create a 32-byte buffer with share bytes at the end
+  const fullBuffer = Buffer.alloc(32);
+  shareBytes.copy(fullBuffer, 32 - shareBytes.length);
+
+  // Convert to base64
+  return fullBuffer.toString('base64');
+};
+
+/**
+ * Creates an Ethereum format signature (r+s+v)
+ *
+ * @param dataHash - Hash to sign
+ * @param privateKeyBigInt - Private key as bigint
+ * @returns Signature as r+s+v hex string
+ */
+const createEthereumSignature = (
+  dataHash: Uint8Array,
+  privateKeyBigInt: bigint,
+): string => {
+  const privateKeyHex = privateKeyBigInt.toString(16).padStart(64, '0');
+  const signResult = secp256k1Noble.sign(dataHash, privateKeyHex);
+
+  const sigR = bytesToHex(signResult.toCompactRawBytes().slice(0, 32));
+  const sigS = bytesToHex(signResult.toCompactRawBytes().slice(32, 64));
+  const recV = (signResult.recovery + 27).toString(16).padStart(2, '0');
+
+  return sigR + sigS + recV;
+};
+
+/**
  * Creates a signature for key change using the share and old private key
  *
- * @param shareValue - The raw share value to sign
- * @param keyIndex - The key index for the share
- * @param nodeIndex - The node index
- * @param oldAuthPrivKey - The old auth private key for signing
- * @returns The signature and timestamp as a KeyChangeProof
+ * @param shareValue - Raw share value to sign
+ * @param keyIndex - Key index for the share
+ * @param nodeIndex - Node index
+ * @param oldAuthPrivKey - Old auth private key for signing
+ * @returns The signature and timestamp as KeyChangeProof
  */
 export const createKeyChangeProof = (
   shareValue: BN,
@@ -186,24 +229,22 @@ export const createKeyChangeProof = (
   nodeIndex: number,
   oldAuthPrivKey: bigint,
 ): KeyChangeProof => {
-  const timestamp = Date.now();
-  const shareData = Buffer.from(shareValue.toString(16), 'hex');
+  const timestamp = Math.floor(Date.now() / 1000);
+  const shareBase64 = formatShareForSigning(shareValue);
 
-  const dataToSign = toSnakeCaseKeys({
-    shareData: shareData.toString('hex'),
-    shareKeyIndex: keyIndex,
-    nodeIndex,
+  const dataToSign = {
+    share_data: shareBase64,
+    share_key_index: keyIndex,
+    node_index: nodeIndex,
     timestamp,
-  });
+  };
+
   const jsonData = JSON.stringify(dataToSign);
   const dataHash = keccak256(Buffer.from(jsonData));
-
-  // Sign the hash with the old private key
-  const privateKeyBytes = Buffer.from(oldAuthPrivKey.toString(16), 'hex');
-  const signature = secp256k1.sign(dataHash, privateKeyBytes);
+  const signature = createEthereumSignature(dataHash, oldAuthPrivKey);
 
   return {
-    oldKeySignature: Buffer.from(signature.toDERRawBytes()).toString('hex'),
+    oldKeySignature: signature,
     signatureTimestamp: timestamp,
   };
 };

@@ -6,7 +6,7 @@ import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
 import { deriveAuthenticationKeyPair } from './keyDerivation';
 import { OPRF, generateRandomScalar } from './oprf';
-import { storeKeyShares, changeKey } from './storeSharesRequest';
+import { changeKey, storeKeyShares } from './storeSharesRequest';
 import { createNodeEndpointsMap } from './utils';
 import { generateIdToken } from '../tests/testHelpers';
 
@@ -162,12 +162,12 @@ describe('secure backup operations', function () {
   });
 
   it('should be able to change key after storing shares', async function () {
-    const curve = getSecp256K1Curve();
-    const keyPair = curve.genKeyPair();
-    const pubPoint = keyPair.getPublic();
-    const verifier = 'torus-test-health';
-    const verifierID = `test-verifier-id-${Math.random()}`;
+    const privKey = secp256k1.utils.randomPrivateKey();
+    const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
+    const verifier = 'torus-test-health';
+    // generate a random verifierID string
+    const verifierID = `test-verifier-id-${Math.random()}`;
     const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
       await nodeDetailManager.getNodeDetails({
         verifier,
@@ -179,8 +179,8 @@ describe('secure backup operations', function () {
     }
 
     const idToken = generateIdToken(verifierID, 'ES256');
-    const sessionPubKeyX = pubPoint.getX().toString('hex');
-    const sessionPubKeyY = pubPoint.getY().toString('hex');
+    const sessionPubKeyX = pubKey.x.toString(16);
+    const sessionPubKeyY = pubKey.y.toString(16);
 
     const commitmentResults = await commitIdToken({
       idToken,
@@ -190,12 +190,25 @@ describe('secure backup operations', function () {
       endpoints: torusNodeSSSEndpoints,
     });
 
+    const nodeEndpointsMap = createNodeEndpointsMap(
+      torusNodeSSSEndpoints,
+      torusIndexes,
+    );
+
+    // use only the node indexes that returned valid commitment responses
+    const selectedEndpointsMap = commitmentResults.reduce<
+      Record<number, string>
+    >((acc, result) => {
+      acc[result.nodeIndex] = nodeEndpointsMap[result.nodeIndex];
+      return acc;
+    }, {});
+
     const authTokens = await authenticateUser({
       idToken,
       verifier,
       verifierID,
-      sessionPrivateKey: keyPair.getPrivate().toBuffer(),
-      endpoints: torusNodeSSSEndpoints,
+      sessionPrivateKey: privKey,
+      nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
     });
 
@@ -203,22 +216,13 @@ describe('secure backup operations', function () {
 
     // Original password setup
     const originalPasswordBytes = toBytes('original-password');
-    const hashedOriginalInput = sha256(originalPasswordBytes);
     const oprfKey = generateRandomScalar();
-    const originalSeed = OPRF.localEval(oprfKey, hashedOriginalInput);
+    const originalSeed = OPRF.localEval(oprfKey, originalPasswordBytes);
     const originalAuthKeyPair = deriveAuthenticationKeyPair(originalSeed);
-
-    const nodeEndpointsMap = torusIndexes.reduce<Record<number, string>>(
-      (acc, index) => {
-        acc[index] = torusNodeSSSEndpoints[index - 1];
-        return acc;
-      },
-      {},
-    );
 
     // Store shares with original password
     const storeSharesResponse = await storeKeyShares({
-      nodeEndpointsMap,
+      nodeEndpointsMap: selectedEndpointsMap,
       verifier,
       verifierId: verifierID,
       authTokens,
@@ -232,18 +236,17 @@ describe('secure backup operations', function () {
 
     // Key change flow - new password setup
     const newPasswordBytes = toBytes('new-password');
-    const hashedNewInput = sha256(newPasswordBytes);
     const newOprfKey = generateRandomScalar();
-    const newSeed = OPRF.localEval(newOprfKey, hashedNewInput);
+    const newSeed = OPRF.localEval(newOprfKey, newPasswordBytes);
     const newAuthKeyPair = deriveAuthenticationKeyPair(newSeed);
 
     const keyChangeResponse = await changeKey({
-      nodeEndpointsMap,
+      nodeEndpointsMap: selectedEndpointsMap,
       verifier,
       verifierId: verifierID,
       authTokens,
       oldAuthPrivKey: originalAuthKeyPair.sk,
-      keyIndex: 1, // From first registration
+      keyIndex: 2,
       newOprfKey,
       newAuthPubKey: newAuthKeyPair.pk,
     });
