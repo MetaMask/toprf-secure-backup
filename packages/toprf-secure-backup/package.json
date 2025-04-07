@@ -48,9 +48,9 @@
   },
   "dependencies": {
     "@metamask/auth-network-utils": "^0.0.0",
-    "@noble/ciphers": "^1.2.1",
-    "@noble/curves": "^1.8.1",
-    "@noble/hashes": "^1.7.1",
+    "@noble/ciphers": "^0.5.2",
+    "@noble/curves": "^1.2.0",
+    "@noble/hashes": "^1.4.0",
     "@sentry/core": "^9.10.0",
     "@toruslabs/constants": "^15.0.0",
     "@toruslabs/eccrypto": "^6.0.2",

@@ -66,8 +66,8 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "@noble/curves": "^1.8.1",
-    "@noble/hashes": "^1.7.1",
+    "@noble/curves": "^1.2.0",
+    "@noble/hashes": "^1.4.0",
     "@toruslabs/bs58": "^1.0.0",
     "@toruslabs/constants": "^15.0.0",
     "@toruslabs/eccrypto": "^6.0.2",
