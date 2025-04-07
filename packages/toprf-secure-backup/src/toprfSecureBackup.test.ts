@@ -35,6 +35,60 @@ describe('toprf secret backup', function () {
     expect(result.hasValidEncKey).toBe(false);
   });
 
+  it('should be able to create local enc key', async function () {
+    const toprfSecureBackup = new ToprfSecureBackup({
+      network: 'sapphire_devnet',
+    });
+    const password = generateRandomPassword();
+    const encKey = toprfSecureBackup.createLocalEncKey({
+      password,
+    });
+    expect(encKey).toBeDefined();
+    expect(encKey.authKeyPair).toBeDefined();
+    expect(encKey.authKeyPair.sk).toBeDefined();
+    expect(encKey.authKeyPair.pk).toBeDefined();
+    expect(encKey.encKey).toBeDefined();
+
+    const encKey2 = toprfSecureBackup.createLocalEncKey({
+      password,
+      randomScalar: encKey.oprfKey,
+    });
+    expect(encKey2).toBeDefined();
+    expect(encKey2.authKeyPair).toBeDefined();
+    expect(encKey2.authKeyPair.sk).toBeDefined();
+    expect(encKey2.authKeyPair.pk).toBeDefined();
+    expect(encKey2.encKey).toBeDefined();
+
+    // same password and scalar should result in same auth key pair and enc key
+    expect(encKey2.authKeyPair.sk).toStrictEqual(encKey.authKeyPair.sk);
+    expect(encKey2.encKey).toStrictEqual(encKey.encKey);
+
+    const encKey3 = toprfSecureBackup.createLocalEncKey({
+      password,
+    });
+    expect(encKey3).toBeDefined();
+    expect(encKey3.authKeyPair).toBeDefined();
+    expect(encKey3.authKeyPair.sk).toBeDefined();
+    expect(encKey3.authKeyPair.pk).toBeDefined();
+    expect(encKey3.encKey).toBeDefined();
+
+    expect(encKey3.authKeyPair.sk).not.toStrictEqual(encKey.authKeyPair.sk);
+    expect(encKey3.encKey).not.toStrictEqual(encKey.encKey);
+
+    const encKey4 = toprfSecureBackup.createLocalEncKey({
+      password: generateRandomPassword(),
+      randomScalar: encKey3.oprfKey,
+    });
+    expect(encKey4).toBeDefined();
+    expect(encKey4.authKeyPair).toBeDefined();
+    expect(encKey4.authKeyPair.sk).toBeDefined();
+    expect(encKey4.authKeyPair.pk).toBeDefined();
+    expect(encKey4.encKey).toBeDefined();
+
+    expect(encKey4.authKeyPair.sk).not.toStrictEqual(encKey.authKeyPair.sk);
+    expect(encKey4.encKey).not.toStrictEqual(encKey.encKey);
+  });
+
   it('should be able to create enc key', async function () {
     const verifier = 'torus-test-health';
     const verifierID = `test-verifier-id-${Math.random()}`;

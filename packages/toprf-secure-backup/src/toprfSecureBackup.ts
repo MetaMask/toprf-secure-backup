@@ -21,6 +21,8 @@ import type {
   RecoverEncryptionKeyParams,
   RecoverEncryptionKeyResult,
   AddSecretDataItemParams,
+  CreateLocalEncryptionKeyResult,
+  CreateLocalEncryptionKeyParams,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -112,6 +114,37 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
         nodePubKey: tokenData.nodePubKey,
       })),
       hasValidEncKey: Boolean(hasValidEncKey),
+    };
+  }
+
+  /**
+   * This function locally creates an OPRF key without storing it at the key
+   * management service. It returns the OPRF key, derives the corresponding key
+   * seed and derived keys.
+   *
+   * @param params - The parameters for creating the encryption key.
+   * @param params.password - New password of the user.
+   * @param params.randomScalar - Optional random scalar to be used for the OPRF key.
+   * @returns The OPRF key, seed, and derived keys.
+   */
+  createLocalEncKey(
+    params: CreateLocalEncryptionKeyParams,
+  ): CreateLocalEncryptionKeyResult {
+    const { password, randomScalar } = params;
+    const oprfKey = randomScalar ?? generateRandomScalar();
+    const pwBytes = utf8ToBytes(password);
+    const seed = OPRF.localEval(oprfKey, pwBytes);
+    const authKeyPair = deriveAuthenticationKeyPair(seed);
+    const encKey = deriveEncryptionKey(seed);
+
+    return {
+      oprfKey,
+      seed,
+      authKeyPair: {
+        sk: authKeyPair.sk,
+        pk: authKeyPair.pk,
+      },
+      encKey,
     };
   }
 
