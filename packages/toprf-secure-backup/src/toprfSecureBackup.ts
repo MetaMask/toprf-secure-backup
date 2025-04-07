@@ -23,6 +23,7 @@ import type {
   AddSecretDataItemParams,
   CreateLocalEncryptionKeyResult,
   CreateLocalEncryptionKeyParams,
+  BackupOprfKeySharesParams,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -150,6 +151,47 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   }
 
   /**
+   * This function backs up the OPRF key's shares to servers.
+   *
+   * @param params - The parameters for backing up the OPRF key.
+   * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
+   * @param params.keyIndex - The index of the key to be backed up.
+   * @param params.oprfKey - The OPRF key to be backed up.
+   * @param params.authKeyPair - The authentication key pair to be used for authentication.
+   * @param params.verifier - The verifier name used for authentication.
+   * @param params.verifierId - The verifierId/userID of the user.
+   */
+  async backupOprfKeyShares(params: BackupOprfKeySharesParams): Promise<void> {
+    const {
+      nodeAuthTokens,
+      keyIndex,
+      oprfKey,
+      authKeyPair,
+      verifier,
+      verifierId,
+    } = params;
+    const { nodeEndpointsMap } = await this.#getNodeDetails();
+
+    const selectedEndpointsMap = nodeAuthTokens.reduce<Record<number, string>>(
+      (acc, tokenData) => {
+        acc[tokenData.nodeIndex] = nodeEndpointsMap[tokenData.nodeIndex];
+        return acc;
+      },
+      {},
+    );
+
+    await storeKeyShares({
+      nodeEndpointsMap: selectedEndpointsMap,
+      verifier,
+      verifierId,
+      authTokens: nodeAuthTokens,
+      keyIndex,
+      oprfKey,
+      authPubKey: authKeyPair.pk,
+    });
+  }
+
+  /**
    * This function creates the encryption key which is used to encrypt/decrypt the secret data.
    *
    * @param params - The parameters for creating the encryption key.
@@ -162,29 +204,18 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     params: CreateEncryptionKeyParams,
   ): Promise<CreateEncryptionKeyResult> {
     const { nodeAuthTokens, password, verifier, verifierId } = params;
-    const { nodeEndpointsMap } = await this.#getNodeDetails();
-
-    const { oprfKey, seed, authKeyPair } = this.createLocalEncKey({
+    const { oprfKey, authKeyPair, encKey } = this.createLocalEncKey({
       password,
     });
 
-    const selectedEndpointsMap = nodeAuthTokens.reduce<Record<number, string>>(
-      (acc, tokenData) => {
-        acc[tokenData.nodeIndex] = nodeEndpointsMap[tokenData.nodeIndex];
-        return acc;
-      },
-      {},
-    );
-    await storeKeyShares({
-      nodeEndpointsMap: selectedEndpointsMap,
-      verifier,
-      verifierId,
-      authTokens: nodeAuthTokens,
+    await this.backupOprfKeyShares({
+      nodeAuthTokens,
       keyIndex: 1,
       oprfKey,
-      authPubKey: authKeyPair.pk,
+      authKeyPair,
+      verifier,
+      verifierId,
     });
-    const encKey = deriveEncryptionKey(seed);
 
     return {
       authKeyPair: {

@@ -83,6 +83,30 @@ export type CreateLocalEncryptionKeyResult = {
 };
 
 /**
+ * BackupOprfKeySharesParams - The parameters for backing up an oprf key's shares to the servers.
+ *
+ * nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
+ *
+ * keyIndex - The index of the key to be backed up.
+ *
+ * oprfKey - The OPRF key which is used to for local oprf operation.
+ *
+ * authKeyPair - The authentication key pair which is used to authenticate the write request to the metadata store.
+ *
+ * verifier - The verifier name used for authentication.
+ *
+ * verifierId - The verifierId/userID of the user.
+ */
+export type BackupOprfKeySharesParams = {
+  nodeAuthTokens: NodeAuthTokens;
+  keyIndex: number;
+  oprfKey: bigint;
+  authKeyPair: KeyPair;
+  verifier: string;
+  verifierId: string;
+};
+
+/**
  * CreateEncryptionKeyParams - The parameters for creating an encryption key.
  *
  * verifier - The verifier of the user.
