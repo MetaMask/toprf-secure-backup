@@ -66,15 +66,14 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "@noble/curves": "^1.8.1",
-    "@noble/hashes": "^1.7.1",
+    "@noble/curves": "^1.2.0",
+    "@noble/hashes": "^1.4.0",
     "@toruslabs/bs58": "^1.0.0",
     "@toruslabs/constants": "^15.0.0",
     "@toruslabs/eccrypto": "^6.0.2",
     "bn.js": "^5.2.1",
     "elliptic": "^6.6.1",
-    "ethereum-cryptography": "^3.1.0",
-    "json-stable-stringify": "^1.2.1",
-    "loglevel": "^1.9.2"
+    "json-stable-stringify": "^1.1.1",
+    "loglevel": "1.9.1"
   }
 }
