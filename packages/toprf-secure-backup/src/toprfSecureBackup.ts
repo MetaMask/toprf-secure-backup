@@ -40,6 +40,7 @@ import { recoverTOPRFSeed } from './toprfEvalRequest';
 import { createNodeEndpointsMap } from './utils';
 
 /**
+ * ToprfSecureBackup - The main class for the tOPRF Secure Backup service.
  *
  */
 export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
@@ -50,7 +51,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   /**
    *
    * @param params - The parameters for the constructor.
-   * @param params.network - The web3auth network to be used key management and authentication.
+   * @param params.network - The web3auth network to be used for key management and authentication.
    */
   constructor(params: { network: TORUS_SAPPHIRE_NETWORK_TYPE }) {
     this.#nodeDetailManager = new NodeDetailManager({
