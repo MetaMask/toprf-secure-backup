@@ -125,6 +125,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @param params - The parameters for creating the encryption key.
    * @param params.password - New password of the user.
    * @param params.randomScalar - Optional random scalar to be used for the OPRF key.
+   *
    * @returns The OPRF key, seed, and derived keys.
    */
   createLocalEncKey(
@@ -162,10 +163,11 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   ): Promise<CreateEncryptionKeyResult> {
     const { nodeAuthTokens, password, verifier, verifierId } = params;
     const { nodeEndpointsMap } = await this.#getNodeDetails();
-    const oprfKey = generateRandomScalar();
-    const pwBytes = utf8ToBytes(password);
-    const seed = OPRF.localEval(oprfKey, pwBytes);
-    const authKeyPair = deriveAuthenticationKeyPair(seed);
+
+    const { oprfKey, seed, authKeyPair } = this.createLocalEncKey({
+      password,
+    });
+
     const selectedEndpointsMap = nodeAuthTokens.reduce<Record<number, string>>(
       (acc, tokenData) => {
         acc[tokenData.nodeIndex] = nodeEndpointsMap[tokenData.nodeIndex];
