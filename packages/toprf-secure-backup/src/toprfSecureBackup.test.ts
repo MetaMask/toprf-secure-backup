@@ -1,17 +1,13 @@
+import { TOPRFError } from '@metamask/auth-network-utils';
 import { utf8ToBytes } from '@noble/ciphers/utils';
 
+import * as resetRateLimitsModule from './resetRateLimits';
 import { ToprfSecureBackup } from './toprfSecureBackup';
-import { generateIdToken } from '../tests/testHelpers';
-
-/**
- * Generates a random password for testing purposes.
- *
- * @returns A random password.
- */
-function generateRandomPassword(): string {
-  const length = Math.random() * 10 + 8;
-  return Math.random().toString(36).slice(2, length);
-}
+import {
+  generateIdToken,
+  generateRandomPassword,
+  generateRandomVerifierId,
+} from '../tests/testHelpers';
 
 const EXISTNG_USER_VERIFIER_ID = 'test-verifier-id-existing-user';
 
@@ -211,5 +207,58 @@ describe('toprf secret backup', function () {
     });
     expect(fetchedSecretData).not.toBeNull();
     expect(fetchedSecretData?.[0]).toStrictEqual(secretData);
+  });
+
+  it('should recover enc key even when rate limit reset fails', async function () {
+    const mockResetRateLimits = jest
+      .spyOn(resetRateLimitsModule, 'resetRateLimits')
+      .mockImplementation(async () =>
+        Promise.reject(TOPRFError.pwdInputRateLimitExceeded()),
+      );
+
+    try {
+      const verifier = 'torus-test-health';
+      const verifierID = generateRandomVerifierId();
+      const idToken = generateIdToken(verifierID, 'ES256');
+      const toprfSecureBackup = new ToprfSecureBackup({
+        network: 'sapphire_devnet',
+      });
+
+      const result = await toprfSecureBackup.authenticate({
+        idTokens: [idToken],
+        verifier,
+        verifierID,
+      });
+
+      const password = generateRandomPassword();
+      const encKey = await toprfSecureBackup.createEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        password,
+        verifier,
+        verifierId: verifierID,
+      });
+
+      const recoveredKey = await toprfSecureBackup.recoverEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        password,
+        verifier,
+        verifierId: verifierID,
+      });
+
+      // Main functionality should work
+      expect(recoveredKey.authKeyPair).toBeDefined();
+      expect(recoveredKey.encKey).toBeDefined();
+      expect(recoveredKey.authKeyPair.sk).toStrictEqual(encKey.authKeyPair.sk);
+      expect(recoveredKey.encKey).toStrictEqual(encKey.encKey);
+
+      // Rate limit reset should fail
+      await expect(recoveredKey.rateLimitResetResult).rejects.toThrow(
+        TOPRFError.pwdInputRateLimitExceeded(),
+      );
+
+      expect(mockResetRateLimits).toHaveBeenCalled();
+    } finally {
+      mockResetRateLimits.mockRestore();
+    }
   });
 });
