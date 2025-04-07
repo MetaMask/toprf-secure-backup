@@ -1281,24 +1281,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@metamask/auth-network-utils@file:../auth-network-utils::locator=%40metamask%2Ftoprf-secure-backup%40workspace%3Apackages%2Ftoprf-secure-backup":
-  version: 0.0.0
-  resolution: "@metamask/auth-network-utils@file:../auth-network-utils#../auth-network-utils::hash=8ad71b&locator=%40metamask%2Ftoprf-secure-backup%40workspace%3Apackages%2Ftoprf-secure-backup"
-  dependencies:
-    "@noble/curves": "npm:^1.8.1"
-    "@noble/hashes": "npm:^1.7.1"
-    "@toruslabs/bs58": "npm:^1.0.0"
-    "@toruslabs/constants": "npm:^15.0.0"
-    "@toruslabs/eccrypto": "npm:^6.0.2"
-    bn.js: "npm:^5.2.1"
-    elliptic: "npm:^6.6.1"
-    json-stable-stringify: "npm:^1.2.1"
-    loglevel: "npm:^1.9.2"
-  checksum: 10/fc6d8051bbde0b6d851285512df8cf646257e25c3f9b929f925739810e5abcb9358309a4a5cb43cada384ef859de56bea99e2580796bac967dd1e2ba0220d037
-  languageName: node
-  linkType: hard
-
-"@metamask/auth-network-utils@workspace:packages/auth-network-utils":
+"@metamask/auth-network-utils@npm:^0.0.0, @metamask/auth-network-utils@workspace:packages/auth-network-utils":
   version: 0.0.0-use.local
   resolution: "@metamask/auth-network-utils@workspace:packages/auth-network-utils"
   dependencies:
@@ -1508,7 +1491,7 @@ __metadata:
   resolution: "@metamask/toprf-secure-backup@workspace:packages/toprf-secure-backup"
   dependencies:
     "@babel/runtime": "npm:^7.26.10"
-    "@metamask/auth-network-utils": ../auth-network-utils
+    "@metamask/auth-network-utils": "npm:^0.0.0"
     "@metamask/auto-changelog": "npm:^3.4.4"
     "@noble/ciphers": "npm:^1.2.1"
     "@noble/curves": "npm:^1.8.1"
@@ -1772,7 +1755,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@pkgr/core@npm:^0.2.0, @pkgr/core@npm:^0.2.1":
+"@pkgr/core@npm:^0.2.1":
   version: 0.2.1
   resolution: "@pkgr/core@npm:0.2.1"
   checksum: 10/f644417c46b31fef0eb67353562d844e38ddb381c8b8b00053c0410e43cbc4999a038c742599b0cf957ed753978a058ebd60694e38a9e5bc8242639fd57cfe2a
@@ -8847,12 +8830,12 @@ __metadata:
   linkType: hard
 
 "synckit@npm:^0.11.0":
-  version: 0.11.2
-  resolution: "synckit@npm:0.11.2"
+  version: 0.11.3
+  resolution: "synckit@npm:0.11.3"
   dependencies:
-    "@pkgr/core": "npm:^0.2.0"
+    "@pkgr/core": "npm:^0.2.1"
     tslib: "npm:^2.8.1"
-  checksum: 10/8dbf20a9f1cb9f168062b505302f87b434b6f808d61af94183583b1201f33ba0026469fb81dd20074c980bc56237c6bd4ccb640433b5734eef14f5a90c1bbf18
+  checksum: 10/041ebcf2a36e2e121f5d52c2d48a3125a6ed0f9185501d42ff802060563d0a7555be77f466b1d706f4b85054a329d1acd13ccbc37a63825aa022e68a9551535d
   languageName: node
   linkType: hard
 
