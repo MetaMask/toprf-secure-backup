@@ -100,9 +100,9 @@ export type BaseAddSecretDataItemParams<SecretDataType> = {
 };
 
 /**
- * nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
+ * encKey - The encryption key to be used to encrypt the secret data before storing it.
  *
- * keyPair - The encryption/decryption key pair which is used to encrypt the secret data before storing it.
+ * authKeyPair - The authentication key to be used to provide valid signature for storing the secret data.
  *
  * secretData - The secret data to be registered.
  */
@@ -171,14 +171,6 @@ export type FetchAllSecretDataParams = {
   authKeyPair: KeyPair;
 };
 
-/**
- * Result from fetching the secret data from the metadata store.
- *
- * null - If no secret data is found.
- * Uint8Array - The secret data in decrypted form.
- */
-export type FetchSecretDataResult = Uint8Array[] | null;
-
 export type IToprfSecureBackup = {
   authenticate: (params: AuthenticateParams) => Promise<AuthenticateResult>;
 
@@ -208,8 +200,8 @@ export type IToprfSecureBackup = {
    * This function encrypts the secret data using the encryption key and stores it nodes metadata store in encrypted form.
    *
    * @param params - The parameters for registering new secret data.
-   * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
-   * @param params.keyPair - The encryption/decryption key pair which is used to encrypt the secret data before storing it.
+   * @param params.encKey - The encryption key to be used to encrypt the secret data before storing it.
+   * @param params.authKeyPair - The authentication key to be used to provide valid signature for storing the secret data.
    * @param params.secretData - The array of secret data to be registered.
    *
    * @returns {void}
@@ -225,11 +217,11 @@ export type IToprfSecureBackup = {
    * @param params.decKey - The decryption key to be used to decrypt the secret data.
    * @param params.authKeyPair - The authentication key to be used to provide valid signature for fetching the secret data.
    *
-   * @returns {FetchSecretDataResult} A promise that resolves with the decrypted secret data. Null if no secret data is found.
+   * @returns {Uint8Array[]} A promise that resolves with the array of decrypted secret data.
    */
   fetchAllSecretDataItems: (
     params: FetchAllSecretDataParams,
-  ) => Promise<FetchSecretDataResult | null>;
+  ) => Promise<Uint8Array[]>;
 };
 
 /**
@@ -306,7 +298,7 @@ export type IBaseAddSecretDataRequestBody<DataType> =
 /**
  * Payload structure for storing secret data for single secret data
  */
-export type ISetSecretDataRequestBody =
+export type IAddSecretDataRequestBody =
   IBaseAddSecretDataRequestBody<string> & {
     /**
      * The version of the secret data
@@ -317,7 +309,7 @@ export type ISetSecretDataRequestBody =
 /**
  * Payload structure for storing secret data in batch request
  */
-export type IBatchSetSecretDataRequestBody =
+export type IBatchAddSecretDataRequestBody =
   IBaseAddSecretDataRequestBody<IBatchAddData>;
 
 /**
