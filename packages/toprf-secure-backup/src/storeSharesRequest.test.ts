@@ -203,7 +203,7 @@ describe('secure backup operations', function () {
       return acc;
     }, {});
 
-    const authTokens = await authenticateUser({
+    const { authTokensData } = await authenticateUser({
       idToken,
       verifier,
       verifierID,
@@ -212,7 +212,7 @@ describe('secure backup operations', function () {
       commitmentSignatures: commitmentResults,
     });
 
-    expect(authTokens).toBeDefined();
+    expect(authTokensData).toBeDefined();
 
     // Original password setup
     const originalPasswordBytes = toBytes('original-password');
@@ -225,7 +225,7 @@ describe('secure backup operations', function () {
       nodeEndpointsMap: selectedEndpointsMap,
       verifier,
       verifierId: verifierID,
-      authTokens,
+      authTokens: authTokensData,
       keyIndex: 1,
       oprfKey,
       authPubKey: originalAuthKeyPair.pk,
@@ -244,7 +244,7 @@ describe('secure backup operations', function () {
       nodeEndpointsMap: selectedEndpointsMap,
       verifier,
       verifierId: verifierID,
-      authTokens,
+      authTokens: authTokensData,
       oldAuthPrivKey: originalAuthKeyPair.sk,
       keyIndex: 2,
       newOprfKey,
