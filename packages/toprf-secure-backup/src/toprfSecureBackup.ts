@@ -16,7 +16,6 @@ import type {
   CreateEncryptionKeyParams,
   CreateEncryptionKeyResult,
   FetchAllSecretDataParams,
-  FetchSecretDataResult,
   IToprfSecureBackup,
   RecoverEncryptionKeyParams,
   RecoverEncryptionKeyResult,
@@ -235,7 +234,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    */
   async fetchAllSecretDataItems(
     params: FetchAllSecretDataParams,
-  ): Promise<FetchSecretDataResult> {
+  ): Promise<Uint8Array[]> {
     const metadataStore = await this.#createMetadataStore();
     return metadataStore.fetchAllSecretDataItems(
       params.decKey,
