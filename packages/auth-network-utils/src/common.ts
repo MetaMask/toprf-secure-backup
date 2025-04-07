@@ -1,6 +1,6 @@
+import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
 import type { JRPCResponse } from '@toruslabs/constants';
 import BN from 'bn.js';
-import { keccak256 } from 'ethereum-cryptography/keccak';
 import JsonStringify from 'json-stable-stringify';
 
 import { SomeError } from './errors';
