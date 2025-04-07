@@ -49,7 +49,9 @@ describe('validateThresholdAuthenticateResponses', () => {
     ];
 
     const result = await validateThresholdAuthenticateResponses(responses);
-    expect(result).toStrictEqual(responses.map((res) => res.result));
+    expect(result.authRequestResults).toStrictEqual(
+      responses.map((res) => res.result),
+    );
   });
 
   it('should validate successful responses for new user', async () => {
@@ -62,7 +64,9 @@ describe('validateThresholdAuthenticateResponses', () => {
     ];
 
     const result = await validateThresholdAuthenticateResponses(responses);
-    expect(result).toStrictEqual(responses.map((res) => res.result));
+    expect(result.authRequestResults).toStrictEqual(
+      responses.map((res) => res.result),
+    );
   });
 
   it('should reject if insufficient responses', async () => {
@@ -136,7 +140,7 @@ describe('validateThresholdAuthenticateResponses', () => {
     ];
 
     const result = await validateThresholdAuthenticateResponses(responses);
-    expect(result).toStrictEqual(
+    expect(result.authRequestResults).toStrictEqual(
       responses.filter((res) => res.result).map((res) => res.result),
     );
   });
@@ -185,7 +189,7 @@ describe('authenticate request', function () {
       acc[result.nodeIndex] = nodeEndpointsMap[result.nodeIndex];
       return acc;
     }, {});
-    const authResult = await authenticateUser({
+    const { authTokensData, isNewUser } = await authenticateUser({
       idToken,
       verifier,
       verifierID,
@@ -193,7 +197,8 @@ describe('authenticate request', function () {
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
     });
-    expect(authResult).toBeDefined();
-    expect(authResult.length).toBeGreaterThanOrEqual(3);
+    expect(authTokensData).toBeDefined();
+    expect(authTokensData.length).toBeGreaterThanOrEqual(3);
+    expect(isNewUser).toBe(true);
   });
 });

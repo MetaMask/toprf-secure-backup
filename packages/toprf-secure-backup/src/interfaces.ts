@@ -45,11 +45,13 @@ export type NodeAuthTokens = NodeAuthToken[];
 /**
  * nodeAuthTokens - An array of authentication tokens issued by the nodes.
  *
- * hasValidEncKey - Indicates whether a valid encryption key exists.
+ * isNewUser - Indicates if the user has completed the key setup process or not.
+ * if `true` then the user hasn't completed the social + password setup process.
+ * if `false` then the user has completed the social + password setup process.
  */
 export type AuthenticateResult = {
   nodeAuthTokens: NodeAuthTokens;
-  hasValidEncKey: boolean;
+  isNewUser: boolean;
 };
 
 /**

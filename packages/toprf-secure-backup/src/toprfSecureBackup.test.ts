@@ -13,6 +13,9 @@ function generateRandomPassword(): string {
   return Math.random().toString(36).slice(2, length);
 }
 
+const EXISTNG_USER_VERIFIER_ID = 'test-verifier-id-existing-user';
+
+// todo: add tests for the scenario when a existing user tries to create a new enc key.
 describe('toprf secret backup', function () {
   it('should be able to authenticate user', async function () {
     const verifier = 'torus-test-health';
@@ -30,9 +33,7 @@ describe('toprf secret backup', function () {
     expect(result).toBeDefined();
     expect(result.nodeAuthTokens).toBeDefined();
     expect(result.nodeAuthTokens.length).toBeGreaterThan(0);
-
-    // as this user doesn't have any enc key yet.
-    expect(result.hasValidEncKey).toBe(false);
+    expect(result.isNewUser).toBe(true);
   });
 
   it('should be able to create enc key', async function () {
@@ -48,6 +49,7 @@ describe('toprf secret backup', function () {
       verifier,
       verifierID,
     });
+    expect(result.isNewUser).toBe(true);
     const encKey = await toprfSecureBackup.createEncKey({
       nodeAuthTokens: result.nodeAuthTokens,
       password: generateRandomPassword(),
@@ -59,6 +61,26 @@ describe('toprf secret backup', function () {
     expect(encKey.authKeyPair.sk).toBeDefined();
     expect(encKey.authKeyPair.pk).toBeDefined();
     expect(encKey.encKey).toBeDefined();
+  });
+
+  it('should be return isNewUser as false for existing user', async function () {
+    const verifier = 'torus-test-health';
+    const verifierID = EXISTNG_USER_VERIFIER_ID;
+    const idToken = generateIdToken(verifierID, 'ES256');
+    const toprfSecureBackup = new ToprfSecureBackup({
+      network: 'sapphire_devnet',
+    });
+
+    const result = await toprfSecureBackup.authenticate({
+      idTokens: [idToken],
+      verifier,
+      verifierID,
+    });
+
+    expect(result).toBeDefined();
+    expect(result.nodeAuthTokens).toBeDefined();
+    expect(result.nodeAuthTokens.length).toBeGreaterThan(0);
+    expect(result.isNewUser).toBe(false);
   });
 
   it('should be able to recover enc key', async function () {
