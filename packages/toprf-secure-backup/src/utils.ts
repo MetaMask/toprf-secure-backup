@@ -14,11 +14,11 @@ import {
 } from '@metamask/auth-network-utils';
 import { secp256k1 as secp256k1Noble } from '@noble/curves/secp256k1';
 import { bytesToHex } from '@noble/hashes/utils';
+import { keccak_256 } from '@noble/hashes/sha3';
 import { decrypt, encrypt } from '@toruslabs/eccrypto';
 import { post } from '@toruslabs/http-helpers';
 import BN from 'bn.js';
 import type * as EC from 'elliptic';
-import { keccak256 } from 'ethereum-cryptography/keccak';
 
 import type { KeyChangeProof, NodeAuthTokens } from './interfaces';
 import type { ShareImportItem } from './jrpcInterfaces';
@@ -240,7 +240,7 @@ export const createKeyChangeProof = (
   };
 
   const jsonData = JSON.stringify(dataToSign);
-  const dataHash = keccak256(Buffer.from(jsonData));
+  const dataHash = keccak_256(jsonData);
   const signature = createEthereumSignature(dataHash, oldAuthPrivKey);
 
   return {
