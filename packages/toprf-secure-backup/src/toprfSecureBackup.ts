@@ -121,7 +121,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   /**
    * This function locally creates an OPRF key without storing it at the key
    * management service. It returns the OPRF key, derives the corresponding key
-   * seed and derived keys.
+   * seed, authentication key pair and encryption key.
    *
    * @param params - The parameters for creating the encryption key.
    * @param params.password - New password of the user.
