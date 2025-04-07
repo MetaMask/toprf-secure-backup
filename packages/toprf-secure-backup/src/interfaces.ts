@@ -236,6 +236,34 @@ export type FetchSecretDataResult = Uint8Array[] | null;
 export type IToprfSecureBackup = {
   authenticate: (params: AuthenticateParams) => Promise<AuthenticateResult>;
 
+  /**
+   * This function creates an encryption key locally.
+   *
+   * @param params - The parameters for creating an encryption key.
+   * @param params.password - The password of the user.
+   * @param params.randomScalar - Optional random scalar to be used for the OPRF key.
+   *
+   * @returns {CreateLocalEncryptionKeyResult} A promise that resolves with the encryption key.
+   */
+  createLocalEncKey: (
+    params: CreateLocalEncryptionKeyParams,
+  ) => CreateLocalEncryptionKeyResult;
+
+  /**
+   * This function backs up an oprf key's shares to the servers.
+   *
+   * @param params - The parameters for backing up an oprf key's shares.
+   * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
+   * @param params.keyIndex - The index of the key to be backed up.
+   * @param params.oprfKey - The OPRF key which is used to for local oprf operation.
+   * @param params.authKeyPair - The authentication key pair which is used to authenticate the write request to the metadata store.
+   * @param params.verifier - The verifier name used for authentication.
+   * @param params.verifierId - The verifierId/userID of the user.
+   *
+   * @returns {Promise<void>} A promise that resolves when the oprf key's shares are backed up.
+   */
+  backupOprfKeyShares: (params: BackupOprfKeySharesParams) => Promise<void>;
+
   createEncKey: (
     params: CreateEncryptionKeyParams,
   ) => Promise<CreateEncryptionKeyResult>;
