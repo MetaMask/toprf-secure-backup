@@ -67,11 +67,14 @@ const sendAuthenticateRequest = async (
  * Validates the authenticate responses
  *
  * @param resultArr - The authenticate request result
- * @returns The authenticate request result
+ * @returns The authenticate request result and a boolean indicating if the user is new or not.
  */
 export const validateThresholdAuthenticateResponses = async (
   resultArr: AuthJRPCResponse[],
-): Promise<AuthRequestResult[]> => {
+): Promise<{
+  authRequestResults: AuthRequestResult[];
+  isNewUser: boolean;
+}> => {
   const completedRequests = resultArr.filter((res): res is AuthJRPCResponse => {
     if (!res || typeof res !== 'object') {
       return false;
@@ -102,18 +105,23 @@ export const validateThresholdAuthenticateResponses = async (
       `Threshold pubKey not found for ${JSON.stringify(pubData)}`,
     );
   }
-  const newUser = !thresholdPubData.pubKey;
+  const isNewUser = !thresholdPubData.pubKey;
   const hasMaxResponses =
     completedRequests.length >= NEW_USER_AUTHENTICATION_THRESHOLD;
 
   // if it is new user then we need to wait for all the responses because we will need all nodes to be online
   // while storing shares of this new user.
-  if (newUser && !hasMaxResponses) {
+  if (isNewUser && !hasMaxResponses) {
     throw TOPRFError.invalidAuthenticateResults(
       `Not enough completed requests. Expected: ${NEW_USER_AUTHENTICATION_THRESHOLD}, got: ${completedRequests.length}`,
     );
   }
-  return completedRequests.map((res) => res.result as AuthRequestResult);
+  return {
+    authRequestResults: completedRequests.map(
+      (res) => res.result as AuthRequestResult,
+    ),
+    isNewUser,
+  };
 };
 
 /**
@@ -127,7 +135,7 @@ export const validateThresholdAuthenticateResponses = async (
  * @param params.nodeEndpointsMap - The map of node indexes to endpoints map to be used for the authenticate request.
  * @param params.commitmentSignatures - The idToken commitment signatures to be used for the authenticate request.
  * @returns resultArr - The authenticate request result, where each element is
- * a signed authenticate data from a node.
+ * a signed authenticate data from a node and a boolean indicating if the user is new or not.
  */
 export const authenticateUser = async (params: {
   idToken: string;
@@ -136,7 +144,10 @@ export const authenticateUser = async (params: {
   sessionPrivateKey: Uint8Array;
   nodeEndpointsMap: Record<number, string>;
   commitmentSignatures: CommitmentRequestResult[];
-}): Promise<AuthRequestResult[]> => {
+}): Promise<{
+  authTokensData: AuthRequestResult[];
+  isNewUser: boolean;
+}> => {
   const {
     idToken,
     nodeEndpointsMap,
@@ -156,14 +167,18 @@ export const authenticateUser = async (params: {
     sendAuthenticateRequest(endpoint, requestParams),
   );
 
-  const results = await Some<AuthJRPCResponse, AuthRequestResult[]>(
-    promiseArr,
-    async (responses: AuthJRPCResponse[]) =>
-      validateThresholdAuthenticateResponses(responses),
+  const { authRequestResults, isNewUser } = await Some<
+    AuthJRPCResponse,
+    {
+      authRequestResults: AuthRequestResult[];
+      isNewUser: boolean;
+    }
+  >(promiseArr, async (responses: AuthJRPCResponse[]) =>
+    validateThresholdAuthenticateResponses(responses),
   );
 
   const decryptedAuthResults = await Promise.all(
-    results.map(async (result: AuthRequestResult) => {
+    authRequestResults.map(async (result: AuthRequestResult) => {
       const { authToken, nodeIndex, nodePubKey, pubKey, keyIndex } = result;
       const decryptedAuthToken = await decryptAuthToken(
         authToken,
@@ -178,5 +193,8 @@ export const authenticateUser = async (params: {
       };
     }),
   );
-  return decryptedAuthResults;
+  return {
+    authTokensData: decryptedAuthResults,
+    isNewUser,
+  };
 };
