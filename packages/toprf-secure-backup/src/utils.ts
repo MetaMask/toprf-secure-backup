@@ -14,7 +14,6 @@ import {
 } from '@metamask/auth-network-utils';
 import { secp256k1 as secp256k1Noble } from '@noble/curves/secp256k1';
 import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
-import { bytesToHex } from '@noble/hashes/utils';
 import { decrypt, encrypt } from '@toruslabs/eccrypto';
 import { post } from '@toruslabs/http-helpers';
 import BN from 'bn.js';
@@ -207,11 +206,10 @@ const createEthereumSignature = (
   const privateKeyHex = privateKeyBigInt.toString(16).padStart(64, '0');
   const signResult = secp256k1Noble.sign(dataHash, privateKeyHex);
 
-  const sigR = bytesToHex(signResult.toCompactRawBytes().slice(0, 32));
-  const sigS = bytesToHex(signResult.toCompactRawBytes().slice(32, 64));
+  const signature = signResult.toCompactHex();
   const recV = (signResult.recovery + 27).toString(16).padStart(2, '0');
 
-  return sigR + sigS + recV;
+  return signature + recV;
 };
 
 /**
