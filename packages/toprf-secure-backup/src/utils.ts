@@ -19,7 +19,7 @@ import { post } from '@toruslabs/http-helpers';
 import BN from 'bn.js';
 import type * as EC from 'elliptic';
 
-import { PREPARE_SHARES_THRESHOLD } from './constants';
+import { GENERATE_SHARE_THRESHOLD } from './constants';
 import type { KeyChangeProof, NodeAuthTokens } from './interfaces';
 import type { ShareImportItem } from './jrpcInterfaces';
 
@@ -166,7 +166,7 @@ export const prepareNodeShares = (
   const allNodeIndexes = Object.keys(nodeEndpointsMap).map((val: string) =>
     parseInt(val, 10),
   );
-  const threshold = PREPARE_SHARES_THRESHOLD;
+  const threshold = GENERATE_SHARE_THRESHOLD;
   const shares = generateShares(ecCurve, allNodeIndexes, privKeyBN, threshold);
 
   return { shares, nodeIndexes: allNodeIndexes };
