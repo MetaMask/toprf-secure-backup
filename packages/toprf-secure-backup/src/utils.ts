@@ -178,18 +178,14 @@ export const prepareNodeShares = (
  * @returns Base64 string of padded share
  */
 const formatShareForSigning = (shareValue: BN): string => {
-  // Convert share value to bytes
-  const shareBigInt = BigInt(shareValue.toString());
-  const hexStr = shareBigInt.toString(16);
-  const padded = hexStr.length % 2 === 0 ? hexStr : `0${hexStr}`;
-  const shareBytes = Buffer.from(padded, 'hex');
-
-  // Create a 32-byte buffer with share bytes at the end
-  const fullBuffer = Buffer.alloc(32);
-  shareBytes.copy(fullBuffer, 32 - shareBytes.length);
+  // Convert to padded 32-byte buffer with value right-aligned
+  const buffer = Buffer.alloc(32);
+  const hexValue = shareValue.toString(16);
+  const paddedHex = hexValue.padStart(64, '0');
+  Buffer.from(paddedHex, 'hex').copy(buffer);
 
   // Convert to base64
-  return fullBuffer.toString('base64');
+  return buffer.toString('base64');
 };
 
 /**
