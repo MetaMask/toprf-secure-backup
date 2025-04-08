@@ -63,7 +63,7 @@ export type KeyChangeShareImportItem = BaseShareImportItem & KeyChangeProof;
 export type ShareImportItem<
   ShareType extends 'standard' | 'keyChange' = 'standard',
 > = ShareType extends 'standard'
-  ? StandardShareImportItem
+  ? NewUserShareImportItem
   : KeyChangeShareImportItem;
 
 export type StoreKeySharesJRPCRequestParams = {

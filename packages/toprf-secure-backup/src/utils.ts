@@ -258,7 +258,7 @@ export const createKeyChangeProof = (
  * @param keyIndex - Key index for the shares
  * @returns Share import items for standard flow
  */
-export const createStandardShareImportItems = async (
+export const createNewUserShareImportItems = async (
   shares: ShareMap,
   nodeEndpointsMap: Record<number, string>,
   authTokens: NodeAuthTokens,
@@ -396,7 +396,7 @@ export const generateShareImportItems = async <
     ) as unknown as ShareImportItem<ShareType>[];
   }
 
-  return createStandardShareImportItems(
+  return createNewUserShareImportItems(
     shares,
     nodeEndpointsMap,
     authTokens,
