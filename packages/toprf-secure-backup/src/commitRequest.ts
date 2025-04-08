@@ -125,9 +125,27 @@ export const commitIdToken = async (params: {
     sendCommitmentRequest(endpoint, requestParams),
   );
 
+  const bufferWaitTime = 500;
+  const startTime = Date.now();
+
   return Some<CommitmentJRPCResponse, CommitmentRequestResult[]>(
     promiseArr,
-    async (results: CommitmentJRPCResponse[]) =>
-      validateThresholdCommitmentResponses(results),
+    async (results: CommitmentJRPCResponse[]) => {
+      const result = validateThresholdCommitmentResponses(results);
+      // we have achieved desired threshold
+      if (results.length === promiseArr.length) {
+        return result;
+      } else if (Date.now() - startTime > bufferWaitTime) {
+        // if buffer wait time has elapsed, return the result
+        return result;
+      }
+
+      // Hack: Throwing this error so that we can wait for the buffer wait time to complete or
+      // maximum number of requests to complete.
+      // `some` function will call the callbackFn again with the remaining promises if we throw an error on existing promises.
+      throw new Error(
+        'Predicate Error: Threshold achieved, Waiting for maximum number of requests to complete',
+      );
+    },
   );
 };

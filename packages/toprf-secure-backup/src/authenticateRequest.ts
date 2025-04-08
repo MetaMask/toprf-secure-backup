@@ -167,15 +167,32 @@ export const authenticateUser = async (params: {
     sendAuthenticateRequest(endpoint, requestParams),
   );
 
+  // buffer wait time to wait for pending requests to complete even if we have achieved desired threshold.
+  const bufferWaitTime = 500;
+  const startTime = Date.now();
   const { authRequestResults, isNewUser } = await Some<
     AuthJRPCResponse,
     {
       authRequestResults: AuthRequestResult[];
       isNewUser: boolean;
     }
-  >(promiseArr, async (responses: AuthJRPCResponse[]) =>
-    validateThresholdAuthenticateResponses(responses),
-  );
+  >(promiseArr, async (responses: AuthJRPCResponse[]) => {
+    const result = await validateThresholdAuthenticateResponses(responses);
+    // we have achieved desired threshold
+    if (responses.length === promiseArr.length) {
+      // if buffer wait time has elapsed, return the result
+      return result;
+    } else if (Date.now() - startTime > bufferWaitTime) {
+      return result;
+    }
+
+    // Hack: Throwing this error so that we can wait for the buffer wait time to complete or
+    // maximum number of requests to complete.
+    // `some` function will call the callbackFn again with the remaining promises if we throw an error on existing promises.
+    throw new Error(
+      'Predicate Error: Threshold achieved, Waiting for maximum number of requests to complete',
+    );
+  });
 
   const decryptedAuthResults = await Promise.all(
     authRequestResults.map(async (result: AuthRequestResult) => {
