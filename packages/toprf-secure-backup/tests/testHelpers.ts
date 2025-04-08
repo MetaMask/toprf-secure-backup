@@ -37,3 +37,22 @@ export const generateIdToken = (
 
   return sign(payload, jwtPrivateKey, algo);
 };
+
+/**
+ * Generates a random password for testing purposes.
+ *
+ * @returns A random password.
+ */
+export function generateRandomPassword(): string {
+  const length = Math.random() * 10 + 8;
+  return Math.random().toString(36).slice(2, length);
+}
+
+/**
+ * Generates a random verifier ID for testing purposes.
+ *
+ * @returns A random verifier ID.
+ */
+export function generateRandomVerifierId(): string {
+  return Math.random().toString(36).slice(2, 10);
+}

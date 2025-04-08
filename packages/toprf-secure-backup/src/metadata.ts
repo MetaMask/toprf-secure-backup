@@ -6,12 +6,11 @@ import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
 import { bytesToHex } from '@noble/hashes/utils';
 
 import type {
-  FetchSecretDataResult,
   IGetSecretDataRequestBody,
   KeyPair,
   AddSecretDataItemParams,
-  ISetSecretDataRequestBody,
-  IBatchSetSecretDataRequestBody,
+  IAddSecretDataRequestBody,
+  IBatchAddSecretDataRequestBody,
   BatchAddSecretDataItemParams,
   IMetadataLockRequestBody,
   NodeAuthToken,
@@ -137,7 +136,7 @@ export class MetadataStore {
   async fetchAllSecretDataItems(
     encKey: Uint8Array,
     authKeyPair: KeyPair,
-  ): Promise<FetchSecretDataResult> {
+  ): Promise<Uint8Array[]> {
     try {
       const result = await this.#getAllDataItems({
         encKey,
@@ -444,8 +443,8 @@ export class MetadataStore {
     rawData: RawDataType,
     authKeyPair: KeyPair,
   ): RawDataType extends Uint8Array
-    ? ISetSecretDataRequestBody
-    : IBatchSetSecretDataRequestBody {
+    ? IAddSecretDataRequestBody
+    : IBatchAddSecretDataRequestBody {
     const timestamp = Date.now().toString();
     const feature = this.#feature;
 
@@ -477,8 +476,8 @@ export class MetadataStore {
       timestamp,
       pubKey,
     } as RawDataType extends Uint8Array
-      ? ISetSecretDataRequestBody
-      : IBatchSetSecretDataRequestBody;
+      ? IAddSecretDataRequestBody
+      : IBatchAddSecretDataRequestBody;
   }
 
   /**

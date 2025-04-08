@@ -2,7 +2,7 @@
 // of PRFs.
 /* eslint-disable id-length */
 
-import { secp256k1 } from 'ethereum-cryptography/secp256k1';
+import { secp256k1 } from '@noble/curves/secp256k1';
 
 import { generateRandomScalar, OPRF } from './oprf';
 

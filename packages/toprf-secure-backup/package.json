@@ -56,12 +56,12 @@
     "@toruslabs/eccrypto": "^6.0.2",
     "@toruslabs/fetch-node-details": "^15.0.0",
     "@toruslabs/http-helpers": "^8.1.1",
-    "bn.js": "^5.2.1",
-    "ethereum-cryptography": "^3.1.0"
+    "bn.js": "^5.2.1"
   },
   "devDependencies": {
     "@babel/runtime": "^7.26.10",
     "@metamask/auto-changelog": "^3.4.4",
+    "@types/bn.js": "^5.1.6",
     "@types/jest": "^29.5.14",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/node-fetch": "2",

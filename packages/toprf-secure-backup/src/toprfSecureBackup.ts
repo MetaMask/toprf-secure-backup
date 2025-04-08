@@ -1,4 +1,3 @@
-import { thresholdSame } from '@metamask/auth-network-utils';
 import { utf8ToBytes } from '@noble/curves/abstract/utils';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import type {
@@ -9,17 +8,13 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
-import {
-  EXISTING_USER_AUTHENTICATION_THRESHOLD,
-  FIRST_KEY_INDEX,
-} from './constants';
+import { FIRST_KEY_INDEX } from './constants';
 import type {
   AuthenticateParams,
   AuthenticateResult,
   CreateEncryptionKeyParams,
   CreateEncryptionKeyResult,
   FetchAllSecretDataParams,
-  FetchSecretDataResult,
   IToprfSecureBackup,
   RecoverEncryptionKeyParams,
   RecoverEncryptionKeyResult,
@@ -68,7 +63,10 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @param params.verifier - The verifier who issued the idToken.
    * @param params.verifierID - The verifierID/userID assigned to the user by the verifier.
    *
-   * @returns A promise that resolves with the authentication result.
+   * @returns - The authentication result containing the authentication tokens and a boolean indicating if the user is new or not.
+   * isNewUser - Indicates if the user has completed the key setup process or not.
+   * if `true` then the user hasn't completed the social + password setup process.
+   * if `false` then the user has completed the social + password setup process.
    * @throws {Error} If idToken is older than 6 minutes.
    */
   async authenticate(params: AuthenticateParams): Promise<AuthenticateResult> {
@@ -97,7 +95,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     }, {});
 
     // get auth tokens from nodes
-    const authTokens = await authenticateUser({
+    const { authTokensData, isNewUser } = await authenticateUser({
       idToken: params.idTokens[0],
       verifier: params.verifier,
       verifierID: params.verifierID,
@@ -105,20 +103,13 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
     });
-    const hasValidEncKey = thresholdSame(
-      authTokens.map((tokenData) => ({
-        token: tokenData.authToken,
-        keyIndex: tokenData.keyIndex,
-      })),
-      EXISTING_USER_AUTHENTICATION_THRESHOLD,
-    );
     return {
-      nodeAuthTokens: authTokens.map((tokenData) => ({
+      nodeAuthTokens: authTokensData.map((tokenData) => ({
         authToken: tokenData.authToken,
         nodeIndex: tokenData.nodeIndex,
         nodePubKey: tokenData.nodePubKey,
       })),
-      hasValidEncKey: Boolean(hasValidEncKey),
+      isNewUser,
     };
   }
 
@@ -294,7 +285,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    */
   async fetchAllSecretDataItems(
     params: FetchAllSecretDataParams,
-  ): Promise<FetchSecretDataResult> {
+  ): Promise<Uint8Array[]> {
     const metadataStore = await this.#createMetadataStore();
     return metadataStore.fetchAllSecretDataItems(
       params.decKey,
