@@ -13,8 +13,8 @@ import {
   toSnakeCaseKeys,
 } from '@metamask/auth-network-utils';
 import { secp256k1 as secp256k1Noble } from '@noble/curves/secp256k1';
+import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
 import { bytesToHex } from '@noble/hashes/utils';
-import { keccak_256 } from '@noble/hashes/sha3';
 import { decrypt, encrypt } from '@toruslabs/eccrypto';
 import { post } from '@toruslabs/http-helpers';
 import BN from 'bn.js';
@@ -240,7 +240,7 @@ export const createKeyChangeProof = (
   };
 
   const jsonData = JSON.stringify(dataToSign);
-  const dataHash = keccak_256(jsonData);
+  const dataHash = keccak256(jsonData);
   const signature = createEthereumSignature(dataHash, oldAuthPrivKey);
 
   return {
