@@ -7,6 +7,7 @@ import { commitIdToken } from './commitRequest';
 import { deriveAuthenticationKeyPair } from './keyDerivation';
 import { OPRF, generateRandomScalar } from './oprf';
 import { changeKey, storeKeyShares } from './storeSharesRequest';
+import { recoverTOPRFSeed } from './toprfEvalRequest';
 import { createNodeEndpointsMap } from './utils';
 import { generateIdToken } from '../tests/testHelpers';
 
@@ -240,6 +241,30 @@ describe('secure backup operations', function () {
     const newSeed = OPRF.localEval(newOprfKey, newPasswordBytes);
     const newAuthKeyPair = deriveAuthenticationKeyPair(newSeed);
 
+    // Verify that the original password works
+    const originalRecoveredSeed = await recoverTOPRFSeed({
+      authTokens: authTokensData,
+      nodeEndpointsMap: selectedEndpointsMap,
+      verifier,
+      verifierId: verifierID,
+      userInput: originalPasswordBytes,
+    });
+
+    expect(originalRecoveredSeed).toBeDefined();
+    expect(originalRecoveredSeed.length).toBeGreaterThan(0);
+
+    // Verify that the new password doesn't work
+    await expect(
+      recoverTOPRFSeed({
+        authTokens: authTokensData,
+        nodeEndpointsMap: selectedEndpointsMap,
+        verifier,
+        verifierId: verifierID,
+        userInput: newPasswordBytes,
+      }),
+    ).rejects.toThrow('Could not derive encryption key');
+
+    // Change the key
     const keyChangeResponse = await changeKey({
       nodeEndpointsMap: selectedEndpointsMap,
       verifier,
@@ -253,5 +278,28 @@ describe('secure backup operations', function () {
 
     expect(keyChangeResponse).toBeDefined();
     expect(keyChangeResponse.error).toBeUndefined();
+
+    // Verify that the original password doesn't work
+    await expect(
+      recoverTOPRFSeed({
+        authTokens: authTokensData,
+        nodeEndpointsMap: selectedEndpointsMap,
+        verifier,
+        verifierId: verifierID,
+        userInput: originalPasswordBytes,
+      }),
+    ).rejects.toThrow('Could not derive encryption key');
+
+    // Verify that the new password works
+    const newRecoveredSeed = await recoverTOPRFSeed({
+      authTokens: authTokensData,
+      nodeEndpointsMap: selectedEndpointsMap,
+      verifier,
+      verifierId: verifierID,
+      userInput: newPasswordBytes,
+    });
+
+    expect(newRecoveredSeed).toBeDefined();
+    expect(newRecoveredSeed.length).toBeGreaterThan(0);
   });
 });
