@@ -56,7 +56,7 @@ export type BaseShareImportItem = {
   sssEndpoint: string;
 };
 
-export type StandardShareImportItem = BaseShareImportItem;
+export type NewUserShareImportItem = BaseShareImportItem;
 
 export type KeyChangeShareImportItem = BaseShareImportItem & KeyChangeProof;
 

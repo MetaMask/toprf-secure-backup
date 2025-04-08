@@ -199,7 +199,7 @@ export const createKeyChangeRequestParams = async (
  * @param params.verifier - The verifier to be used for the key change request.
  * @param params.verifierId - The verifierId to be used for the key change request.
  * @param params.authTokens - The authTokens issued by the nodes on authenticating the user.
- * @param params.keyIndex - The key index to be used for the key change request.
+ * @param params.keyIndex - The new key index to be used for the key change request.
  * @param params.newOprfKey - The new oprfKey to be used for the key change request.
  * @param params.newAuthPubKey - The new auth pubkey for the updated authentication.
  * @param params.oldAuthPrivKey - The old auth private key used to sign the key change request.
