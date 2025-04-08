@@ -1,7 +1,6 @@
 import {
   Some,
   TOPRFError,
-  kCombinations,
   lagrangeInterpolationForPoints,
   thresholdSame,
 } from '@metamask/auth-network-utils';
@@ -113,71 +112,58 @@ export const validateSeed = async (
     throw TOPRFError.couldNotDeriveThresholdAuthPubKey();
   }
 
-  const blindedOutputs = completedRequests
-    .map((resp): BlindedOutputShare | null => {
+  const sortedBlindedOutputs = completedRequests
+    .reduce<BlindedOutputShare[]>((acc, resp) => {
       const { blindedOutputX, blindedOutputY, nodeIndex } = resp.result ?? {};
 
-      // Check if all required values are defined
+      // Skip if any required values are missing
       if (!blindedOutputX || !blindedOutputY || !nodeIndex) {
-        return null;
+        return acc;
       }
-      const blindedOutput = secp256k1.ProjectivePoint.fromAffine({
-        x: BigInt(`0x${blindedOutputX}`),
-        y: BigInt(`0x${blindedOutputY}`),
+
+      acc.push({
+        blindedOutput: secp256k1.ProjectivePoint.fromAffine({
+          x: BigInt(`0x${blindedOutputX}`),
+          y: BigInt(`0x${blindedOutputY}`),
+        }),
+        nodeIndex,
       });
 
-      return {
-        blindedOutput,
-        nodeIndex,
-      };
-    })
-    .filter((point): point is BlindedOutputShare => point !== null);
+      return acc;
+    }, [])
+    .sort((a, b) => a.nodeIndex - b.nodeIndex);
 
-  // evaluate auth priv key using oprf and match with the threshold auth pub key
-  const allCombis = kCombinations(
-    completedRequests.length,
-    EXISTING_USER_AUTHENTICATION_THRESHOLD,
-  );
   let seed: Uint8Array | null = null;
 
-  for (const currentCombi of allCombis) {
-    const currentCombiPoints = blindedOutputs.filter((_, index) =>
-      currentCombi.includes(index),
-    );
-    const selectedBlindedOutputs = currentCombiPoints.map(
-      (point) => point.blindedOutput,
-    );
-    const nodeIndexes = currentCombiPoints.map((point) =>
-      BigInt(point.nodeIndex),
-    );
-    // Interpolate the curve points directly using Lagrange interpolation
-    const blindedOutput = lagrangeInterpolationForPoints(
-      secp256k1.CURVE.n,
-      selectedBlindedOutputs,
-      nodeIndexes,
-    );
+  // Interpolate using sorted outputs
+  // since key shares are also generated in ascending order of node index.
+  // we can use the sorted blinded outputs to interpolate the seed
+  const blindedOutput = lagrangeInterpolationForPoints(
+    secp256k1.CURVE.n,
+    sortedBlindedOutputs.map((point) => point.blindedOutput),
+    sortedBlindedOutputs.map((point) => BigInt(point.nodeIndex)),
+  );
 
-    // Unblind and hash the result
-    const recoveredSeed = OPRF.unblindAndHash(
-      userInput,
-      blindedOutput,
-      randomScalar,
-    );
-    const { pk } = deriveAuthenticationKeyPair(recoveredSeed);
-    const derivedPubKey = secp256k1.ProjectivePoint.fromHex(pk);
-    const thresholdPubKey =
-      secp256k1.ProjectivePoint.fromHex(thresholdAuthPubKey);
-    if (derivedPubKey.equals(thresholdPubKey)) {
-      seed = recoveredSeed;
-      break;
-    }
+  // Unblind and hash the result
+  const recoveredSeed = OPRF.unblindAndHash(
+    userInput,
+    blindedOutput,
+    randomScalar,
+  );
+  const { pk } = deriveAuthenticationKeyPair(recoveredSeed);
+  const derivedPubKey = secp256k1.ProjectivePoint.fromHex(pk);
+  const thresholdPubKey =
+    secp256k1.ProjectivePoint.fromHex(thresholdAuthPubKey);
+
+  if (derivedPubKey.equals(thresholdPubKey)) {
+    seed = recoveredSeed;
   }
 
   if (!seed) {
     throw TOPRFError.couldNotDeriveEncryptionKey();
   }
 
-  return Promise.resolve(seed);
+  return seed;
 };
 
 /**
