@@ -6,6 +6,7 @@ import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
 import { deriveAuthenticationKeyPair } from './keyDerivation';
 import { OPRF, generateRandomScalar } from './oprf';
+import { resetRateLimits } from './resetRateLimits';
 import { changeKey, storeKeyShares } from './storeSharesRequest';
 import { recoverTOPRFSeed } from './toprfEvalRequest';
 import { createNodeEndpointsMap } from './utils';
@@ -263,6 +264,14 @@ describe('secure backup operations', function () {
         userInput: newPasswordBytes,
       }),
     ).rejects.toThrow('Could not derive encryption key');
+
+    // Reset the rate limit
+    await resetRateLimits({
+      authTokens: authTokensData,
+      nodeEndpointsMap: selectedEndpointsMap,
+      verifier,
+      verifierId: verifierID,
+    });
 
     // Change the key
     const keyChangeResponse = await changeKey({

@@ -180,10 +180,7 @@ export const prepareNodeShares = (
  */
 const formatShareForSigning = (shareValue: BN): string => {
   // Convert to padded 32-byte buffer with value right-aligned
-  const buffer = Buffer.alloc(32);
-  const hexValue = shareValue.toString(16);
-  const paddedHex = hexValue.padStart(64, '0');
-  Buffer.from(paddedHex, 'hex').copy(buffer);
+  const buffer = shareValue.toArrayLike(Buffer, 'be', 32);
 
   // Convert to base64
   return buffer.toString('base64');
