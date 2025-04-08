@@ -159,5 +159,7 @@ describe('store shares request', function () {
 
     expect(storeSharesResponse).toBeDefined();
     expect(storeSharesResponse.error).toBeUndefined();
+
+    console.log('testing');
   });
 });
