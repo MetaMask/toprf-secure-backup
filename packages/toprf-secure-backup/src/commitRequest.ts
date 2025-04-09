@@ -2,6 +2,7 @@ import {
   Some,
   keccak256AndHexify,
   TOPRFError,
+  filterCompletedRequests,
 } from '@metamask/auth-network-utils';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
@@ -68,17 +69,8 @@ const sendCommitmentRequest = async (
 export const validateThresholdCommitmentResponses = async (
   resultArr: CommitmentJRPCResponse[],
 ): Promise<CommitmentRequestResult[]> => {
-  const completedRequests = resultArr.filter(
-    (res): res is CommitmentJRPCResponse => {
-      if (!res || typeof res !== 'object') {
-        return false;
-      }
-      if ('error' in res && res.error) {
-        return false;
-      }
-      return true;
-    },
-  );
+  const completedRequests =
+    filterCompletedRequests<CommitmentJRPCResponse>(resultArr);
 
   if (completedRequests.length < COMMIT_RESPONSE_THRESHOLD) {
     throw TOPRFError.invalidCommitResults(

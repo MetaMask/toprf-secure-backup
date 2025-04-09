@@ -1,6 +1,7 @@
 import {
   Some,
   TOPRFError,
+  filterCompletedRequests,
   kCombinations,
   lagrangeInterpolationForPoints,
   thresholdSame,
@@ -88,17 +89,8 @@ export const validateSeed = async (
   randomScalar: bigint,
   resultArr: ToprfEvalJRPCResponse[],
 ): Promise<{ seed: Uint8Array; shareKeyIndex: number }> => {
-  const completedRequests = resultArr.filter(
-    (res): res is ToprfEvalJRPCResponse => {
-      if (!res || typeof res !== 'object') {
-        return false;
-      }
-      if ('error' in res && res.error) {
-        return false;
-      }
-      return true;
-    },
-  );
+  const completedRequests =
+    filterCompletedRequests<ToprfEvalJRPCResponse>(resultArr);
 
   if (completedRequests.length < EXISTING_USER_AUTHENTICATION_THRESHOLD) {
     throw TOPRFError.insufficientValidResponses(

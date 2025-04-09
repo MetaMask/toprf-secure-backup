@@ -1,4 +1,9 @@
-import { Some, thresholdSame, TOPRFError } from '@metamask/auth-network-utils';
+import {
+  filterCompletedRequests,
+  Some,
+  thresholdSame,
+  TOPRFError,
+} from '@metamask/auth-network-utils';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
 import {
@@ -75,15 +80,8 @@ export const validateThresholdAuthenticateResponses = async (
   authRequestResults: AuthRequestResult[];
   isNewUser: boolean;
 }> => {
-  const completedRequests = resultArr.filter((res): res is AuthJRPCResponse => {
-    if (!res || typeof res !== 'object') {
-      return false;
-    }
-    if ('error' in res && res.error) {
-      return false;
-    }
-    return true;
-  });
+  const completedRequests =
+    filterCompletedRequests<AuthJRPCResponse>(resultArr);
   if (completedRequests.length < EXISTING_USER_AUTHENTICATION_THRESHOLD) {
     throw TOPRFError.invalidAuthenticateResults(
       `Not enough completed requests. Expected: ${EXISTING_USER_AUTHENTICATION_THRESHOLD}, got: ${completedRequests.length}`,

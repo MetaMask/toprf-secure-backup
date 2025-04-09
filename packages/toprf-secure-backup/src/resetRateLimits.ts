@@ -1,4 +1,8 @@
-import { Some, TOPRFError } from '@metamask/auth-network-utils';
+import {
+  filterCompletedRequests,
+  Some,
+  TOPRFError,
+} from '@metamask/auth-network-utils';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
 import { JRPC_METHODS } from './constants';
@@ -72,20 +76,8 @@ export const validateThresholdResetRateLimitResponses = (
   resultArr: ResetRateLimitJRPCResponse[],
   threshold: number,
 ): boolean => {
-  const completedRequests = resultArr.filter(
-    (res): res is ResetRateLimitJRPCResponse => {
-      if (!res || typeof res !== 'object') {
-        return false;
-      }
-      if ('error' in res && res.error) {
-        return false;
-      }
-      if (!res.result) {
-        return false;
-      }
-      return true;
-    },
-  );
+  const completedRequests =
+    filterCompletedRequests<ResetRateLimitJRPCResponse>(resultArr);
   if (completedRequests.length < threshold) {
     throw TOPRFError.insufficientValidResponses(
       `invalid reset rate limit results, expected ${threshold} but got ${completedRequests.length}`,
