@@ -7,7 +7,7 @@ import { commitIdToken } from './commitRequest';
 import { deriveAuthenticationKeyPair } from './keyDerivation';
 import { OPRF, generateRandomScalar } from './oprf';
 import { resetRateLimits } from './resetRateLimits';
-import { changeKey, storeKeyShares } from './storeSharesRequest';
+import { changeKeyShares, storeKeyShares } from './storeSharesRequest';
 import { recoverTOPRFSeed } from './toprfEvalRequest';
 import { createNodeEndpointsMap } from './utils';
 import { generateIdToken } from '../tests/testHelpers';
@@ -274,7 +274,7 @@ describe('secure backup operations', function () {
     });
 
     // Change the key
-    const keyChangeResponse = await changeKey({
+    const keyChangeResponse = await changeKeyShares({
       nodeEndpointsMap: selectedEndpointsMap,
       verifier,
       verifierId: verifierID,

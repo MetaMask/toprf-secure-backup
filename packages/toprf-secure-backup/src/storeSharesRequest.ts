@@ -192,7 +192,7 @@ export const createKeyChangeRequestParams = async (
 };
 
 /**
- * Changes the key for the given node endpoints
+ * Changes the key shares for the given node endpoints
  *
  * @param params - The parameters for the key change request
  * @param params.nodeEndpointsMap - The node endpoints map to be used for the key change request.
@@ -206,7 +206,7 @@ export const createKeyChangeRequestParams = async (
  *
  * @returns The key change request promise.
  */
-export const changeKey = async (
+export const changeKeyShares = async (
   params: KeyChangeRequestParams,
 ): Promise<StoreKeySharesJRPCResponse> => {
   const {
