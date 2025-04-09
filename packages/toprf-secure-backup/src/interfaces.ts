@@ -226,6 +226,15 @@ export type FetchAllSecretDataParams = {
   authKeyPair: KeyPair;
 };
 
+/**
+ * Proof that the user owns the old key when changing to a new password/key
+ * Contains a signature created with the old private key on a timestamp and new key share data.
+ */
+export type KeyChangeProof = {
+  oldKeySignature: string;
+  signatureTimestamp: number;
+};
+
 export type IToprfSecureBackup = {
   authenticate: (params: AuthenticateParams) => Promise<AuthenticateResult>;
 
