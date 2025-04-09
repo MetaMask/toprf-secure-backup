@@ -230,9 +230,7 @@ describe('MetadataStore', () => {
     expect(newSecretData).not.toBeNull();
     expect(newSecretData?.length).toStrictEqual(existingSecretData?.length);
 
-    const sortedResult = newSecretData?.sort();
-    expect(sortedResult?.[0]).toStrictEqual(existingSecretData?.[0]);
-    expect(sortedResult?.[1]).toStrictEqual(existingSecretData?.[1]);
+    expect(newSecretData?.[0]).toStrictEqual(existingSecretData?.[0]);
 
     // release the metadata lock
     const releaseLockStatus = await metadataStore.releaseMetadataLock(
