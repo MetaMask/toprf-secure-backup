@@ -111,3 +111,17 @@ export type ToprfEvalResult = {
 };
 
 export type ToprfEvalJRPCResponse = JRPCResponse<ToprfEvalResult>;
+
+export type GetPubKeyJRPCRequestParams = {
+  authToken: string;
+  verifier: string;
+  verifierId: string;
+};
+
+export type GetPubKeyJRPCRequest = JRPCRequest<GetPubKeyJRPCRequestParams>;
+
+export type GetPubKeyResult = {
+  pubKey: string;
+};
+
+export type GetPubKeyJRPCResponse = JRPCResponse<GetPubKeyResult>;
