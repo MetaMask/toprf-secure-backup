@@ -1,6 +1,7 @@
 import { TOPRFError } from '@metamask/auth-network-utils';
 import { utf8ToBytes } from '@noble/ciphers/utils';
 
+import { FIRST_KEY_INDEX } from './constants';
 import * as resetRateLimitsModule from './resetRateLimits';
 import { ToprfSecureBackup } from './toprfSecureBackup';
 import {
@@ -166,6 +167,7 @@ describe('toprf secret backup', function () {
     expect(recoveredEncKey.authKeyPair.sk).toBeDefined();
     expect(recoveredEncKey.authKeyPair.pk).toBeDefined();
     expect(recoveredEncKey.encKey).toBeDefined();
+    expect(recoveredEncKey.shareKeyIndex).toBeDefined();
     expect(await recoveredEncKey.rateLimitResetResult).toBeUndefined();
 
     expect(recoveredEncKey.authKeyPair.sk).toStrictEqual(encKey.authKeyPair.sk);
@@ -263,6 +265,110 @@ describe('toprf secret backup', function () {
     expect(fetchedSecretData?.[0]).toStrictEqual(secretData);
   });
 
+  it('should be able to change encryption key', async function () {
+    const secretData = utf8ToBytes('test-secret-data-for-key-change');
+    const verifier = 'torus-test-health';
+    const verifierID = `test-verifier-id-${Math.random()}`;
+    const idToken = generateIdToken(verifierID, 'ES256');
+    const toprfSecureBackup = new ToprfSecureBackup({
+      network: 'sapphire_devnet',
+    });
+
+    const result = await toprfSecureBackup.authenticate({
+      idTokens: [idToken],
+      verifier,
+      verifierID,
+    });
+    expect(result.nodeAuthTokens).toBeDefined();
+    expect(result.nodeAuthTokens.length).toBeGreaterThan(0);
+
+    const originalPassword = generateRandomPassword();
+    const originalEncKeyResult = await toprfSecureBackup.createEncKey({
+      nodeAuthTokens: result.nodeAuthTokens,
+      password: originalPassword,
+      verifier,
+      verifierId: verifierID,
+    });
+
+    await toprfSecureBackup.addSecretDataItem({
+      encKey: originalEncKeyResult.encKey,
+      secretData,
+      authKeyPair: originalEncKeyResult.authKeyPair,
+    });
+
+    const originalSecretData = await toprfSecureBackup.fetchAllSecretDataItems({
+      decKey: originalEncKeyResult.encKey,
+      authKeyPair: originalEncKeyResult.authKeyPair,
+    });
+    expect(originalSecretData).not.toBeNull();
+    expect(originalSecretData?.length).toBe(1);
+    expect(originalSecretData?.[0]).toStrictEqual(secretData);
+
+    // Recover the original key to get the shareKeyIndex
+    const recoveredOriginalKey = await toprfSecureBackup.recoverEncKey({
+      nodeAuthTokens: result.nodeAuthTokens,
+      password: originalPassword,
+      verifier,
+      verifierId: verifierID,
+    });
+
+    expect(recoveredOriginalKey.shareKeyIndex).toBe(FIRST_KEY_INDEX);
+
+    // Change to a new encryption key
+    const newPassword = generateRandomPassword();
+    const newEncKeyResult = await toprfSecureBackup.changeEncKey({
+      nodeAuthTokens: result.nodeAuthTokens,
+      verifier,
+      verifierId: verifierID,
+      oldEncKey: originalEncKeyResult.encKey,
+      oldAuthKeyPair: originalEncKeyResult.authKeyPair,
+      newPassword,
+      newShareKeyIndex: recoveredOriginalKey.shareKeyIndex + 1,
+    });
+    expect(newEncKeyResult).toBeDefined();
+    expect(newEncKeyResult.authKeyPair).toBeDefined();
+    expect(newEncKeyResult.encKey).toBeDefined();
+
+    const recoveredNewKey = await toprfSecureBackup.recoverEncKey({
+      nodeAuthTokens: result.nodeAuthTokens,
+      password: newPassword,
+      verifier,
+      verifierId: verifierID,
+    });
+
+    expect(recoveredNewKey.shareKeyIndex).toBe(
+      recoveredOriginalKey.shareKeyIndex + 1,
+    );
+
+    // Verify the new key can access the data
+    const newSecretData = await toprfSecureBackup.fetchAllSecretDataItems({
+      decKey: recoveredNewKey.encKey,
+      authKeyPair: recoveredNewKey.authKeyPair,
+    });
+    expect(newSecretData).not.toBeNull();
+    expect(newSecretData?.length).toBe(1);
+    expect(newSecretData?.[0]).toStrictEqual(secretData);
+
+    // Verify the key change was actually effective by comparing the recovered keys
+    expect(recoveredNewKey.authKeyPair.sk).toStrictEqual(
+      newEncKeyResult.authKeyPair.sk,
+    );
+    expect(recoveredNewKey.authKeyPair.pk).toStrictEqual(
+      newEncKeyResult.authKeyPair.pk,
+    );
+
+    // Verify the old key pair is different from the new key pair
+    expect(recoveredNewKey.authKeyPair.sk).not.toStrictEqual(
+      originalEncKeyResult.authKeyPair.sk,
+    );
+    expect(recoveredNewKey.authKeyPair.pk).not.toStrictEqual(
+      originalEncKeyResult.authKeyPair.pk,
+    );
+    expect(recoveredNewKey.encKey).not.toStrictEqual(
+      originalEncKeyResult.encKey,
+    );
+  });
+
   it('should recover enc key even when rate limit reset fails', async function () {
     const mockResetRateLimits = jest
       .spyOn(resetRateLimitsModule, 'resetRateLimits')
@@ -304,6 +410,7 @@ describe('toprf secret backup', function () {
       expect(recoveredKey.encKey).toBeDefined();
       expect(recoveredKey.authKeyPair.sk).toStrictEqual(encKey.authKeyPair.sk);
       expect(recoveredKey.encKey).toStrictEqual(encKey.encKey);
+      expect(recoveredKey.shareKeyIndex).toBeDefined();
 
       // Rate limit reset should fail
       await expect(recoveredKey.rateLimitResetResult).rejects.toThrow(

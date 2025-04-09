@@ -210,14 +210,14 @@ const createEthereumSignature = (
  * Creates a signature for key change using the share and old private key
  *
  * @param shareValue - Raw share value to sign
- * @param keyIndex - Key index for the share
+ * @param shareKeyIndex - Key index for the share
  * @param nodeIndex - Node index
  * @param oldAuthPrivKey - Old auth private key for signing
  * @returns The signature and timestamp as KeyChangeProof
  */
 export const createKeyChangeProof = (
   shareValue: BN,
-  keyIndex: number,
+  shareKeyIndex: number,
   nodeIndex: number,
   oldAuthPrivKey: bigint,
 ): KeyChangeProof => {
@@ -226,7 +226,7 @@ export const createKeyChangeProof = (
 
   const dataToSign = {
     share_data: shareBase64,
-    share_key_index: keyIndex,
+    share_key_index: shareKeyIndex,
     node_index: nodeIndex,
     timestamp,
   };
@@ -247,14 +247,14 @@ export const createKeyChangeProof = (
  * @param shares - The raw shares generated for each node
  * @param nodeEndpointsMap - Map of node indexes to endpoints
  * @param authTokens - Auth tokens for each node
- * @param keyIndex - Key index for the shares
+ * @param shareKeyIndex - Key index for the shares
  * @returns Share import items for standard flow
  */
 export const createNewUserShareImportItems = async (
   shares: ShareMap,
   nodeEndpointsMap: Record<number, string>,
   authTokens: NodeAuthTokens,
-  keyIndex: number,
+  shareKeyIndex: number,
 ): Promise<ShareImportItem[]> => {
   return Promise.all(
     authTokens.map(async (tokenData) => {
@@ -281,7 +281,7 @@ export const createNewUserShareImportItems = async (
       return {
         encryptedShare: JSON.stringify(encryptedShare),
         encryptedAuthToken: JSON.stringify(encryptedAuthToken),
-        shareKeyIndex: keyIndex,
+        shareKeyIndex,
         nodeIndex,
         sssEndpoint: nodeEndpointsMap[nodeIndex],
       };
@@ -295,7 +295,7 @@ export const createNewUserShareImportItems = async (
  * @param shares - The raw shares generated for each node
  * @param nodeEndpointsMap - Map of node indexes to endpoints
  * @param authTokens - Auth tokens for each node
- * @param keyIndex - Key index for the shares
+ * @param shareKeyIndex - Key index for the shares
  * @param oldAuthPrivKey - Old private key for signing
  * @returns Share import items for key change flow
  */
@@ -303,7 +303,7 @@ export const createKeyChangeShareImportItems = async (
   shares: ShareMap,
   nodeEndpointsMap: Record<number, string>,
   authTokens: NodeAuthTokens,
-  keyIndex: number,
+  shareKeyIndex: number,
   oldAuthPrivKey: bigint,
 ): Promise<ShareImportItem<'keyChange'>[]> => {
   return Promise.all(
@@ -319,7 +319,7 @@ export const createKeyChangeShareImportItems = async (
       const shareValue = new BN(shareJson.share, 16);
       const keyChangeProof = createKeyChangeProof(
         shareValue,
-        keyIndex,
+        shareKeyIndex,
         nodeIndex,
         oldAuthPrivKey,
       );
@@ -340,7 +340,7 @@ export const createKeyChangeShareImportItems = async (
       return {
         encryptedShare: JSON.stringify(encryptedShare),
         encryptedAuthToken: JSON.stringify(encryptedAuthToken),
-        shareKeyIndex: keyIndex,
+        shareKeyIndex,
         nodeIndex,
         sssEndpoint: nodeEndpointsMap[nodeIndex],
         ...keyChangeProof,
@@ -355,7 +355,7 @@ export const createKeyChangeShareImportItems = async (
  * @param nodeEndpointsMap - Map of node indexes to endpoints.
  * @param authTokens - The auth tokens issued by the nodes on authenticating the user.
  * @param privKey - The private key to be used for the share import items.
- * @param keyIndex - The key index to be used for the share import items.
+ * @param shareKeyIndex - The share key index to be used for the share import items.
  * @param args - Additional arguments based on ShareType.
  * When ShareType is 'keyChange', this must include the old auth private key for signing.
  *
@@ -369,7 +369,7 @@ export const generateShareImportItems = async <
   nodeEndpointsMap: Record<number, string>,
   authTokens: NodeAuthTokens,
   privKey: bigint,
-  keyIndex: number,
+  shareKeyIndex: number,
   ...args: ShareType extends 'keyChange' ? [oldAuthPrivKey: bigint] : []
 ): Promise<ShareImportItem<ShareType>[]> => {
   // First prepare the shares for all nodes
@@ -383,7 +383,7 @@ export const generateShareImportItems = async <
       shares,
       nodeEndpointsMap,
       authTokens,
-      keyIndex,
+      shareKeyIndex,
       oldAuthPrivKey,
     ) as unknown as ShareImportItem<ShareType>[];
   }
@@ -392,7 +392,7 @@ export const generateShareImportItems = async <
     shares,
     nodeEndpointsMap,
     authTokens,
-    keyIndex,
+    shareKeyIndex,
   ) as unknown as ShareImportItem<ShareType>[];
 };
 
