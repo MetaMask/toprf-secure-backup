@@ -10,7 +10,6 @@ import {
 import { MetadataLockStatus, MetadataStore } from './metadata';
 import { createNodeEndpointsMap } from './utils';
 
-const MOCK_SEED = randomBytes(32);
 const secretData = utf8ToBytes('test-secret-data');
 
 /**
@@ -66,7 +65,9 @@ describe('MetadataStore', () => {
   let encKey: Uint8Array;
   let authKeyPair: KeyPair;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
+    // we gonna use different seeds for each test case
+    const MOCK_SEED = randomBytes(32);
     encKey = deriveEncryptionKey(MOCK_SEED);
     authKeyPair = deriveAuthenticationKeyPair(MOCK_SEED);
   });
@@ -199,11 +200,9 @@ describe('MetadataStore', () => {
       authKeyPair,
     });
 
-    const existingSecretData = await metadataStore.fetchAllSecretDataItems(
-      encKey,
-      authKeyPair,
-    );
-    expect(existingSecretData).not.toBeNull();
+    const allSecretDataBeforeBatchAdd =
+      await metadataStore.fetchAllSecretDataItems(encKey, authKeyPair);
+    expect(allSecretDataBeforeBatchAdd).not.toBeNull();
 
     // derive new encryption key and authentication key pair from the new seed
     const newSeed = randomBytes(32);
@@ -216,23 +215,34 @@ describe('MetadataStore', () => {
     expect(metadataLock).not.toBeNull();
 
     await metadataStore.batchAddSecretData({
-      secretData: existingSecretData ?? [], // should not be null, the above `expect` should have failed if it was
+      secretData: allSecretDataBeforeBatchAdd ?? [], // should not be null, the above `expect` should have failed if it was
       encKey: newEncKey,
       authKeyPair: newAuthKeyPair,
     });
 
     // the result should be the new encrypted value of the existing secret data
-    const newSecretData = await metadataStore.fetchAllSecretDataItems(
-      newEncKey,
-      newAuthKeyPair,
+    const allSecretDataAfterBatchAdd =
+      await metadataStore.fetchAllSecretDataItems(newEncKey, newAuthKeyPair);
+
+    // verify that secretData values before/after batchAdd should be equal
+    expect(allSecretDataAfterBatchAdd).not.toBeNull();
+    expect(allSecretDataAfterBatchAdd?.length).toStrictEqual(
+      allSecretDataBeforeBatchAdd?.length,
     );
 
-    expect(newSecretData).not.toBeNull();
-    expect(newSecretData?.length).toStrictEqual(existingSecretData?.length);
-
-    const sortedResult = newSecretData?.sort();
-    expect(sortedResult?.[0]).toStrictEqual(existingSecretData?.[0]);
-    expect(sortedResult?.[1]).toStrictEqual(existingSecretData?.[1]);
+    const sortedResult = allSecretDataAfterBatchAdd?.sort();
+    const shouldHaveSameValuesBeforeAfterBatchAdd = sortedResult.every(
+      (dataAfterBatch, idx) => {
+        const dataBeforeBatchAdd = allSecretDataBeforeBatchAdd?.[idx];
+        if (!dataBeforeBatchAdd) {
+          return false;
+        }
+        return Buffer.from(dataAfterBatch).equals(
+          Buffer.from(dataBeforeBatchAdd),
+        );
+      },
+    );
+    expect(shouldHaveSameValuesBeforeAfterBatchAdd).toBe(true);
 
     // release the metadata lock
     const releaseLockStatus = await metadataStore.releaseMetadataLock(
