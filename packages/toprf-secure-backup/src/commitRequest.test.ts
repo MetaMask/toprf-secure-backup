@@ -4,6 +4,7 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import {
   commitIdToken,
+  validateAndWaitForCommitResponses,
   validateThresholdCommitmentResponses,
 } from './commitRequest';
 import type {
@@ -235,5 +236,102 @@ describe('validateThresholdCommitmentResponses', () => {
     await expect(
       validateThresholdCommitmentResponses(responses),
     ).rejects.toBeInstanceOf(TOPRFError);
+  });
+});
+
+describe('validateAndWaitForCommitResponses', () => {
+  /**
+   *
+   * @param nodeIndex - The node index to be used for the mock response.
+   * @returns The mock response.
+   */
+  const mockCommitResponse = (nodeIndex: number): CommitmentJRPCResponse => ({
+    jsonrpc: '2.0',
+    id: 1,
+    result: {
+      nodeIndex,
+      signature: 'mockSignature',
+      nodePubX: 'mockNodePubX',
+      nodePubY: 'mockNodePubY',
+      data: 'mockData',
+    },
+  });
+
+  /**
+   *
+   * @param count - The number of promises to create.
+   * @returns The mock promises.
+   */
+  const createMockCommitPromises = (
+    count: number,
+  ): Promise<CommitmentJRPCResponse>[] =>
+    Array.from({ length: count }, async (_, i) =>
+      Promise.resolve(mockCommitResponse(i)),
+    );
+
+  it('should return results immediately when all promises are complete', async () => {
+    const responses = [
+      mockCommitResponse(1),
+      mockCommitResponse(2),
+      mockCommitResponse(3),
+      mockCommitResponse(4),
+      mockCommitResponse(5),
+    ];
+    const promiseArr = createMockCommitPromises(5);
+    const startTime = Date.now();
+    const bufferWaitTime = 500;
+
+    const result = await validateAndWaitForCommitResponses(
+      responses,
+      promiseArr,
+      startTime,
+      bufferWaitTime,
+    );
+
+    expect(result).toHaveLength(5);
+  });
+
+  it('should return results when buffer time has elapsed', async () => {
+    const responses = [
+      mockCommitResponse(1),
+      mockCommitResponse(2),
+      mockCommitResponse(3),
+      mockCommitResponse(4),
+    ];
+    const promiseArr = createMockCommitPromises(5);
+    const startTime = Date.now() - 600;
+    const bufferWaitTime = 500;
+
+    const result = await validateAndWaitForCommitResponses(
+      responses,
+      promiseArr,
+      startTime,
+      bufferWaitTime,
+    );
+
+    expect(result).toHaveLength(4);
+  });
+
+  it('should throw error to continue waiting if buffer time not elapsed', async () => {
+    const responses = [
+      mockCommitResponse(1),
+      mockCommitResponse(2),
+      mockCommitResponse(3),
+      mockCommitResponse(4),
+    ];
+    const promiseArr = createMockCommitPromises(5);
+    const startTime = Date.now();
+    const bufferWaitTime = 500;
+
+    await expect(
+      validateAndWaitForCommitResponses(
+        responses,
+        promiseArr,
+        startTime,
+        bufferWaitTime,
+      ),
+    ).rejects.toThrow(
+      'Predicate Error: Threshold achieved, Waiting for maximum number of requests to complete',
+    );
   });
 });

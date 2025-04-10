@@ -4,6 +4,7 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import {
   authenticateUser,
+  validateAndWaitForAllAuthResponses,
   validateThresholdAuthenticateResponses,
 } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
@@ -200,5 +201,104 @@ describe('authenticate request', function () {
     expect(authTokensData).toBeDefined();
     expect(authTokensData.length).toBeGreaterThanOrEqual(3);
     expect(isNewUser).toBe(true);
+  });
+});
+
+describe('validateAndWaitForAuthResponses', () => {
+  /**
+   *
+   * @param nodeIndex - The node index to be used for the mock response.
+   * @param isNewUser - Whether the user is new or not.
+   * @returns The mock response.
+   */
+  const mockAuthResponse = (
+    nodeIndex: number,
+    isNewUser = false,
+  ): AuthJRPCResponse => ({
+    jsonrpc: '2.0',
+    id: 1,
+    result: {
+      nodeIndex,
+      authToken: 'token',
+      nodePubKey: 'pubKey',
+      pubKey: isNewUser ? '' : 'pubKey',
+      keyIndex: 1,
+    },
+  });
+
+  /**
+   *
+   * @param count - The number of promises to create.
+   * @returns The mock promises.
+   */
+  const createMockAuthPromises = (count: number): Promise<AuthJRPCResponse>[] =>
+    Array.from({ length: count }, async (_, i) =>
+      Promise.resolve(mockAuthResponse(i)),
+    );
+
+  it('should return results immediately when all promises are complete', async () => {
+    const responses = [
+      mockAuthResponse(1),
+      mockAuthResponse(2),
+      mockAuthResponse(3),
+      mockAuthResponse(4),
+      mockAuthResponse(5),
+    ];
+    const promiseArr = createMockAuthPromises(5);
+    const startTime = Date.now();
+    const bufferWaitTime = 500;
+
+    const result = await validateAndWaitForAllAuthResponses(
+      responses,
+      promiseArr,
+      startTime,
+      bufferWaitTime,
+    );
+
+    expect(result.authRequestResults).toHaveLength(5);
+    expect(result.isNewUser).toBe(false);
+  });
+
+  it('should return results when buffer time has elapsed', async () => {
+    const responses = [
+      mockAuthResponse(1),
+      mockAuthResponse(2),
+      mockAuthResponse(3),
+    ];
+    const promiseArr = createMockAuthPromises(5);
+    const startTime = Date.now() - 600;
+    const bufferWaitTime = 500;
+
+    const result = await validateAndWaitForAllAuthResponses(
+      responses,
+      promiseArr,
+      startTime,
+      bufferWaitTime,
+    );
+
+    expect(result.authRequestResults).toHaveLength(3);
+  });
+
+  it('should throw error to continue waiting if buffer time not elapsed', async () => {
+    const responses = [
+      mockAuthResponse(1),
+      mockAuthResponse(2),
+      mockAuthResponse(3),
+      mockAuthResponse(4),
+    ];
+    const promiseArr = createMockAuthPromises(5);
+    const startTime = Date.now();
+    const bufferWaitTime = 500;
+
+    await expect(
+      validateAndWaitForAllAuthResponses(
+        responses,
+        promiseArr,
+        startTime,
+        bufferWaitTime,
+      ),
+    ).rejects.toThrow(
+      'Predicate Error: Threshold achieved, Waiting for maximum number of requests to complete',
+    );
   });
 });
