@@ -1,7 +1,7 @@
 import {
   getProxyCoordinatorNodeIndex,
-  pubKeyToSec1,
   toSnakeCaseKeys,
+  uint8ArrayToHex,
 } from '@metamask/auth-network-utils';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
@@ -58,7 +58,7 @@ export const createStoreKeySharesRequestParams = async (
     shareKeyIndex,
   );
   return {
-    pubKey: pubKeyToSec1(authPubKey),
+    pubKey: uint8ArrayToHex(authPubKey),
     shareImportItems,
     verifier,
     verifierId,
@@ -184,7 +184,7 @@ export const createKeyChangeRequestParams = async (
   );
 
   return {
-    pubKey: pubKeyToSec1(newAuthPubKey),
+    pubKey: uint8ArrayToHex(newAuthPubKey),
     shareImportItems,
     verifier,
     verifierId,

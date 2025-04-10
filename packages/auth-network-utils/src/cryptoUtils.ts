@@ -109,25 +109,13 @@ export function derivePubKey(ecCurve: EC, sk: BN): curve.base.BasePoint {
 }
 
 /**
- * Converts a Uint8Array public key to SEC1 encoded format
- * Format: 0x04 || x || y where x and y are 32-byte coordinates
+ * Converts a Uint8Array to a hex string
  *
- * @param pubKey - Uint8Array public key to convert
- * @returns SEC1 encoded public key string
+ * @param uint8Array - The Uint8Array to convert
+ * @returns Hexadecimal string representation
  */
-export const pubKeyToSec1 = (pubKey: Uint8Array): string => {
-  // SEC1 uncompressed format starts with 0x04
-  // Then has X and Y coordinates (32 bytes each)
-  const prefix = '04';
-
-  // Convert Uint8Array to hex string
-  const pubKeyHex = Array.from(pubKey)
-    .map((b) => b.toString(16).padStart(2, '0'))
+export function uint8ArrayToHex(uint8Array: Uint8Array): string {
+  return Array.from(uint8Array)
+    .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('');
-
-  if (pubKeyHex.startsWith('04')) {
-    return pubKeyHex;
-  }
-
-  return prefix + pubKeyHex;
-};
+}

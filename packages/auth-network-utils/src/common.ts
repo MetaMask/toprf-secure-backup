@@ -300,6 +300,27 @@ export async function Some<Input, Output>(
   throw new Error('Some function failed to produce a valid result');
 }
 
+/**
+ * Filters out invalid responses.
+ *
+ * @param resultArr - The result array to filter.
+ * @returns The filtered result array.
+ */
+export function filterCompletedRequests<Type>(resultArr: Type[]): Type[] {
+  return resultArr.filter((res) => {
+    if (!res || typeof res !== 'object') {
+      return false;
+    }
+    if ('error' in res && res.error) {
+      return false;
+    }
+    if (!('result' in res && res.result)) {
+      return false;
+    }
+    return true;
+  });
+}
+
 export type Primitive = string | number | boolean | null;
 export type JSONObject = { [key: string]: JSONValue };
 export type JSONArray = JSONValue[];

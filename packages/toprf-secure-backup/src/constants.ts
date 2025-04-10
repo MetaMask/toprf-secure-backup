@@ -4,6 +4,7 @@ export const JRPC_METHODS = {
   STORE_KEY_SHARES_REQUEST: 'TOPRFStoreKeyShareRequest',
   RESET_RATE_LIMIT_REQUEST: 'TOPRFResetRateLimitRequest',
   TOPRF_EVAL_REQUEST: 'TOPRFEvalRequest',
+  GET_PUB_KEY_REQUEST: 'TOPRFGetPubKeyRequest',
 };
 
 export const COMMIT_RESPONSE_THRESHOLD = 4;

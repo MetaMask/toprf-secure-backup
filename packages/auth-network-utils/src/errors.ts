@@ -182,6 +182,7 @@ export class TOPRFError extends AbstractTOPRFError {
     1005: 'Could not derive threshold auth pub key.',
     1006: 'Could not derive encryption key.',
     1007: 'Endpoint not found.',
+    1008: 'Insufficient number of auth tokens.',
   };
 
   /**
@@ -286,5 +287,14 @@ export class TOPRFError extends AbstractTOPRFError {
    */
   public static endpointNotFound(extraMessage = ''): ITOPRFError {
     return TOPRFError.fromCode(1007, extraMessage);
+  }
+
+  /**
+   *
+   * @param extraMessage - The extra message of the error.
+   * @returns - The error instance for insufficient auth tokens.
+   */
+  public static insufficientAuthTokens(extraMessage = ''): ITOPRFError {
+    return TOPRFError.fromCode(1008, extraMessage);
   }
 }

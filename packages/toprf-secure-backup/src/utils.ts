@@ -10,6 +10,7 @@ import {
   generateRandomPolynomial,
   getSecp256K1Curve,
   toCamelCaseKeys,
+  TOPRFError,
   toSnakeCaseKeys,
 } from '@metamask/auth-network-utils';
 import { secp256k1 as secp256k1Noble } from '@noble/curves/secp256k1';
@@ -20,7 +21,11 @@ import BN from 'bn.js';
 import type * as EC from 'elliptic';
 
 import { GENERATE_SHARE_THRESHOLD } from './constants';
-import type { KeyChangeProof, NodeAuthTokens } from './interfaces';
+import type {
+  KeyChangeProof,
+  NodeAuthToken,
+  NodeAuthTokens,
+} from './interfaces';
 import type { ShareImportItem } from './jrpcInterfaces';
 
 type EncryptedData = {
@@ -413,3 +418,31 @@ export const createNodeEndpointsMap = (
     return acc;
   }, {});
 };
+
+/**
+ * Merges the auth tokens with the endpoints.
+ *
+ * @param authTokens - The auth tokens issued by the nodes on authenticating the user.
+ * @param nodeEndpointsMap - Map of node index to endpoint to be used for the get pub key request.
+ *
+ * @returns The merged auth tokens and endpoints.
+ *
+ * @throws If the endpoint is not found for a node index.
+ */
+export function mergeEndpointsWithAuthTokens(
+  authTokens: NodeAuthTokens,
+  nodeEndpointsMap: Record<number, string>,
+): { endpoint: string; authToken: NodeAuthToken }[] {
+  return authTokens.map((authToken) => {
+    const endpoint = nodeEndpointsMap[authToken.nodeIndex];
+    if (!endpoint) {
+      throw TOPRFError.endpointNotFound(
+        `Endpoint not found for node index ${authToken.nodeIndex}`,
+      );
+    }
+    return {
+      endpoint,
+      authToken,
+    };
+  });
+}

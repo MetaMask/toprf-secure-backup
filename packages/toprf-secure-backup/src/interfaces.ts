@@ -254,6 +254,16 @@ export type KeyChangeProof = {
   signatureTimestamp: number;
 };
 
+export type FetchAuthPubKeyParams = {
+  nodeAuthTokens: NodeAuthTokens;
+  verifier: string;
+  verifierId: string;
+};
+
+export type FetchAuthPubKeyResult = {
+  authPubKey: SEC1EncodedPublicKey;
+};
+
 export type IToprfSecureBackup = {
   authenticate: (params: AuthenticateParams) => Promise<AuthenticateResult>;
 

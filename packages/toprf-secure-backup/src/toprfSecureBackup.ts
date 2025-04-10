@@ -9,6 +9,7 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
 import { FIRST_KEY_INDEX } from './constants';
+import { getPubKey } from './getPubKeyRequest';
 import type {
   AuthenticateParams,
   AuthenticateResult,
@@ -24,6 +25,8 @@ import type {
   PersistOprfKeyParams,
   ChangeEncryptionKeyParams,
   ChangeEncryptionKeyResult,
+  FetchAuthPubKeyParams,
+  FetchAuthPubKeyResult,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -408,6 +411,30 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       params.decKey,
       params.authKeyPair,
     );
+  }
+
+  /**
+   * This function fetches the authentication public key.
+   *
+   * @param params - The parameters for getting the authentication public key.
+   * @param params.authTokens - The auth tokens issued by the nodes on authenticating the user.
+   * @param params.verifier - The verifier name used for authentication.
+   * @param params.verifierId - The verifierId issued to user after authentication.
+   *
+   * @returns The authentication public key.
+   */
+  async fetchAuthPubKey(
+    params: FetchAuthPubKeyParams,
+  ): Promise<FetchAuthPubKeyResult> {
+    const { nodeAuthTokens, verifier, verifierId } = params;
+    const { nodeEndpointsMap } = await this.#getNodeDetails();
+    const authPubKey = await getPubKey({
+      authTokens: nodeAuthTokens,
+      nodeEndpointsMap,
+      verifier,
+      verifierId,
+    });
+    return { authPubKey };
   }
 
   /**
