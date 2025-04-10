@@ -13,15 +13,34 @@ import {
 
 const EXISTNG_USER_VERIFIER_ID = 'test-verifier-id-existing-user';
 
-// todo: add tests for the scenario when a existing user tries to create a new enc key.
+/**
+ * Sets up the test environment.
+ *
+ * @param options - The options for the setup.
+ * @param options.verifierID - The verifier id to be used for the test.
+ *
+ * @returns The setup object.
+ */
+function setup(options?: { verifierID?: string }): {
+  verifier: string;
+  verifierID: string;
+  idToken: string;
+  toprfSecureBackup: ToprfSecureBackup;
+} {
+  const verifier = 'torus-test-health';
+  const verifierID = options?.verifierID ?? generateRandomVerifierId();
+  const idToken = generateIdToken(verifierID, 'ES256');
+  const toprfSecureBackup = new ToprfSecureBackup({
+    network: 'sapphire_devnet',
+  });
+
+  return { verifier, verifierID, idToken, toprfSecureBackup };
+}
+
+// TODO: add tests for the scenario when a existing user tries to create a new enc key.
 describe('toprf secret backup', function () {
   it('should be able to authenticate user', async function () {
-    const verifier = 'torus-test-health';
-    const verifierID = 'test-verifier-id-xyz-123';
-    const idToken = generateIdToken(verifierID, 'ES256');
-    const toprfSecureBackup = new ToprfSecureBackup({
-      network: 'sapphire_devnet',
-    });
+    const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
 
     const result = await toprfSecureBackup.authenticate({
       idTokens: [idToken],
@@ -35,9 +54,7 @@ describe('toprf secret backup', function () {
   });
 
   it('should be able to create local enc key', async function () {
-    const toprfSecureBackup = new ToprfSecureBackup({
-      network: 'sapphire_devnet',
-    });
+    const { toprfSecureBackup } = setup();
     const password = generateRandomPassword();
     const encKey = toprfSecureBackup.createLocalEncKey({
       password,
@@ -89,12 +106,7 @@ describe('toprf secret backup', function () {
   });
 
   it('should be able to create enc key', async function () {
-    const verifier = 'torus-test-health';
-    const verifierID = `test-verifier-id-${Math.random()}`;
-    const idToken = generateIdToken(verifierID, 'ES256');
-    const toprfSecureBackup = new ToprfSecureBackup({
-      network: 'sapphire_devnet',
-    });
+    const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
 
     const result = await toprfSecureBackup.authenticate({
       idTokens: [idToken],
@@ -115,12 +127,9 @@ describe('toprf secret backup', function () {
     expect(encKey.encKey).toBeDefined();
   });
 
-  it('should be return isNewUser as false for existing user', async function () {
-    const verifier = 'torus-test-health';
-    const verifierID = EXISTNG_USER_VERIFIER_ID;
-    const idToken = generateIdToken(verifierID, 'ES256');
-    const toprfSecureBackup = new ToprfSecureBackup({
-      network: 'sapphire_devnet',
+  it('should return isNewUser as false for existing user', async function () {
+    const { verifier, verifierID, idToken, toprfSecureBackup } = setup({
+      verifierID: EXISTNG_USER_VERIFIER_ID,
     });
 
     const result = await toprfSecureBackup.authenticate({
@@ -136,12 +145,7 @@ describe('toprf secret backup', function () {
   });
 
   it('should be able to recover enc key', async function () {
-    const verifier = 'torus-test-health';
-    const verifierID = `test-verifier-id-${Math.random()}`;
-    const idToken = generateIdToken(verifierID, 'ES256');
-    const toprfSecureBackup = new ToprfSecureBackup({
-      network: 'sapphire_devnet',
-    });
+    const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
 
     const result = await toprfSecureBackup.authenticate({
       idTokens: [idToken],
@@ -177,11 +181,7 @@ describe('toprf secret backup', function () {
   });
 
   it('should throw error if user is not authenticated while creating enc key', async function () {
-    const verifier = 'torus-test-health';
-    const verifierID = `test-verifier-id-${Math.random()}`;
-    const toprfSecureBackup = new ToprfSecureBackup({
-      network: 'sapphire_devnet',
-    });
+    const { verifier, verifierID, toprfSecureBackup } = setup();
 
     await expect(
       toprfSecureBackup.createEncKey({
@@ -196,12 +196,7 @@ describe('toprf secret backup', function () {
   // somehow this test fails, need to check backend logs,.
   // eslint-disable-next-line jest/no-disabled-tests
   it.skip('should throw error if user is not authenticated by enough nodes while creating enc key', async function () {
-    const verifier = 'torus-test-health';
-    const verifierID = `test-verifier-id-${Math.random()}`;
-    const idToken = generateIdToken(verifierID, 'ES256');
-    const toprfSecureBackup = new ToprfSecureBackup({
-      network: 'sapphire_devnet',
-    });
+    const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
 
     const result = await toprfSecureBackup.authenticate({
       idTokens: [idToken],
@@ -232,12 +227,7 @@ describe('toprf secret backup', function () {
 
   it('should be able to store secret data', async function () {
     const secretData = utf8ToBytes('test-secret-data');
-    const verifier = 'torus-test-health';
-    const verifierID = `test-verifier-id-${Math.random()}`;
-    const idToken = generateIdToken(verifierID, 'ES256');
-    const toprfSecureBackup = new ToprfSecureBackup({
-      network: 'sapphire_devnet',
-    });
+    const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
 
     const result = await toprfSecureBackup.authenticate({
       idTokens: [idToken],
@@ -377,12 +367,7 @@ describe('toprf secret backup', function () {
       );
 
     try {
-      const verifier = 'torus-test-health';
-      const verifierID = generateRandomVerifierId();
-      const idToken = generateIdToken(verifierID, 'ES256');
-      const toprfSecureBackup = new ToprfSecureBackup({
-        network: 'sapphire_devnet',
-      });
+      const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
 
       const result = await toprfSecureBackup.authenticate({
         idTokens: [idToken],
@@ -424,12 +409,7 @@ describe('toprf secret backup', function () {
   });
 
   it('should throw error when trying to change encryption key without existing data', async function () {
-    const verifier = 'torus-test-health';
-    const verifierID = `test-verifier-id-${Math.random()}`;
-    const idToken = generateIdToken(verifierID, 'ES256');
-    const toprfSecureBackup = new ToprfSecureBackup({
-      network: 'sapphire_devnet',
-    });
+    const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
 
     const result = await toprfSecureBackup.authenticate({
       idTokens: [idToken],
@@ -463,12 +443,7 @@ describe('toprf secret backup', function () {
 
   it('should throw error when metadata server fails during change encryption key', async function () {
     const secretData = utf8ToBytes('test-secret-data-for-metadata-failure');
-    const verifier = 'torus-test-health';
-    const verifierID = `test-verifier-id-${Math.random()}`;
-    const idToken = generateIdToken(verifierID, 'ES256');
-    const toprfSecureBackup = new ToprfSecureBackup({
-      network: 'sapphire_devnet',
-    });
+    const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
 
     // Setup initial data
     const result = await toprfSecureBackup.authenticate({
@@ -540,12 +515,7 @@ describe('toprf secret backup', function () {
 
   it('should throw error when using incorrect authKeyPair during password change', async function () {
     const secretData = utf8ToBytes('test-secret-data-for-incorrect-auth');
-    const verifier = 'torus-test-health';
-    const verifierID = `test-verifier-id-${Math.random()}`;
-    const idToken = generateIdToken(verifierID, 'ES256');
-    const toprfSecureBackup = new ToprfSecureBackup({
-      network: 'sapphire_devnet',
-    });
+    const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
 
     const result = await toprfSecureBackup.authenticate({
       idTokens: [idToken],
@@ -597,12 +567,7 @@ describe('toprf secret backup', function () {
 
   it('should throw error when using incorrect encryption key during password change', async function () {
     const secretData = utf8ToBytes('test-secret-data-for-incorrect-enc-key');
-    const verifier = 'torus-test-health';
-    const verifierID = `test-verifier-id-${Math.random()}`;
-    const idToken = generateIdToken(verifierID, 'ES256');
-    const toprfSecureBackup = new ToprfSecureBackup({
-      network: 'sapphire_devnet',
-    });
+    const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
 
     const result = await toprfSecureBackup.authenticate({
       idTokens: [idToken],
@@ -652,5 +617,31 @@ describe('toprf secret backup', function () {
     ).rejects.toThrow(
       'failed to fetch metadata: failed to fetch metadata: aes/gcm: invalid ghash tag',
     );
+  });
+
+  it('should return auth pub key', async function () {
+    const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
+
+    const result = await toprfSecureBackup.authenticate({
+      idTokens: [idToken],
+      verifier,
+      verifierID,
+    });
+
+    const password = generateRandomPassword();
+    const encKeyResult = await toprfSecureBackup.createEncKey({
+      nodeAuthTokens: result.nodeAuthTokens,
+      password,
+      verifier,
+      verifierId: verifierID,
+    });
+
+    const authPubKey = await toprfSecureBackup.fetchAuthPubKey({
+      nodeAuthTokens: result.nodeAuthTokens,
+      verifier,
+      verifierId: verifierID,
+    });
+    expect(authPubKey.authPubKey).toBeDefined();
+    expect(authPubKey.authPubKey).toStrictEqual(encKeyResult.authKeyPair.pk);
   });
 });
