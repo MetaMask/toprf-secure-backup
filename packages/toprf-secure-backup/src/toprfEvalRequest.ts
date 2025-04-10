@@ -77,16 +77,75 @@ const sendToprfEvalRequest = async (
 };
 
 /**
+ * Finds the matching seed from the toprf eval responses
+ *
+ * @param sortedBlindedOutputs - The sorted blinded outputs from the toprf eval responses.
+ * @param userInput - The user input i.e. the password.
+ * @param blindingFactor - The random scalar used to blind the input.
+ * @param thresholdAuthPubKey - The threshold auth pub key derived from the toprf eval responses.
+ *
+ * @returns The seed and share key index if found, otherwise null.
+ */
+const findMatchingSeedWithAllCombinations = (
+  sortedBlindedOutputs: BlindedOutputShare[],
+  userInput: Uint8Array,
+  blindingFactor: bigint,
+  thresholdAuthPubKey: string,
+): { seed: Uint8Array; shareKeyIndex: number } | null => {
+  const allCombis = kCombinations(
+    sortedBlindedOutputs.length,
+    EXISTING_USER_AUTHENTICATION_THRESHOLD,
+  );
+
+  for (const currentCombi of allCombis) {
+    const currentCombiPoints = sortedBlindedOutputs.filter((_, index) =>
+      currentCombi.includes(index),
+    );
+    const selectedBlindedOutputs = currentCombiPoints.map(
+      (point) => point.blindedOutput,
+    );
+    const nodeIndexes = currentCombiPoints.map((point) =>
+      BigInt(point.nodeIndex),
+    );
+
+    const blindedOutput = lagrangeInterpolationForPoints(
+      secp256k1.CURVE.n,
+      selectedBlindedOutputs,
+      nodeIndexes,
+    );
+
+    const recoveredSeed = OPRF.unblindAndHash(
+      userInput,
+      blindedOutput,
+      blindingFactor,
+    );
+    const { pk } = deriveAuthenticationKeyPair(recoveredSeed);
+    const derivedPubKey = secp256k1.ProjectivePoint.fromHex(pk);
+    const thresholdPubKey =
+      secp256k1.ProjectivePoint.fromHex(thresholdAuthPubKey);
+
+    if (derivedPubKey.equals(thresholdPubKey)) {
+      return {
+        seed: recoveredSeed,
+        shareKeyIndex: currentCombiPoints[0].shareKeyIndex,
+      };
+    }
+  }
+
+  return null;
+};
+
+/**
  * Validates the seed from the toprf eval responses
  *
  * @param userInput - The user input i.e. the password.
- * @param randomScalar - The random scalar used to blind the input.
+ * @param blindingFactor - The random scalar used to blind the input.
  * @param resultArr - The toprf eval request result
  * @returns The toprf eval request result and the share key index
  */
 export const validateSeed = async (
   userInput: Uint8Array,
-  randomScalar: bigint,
+  blindingFactor: bigint,
   resultArr: ToprfEvalJRPCResponse[],
 ): Promise<{ seed: Uint8Array; shareKeyIndex: number }> => {
   const completedRequests =
@@ -106,82 +165,46 @@ export const validateSeed = async (
     throw TOPRFError.couldNotDeriveThresholdAuthPubKey();
   }
 
-  const blindedOutputs = completedRequests
-    .map((resp): BlindedOutputShare | null => {
+  const blindedOutputShares = completedRequests.reduce<BlindedOutputShare[]>(
+    (acc, resp) => {
       const { blindedOutputX, blindedOutputY, nodeIndex, shareKeyIndex } =
         resp.result ?? {};
-
-      // Check if all required values are defined
+      // Skip if any required values are missing
       if (!blindedOutputX || !blindedOutputY || !nodeIndex || !shareKeyIndex) {
-        return null;
+        return acc;
       }
-      const blindedOutput = secp256k1.ProjectivePoint.fromAffine({
-        x: BigInt(`0x${blindedOutputX}`),
-        y: BigInt(`0x${blindedOutputY}`),
-      });
 
-      return {
-        blindedOutput,
+      acc.push({
+        blindedOutput: secp256k1.ProjectivePoint.fromAffine({
+          x: BigInt(`0x${blindedOutputX}`),
+          y: BigInt(`0x${blindedOutputY}`),
+        }),
         nodeIndex,
         shareKeyIndex,
-      };
-    })
-    .filter((point): point is BlindedOutputShare => point !== null);
+      });
 
-  if (blindedOutputs.length < EXISTING_USER_AUTHENTICATION_THRESHOLD) {
-    throw TOPRFError.insufficientValidResponses(
-      `Insufficient valid blinded outputs, expected: ${EXISTING_USER_AUTHENTICATION_THRESHOLD}, received: ${blindedOutputs.length}`,
-    );
-  }
-
-  // evaluate auth priv key using oprf and match with the threshold auth pub key
-  const allCombis = kCombinations(
-    completedRequests.length,
-    EXISTING_USER_AUTHENTICATION_THRESHOLD,
+      return acc;
+    },
+    [],
   );
-  let seed: Uint8Array | null = null;
-  let shareKeyIndex = 0;
 
-  for (const currentCombi of allCombis) {
-    const currentCombiPoints = blindedOutputs.filter((_, index) =>
-      currentCombi.includes(index),
+  if (blindedOutputShares.length < EXISTING_USER_AUTHENTICATION_THRESHOLD) {
+    throw TOPRFError.insufficientValidResponses(
+      `Insufficient valid blinded outputs, expected: ${EXISTING_USER_AUTHENTICATION_THRESHOLD}, received: ${blindedOutputShares.length}`,
     );
-    const selectedBlindedOutputs = currentCombiPoints.map(
-      (point) => point.blindedOutput,
-    );
-    const nodeIndexes = currentCombiPoints.map((point) =>
-      BigInt(point.nodeIndex),
-    );
-    // Interpolate the curve points directly using Lagrange interpolation
-    const blindedOutput = lagrangeInterpolationForPoints(
-      secp256k1.CURVE.n,
-      selectedBlindedOutputs,
-      nodeIndexes,
-    );
-
-    // Unblind and hash the result
-    const recoveredSeed = OPRF.unblindAndHash(
-      userInput,
-      blindedOutput,
-      randomScalar,
-    );
-    const { pk } = deriveAuthenticationKeyPair(recoveredSeed);
-    const derivedPubKey = secp256k1.ProjectivePoint.fromHex(pk);
-    const thresholdPubKey =
-      secp256k1.ProjectivePoint.fromHex(thresholdAuthPubKey);
-    if (derivedPubKey.equals(thresholdPubKey)) {
-      seed = recoveredSeed;
-      // All points in a valid combination will have the same shareKeyIndex
-      shareKeyIndex = currentCombiPoints[0].shareKeyIndex;
-      break;
-    }
   }
 
-  if (!seed || shareKeyIndex === 0) {
+  const seedAndKeyIndex = findMatchingSeedWithAllCombinations(
+    blindedOutputShares,
+    userInput,
+    blindingFactor,
+    thresholdAuthPubKey,
+  );
+  if (!seedAndKeyIndex) {
     throw TOPRFError.couldNotDeriveEncryptionKey();
   }
 
-  return Promise.resolve({ seed, shareKeyIndex });
+  return seedAndKeyIndex;
 };
 
 /**
