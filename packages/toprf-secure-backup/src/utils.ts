@@ -224,12 +224,12 @@ export const createKeyChangeProof = (
   const timestamp = Math.floor(Date.now() / 1000);
   const shareBase64 = formatShareForSigning(shareValue);
 
-  const dataToSign = {
-    share_data: shareBase64,
-    share_key_index: shareKeyIndex,
-    node_index: nodeIndex,
+  const dataToSign = toSnakeCaseKeys({
+    shareData: shareBase64,
+    shareKeyIndex,
+    nodeIndex,
     timestamp,
-  };
+  });
 
   const jsonData = JSON.stringify(dataToSign);
   const dataHash = keccak256(jsonData);
