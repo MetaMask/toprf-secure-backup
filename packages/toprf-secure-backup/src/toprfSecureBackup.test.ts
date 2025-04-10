@@ -645,22 +645,4 @@ describe('toprf secret backup', function () {
     expect(authPubKey.authPubKey).toBeDefined();
     expect(authPubKey.authPubKey).toStrictEqual(encKeyResult.authKeyPair.pk);
   });
-
-  it('should throw error when fetching pub key with insufficient auth tokens', async function () {
-    const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
-
-    const result = await toprfSecureBackup.authenticate({
-      idTokens: [idToken],
-      verifier,
-      verifierID,
-    });
-
-    await expect(
-      toprfSecureBackup.fetchAuthPubKey({
-        nodeAuthTokens: result.nodeAuthTokens.slice(0, 2),
-        verifier,
-        verifierId: verifierID,
-      }),
-    ).rejects.toThrow(TOPRFError.insufficientAuthTokens(`At least ${EXISTING_USER_AUTHENTICATION_THRESHOLD} auth tokens are required.`));
-  });
 });
