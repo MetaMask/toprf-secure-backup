@@ -112,7 +112,7 @@ export const commitIdToken = async (params: {
   const { idToken, endpoints, verifier, sessionPubKeyX, sessionPubKeyY } =
     params;
   const tokenCommitment = keccak256AndHexify(
-    new TextEncoder().encode(idToken),
+    Buffer.from(idToken, 'utf8'),
   ).slice(2);
 
   const requestParams = createCommitmentRequestParams(

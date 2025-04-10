@@ -1,4 +1,4 @@
-import { TOPRFError } from '@metamask/auth-network-utils';
+import { TOPRFError, keccak256AndHexify } from '@metamask/auth-network-utils';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
@@ -153,7 +153,7 @@ describe('authenticate request', function () {
     });
   });
 
-  it('should create a authenticate request', async function () {
+  it('should be able to send a authenticate request', async function () {
     const privKey = secp256k1.utils.randomPrivateKey();
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
@@ -196,6 +196,68 @@ describe('authenticate request', function () {
       sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
+    });
+    expect(authTokensData).toBeDefined();
+    expect(authTokensData.length).toBeGreaterThanOrEqual(3);
+    expect(isNewUser).toBe(true);
+  });
+
+  it('should to send a authenticate request for a single id verifier', async function () {
+    const privKey = secp256k1.utils.randomPrivateKey();
+    const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
+
+    const verifier = 'torus-test-health-aggregate';
+    const verifierID = 'test-verifier-id-aggregate';
+    const idToken = generateIdToken(verifierID, 'ES256');
+    const sessionPubKeyX = pubKey.x.toString(16);
+    const sessionPubKeyY = pubKey.y.toString(16);
+    const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
+      await nodeDetailManager.getNodeDetails({
+        verifier,
+        verifierId: verifierID,
+      });
+
+    if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
+      throw new Error('Failed to get node details');
+    }
+    const hashedIdToken = keccak256AndHexify(
+      Buffer.from(idToken, 'utf8'),
+    ).slice(2);
+
+    const commitmentResults = await commitIdToken({
+      idToken: hashedIdToken,
+      verifier,
+      sessionPubKeyX,
+      sessionPubKeyY,
+      endpoints: torusNodeSSSEndpoints,
+    });
+    const nodeEndpointsMap = createNodeEndpointsMap(
+      torusNodeSSSEndpoints,
+      torusIndexes,
+    );
+
+    const selectedEndpointsMap = commitmentResults.reduce<
+      Record<number, string>
+    >((acc, result) => {
+      acc[result.nodeIndex] = nodeEndpointsMap[result.nodeIndex];
+      return acc;
+    }, {});
+
+    const { authTokensData, isNewUser } = await authenticateUser({
+      idToken: hashedIdToken,
+      verifier,
+      verifierID,
+      sessionPrivateKey: privKey,
+      nodeEndpointsMap: selectedEndpointsMap,
+      commitmentSignatures: commitmentResults,
+      singleIdVerifierParams: {
+        subVerifierAuthParams: [
+          {
+            subVerifier: 'torus-test-health',
+            subVerifierIdToken: idToken,
+          },
+        ],
+      },
     });
     expect(authTokensData).toBeDefined();
     expect(authTokensData.length).toBeGreaterThanOrEqual(3);
