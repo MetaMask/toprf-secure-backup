@@ -328,9 +328,10 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     try {
       metadataStore = await this.#createMetadataStore();
 
-      oldMetadataLockId =
-        await metadataStore.acquireMetadataLock(oldAuthKeyPair);
-      newMetadataLockId = await metadataStore.acquireMetadataLock(authKeyPair);
+      [oldMetadataLockId, newMetadataLockId] = await Promise.all([
+        metadataStore.acquireMetadataLock(oldAuthKeyPair),
+        metadataStore.acquireMetadataLock(authKeyPair),
+      ]);
 
       const existingData = await metadataStore.fetchAllSecretDataItems(
         oldEncKey,
@@ -362,14 +363,13 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     } finally {
       if (metadataStore && oldMetadataLockId && newMetadataLockId) {
         try {
-          await metadataStore.releaseMetadataLock(
-            oldAuthKeyPair,
-            oldMetadataLockId,
-          );
-          await metadataStore.releaseMetadataLock(
-            authKeyPair,
-            newMetadataLockId,
-          );
+          await Promise.all([
+            metadataStore.releaseMetadataLock(
+              oldAuthKeyPair,
+              oldMetadataLockId,
+            ),
+            metadataStore.releaseMetadataLock(authKeyPair, newMetadataLockId),
+          ]);
         } catch (error) {
           console.error('Failed to release metadata lock:', error);
         }
