@@ -251,12 +251,8 @@ describe('authenticate request', function () {
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
       singleIdVerifierParams: {
-        subVerifierAuthParams: [
-          {
-            subVerifier: 'torus-test-health',
-            subVerifierIdToken: idToken,
-          },
-        ],
+        subVerifier: 'torus-test-health',
+        subVerifierIdTokens: [idToken],
       },
     });
     expect(authTokensData).toBeDefined();

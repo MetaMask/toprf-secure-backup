@@ -6,7 +6,7 @@ import {
   JRPC_METHODS,
   NEW_USER_AUTHENTICATION_THRESHOLD,
 } from './constants';
-import type { SingleIdExtraOauthJrpcParams } from './interfaces';
+import type { SingleIdVerifierParams } from './interfaces';
 import type {
   AuthJRPCRequest,
   AuthJRPCResponse,
@@ -32,8 +32,20 @@ const createAuthenticateRequestParams = (
   verifier: string,
   verifierID: string,
   commitmentSignatures: CommitmentRequestResult[],
-  singleIdVerifierParams?: SingleIdExtraOauthJrpcParams,
+  singleIdVerifierParams?: SingleIdVerifierParams,
 ): AuthJRPCRequestParams => {
+  const singleIdVerifierParamsArr =
+    singleIdVerifierParams?.subVerifierIdTokens &&
+    singleIdVerifierParams?.subVerifier
+      ? {
+          subVerifierAuthParams: [
+            {
+              subVerifierIdToken: singleIdVerifierParams.subVerifierIdTokens[0],
+              subVerifier: singleIdVerifierParams.subVerifier,
+            },
+          ],
+        }
+      : undefined;
   return {
     authData: {
       authenticationContext: {
@@ -41,7 +53,7 @@ const createAuthenticateRequestParams = (
         verifier,
         verifierId: verifierID,
       },
-      singleIdVerifierParams,
+      singleIdVerifierParams: singleIdVerifierParamsArr,
     },
     commitmentSignatures,
     clientTime: Math.floor(Date.now() / 1000).toString(),
@@ -150,7 +162,7 @@ export const authenticateUser = async (params: {
   sessionPrivateKey: Uint8Array;
   nodeEndpointsMap: Record<number, string>;
   commitmentSignatures: CommitmentRequestResult[];
-  singleIdVerifierParams?: SingleIdExtraOauthJrpcParams;
+  singleIdVerifierParams?: SingleIdVerifierParams;
 }): Promise<{
   authTokensData: AuthRequestResult[];
   isNewUser: boolean;
