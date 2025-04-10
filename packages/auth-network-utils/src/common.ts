@@ -316,6 +316,9 @@ export function filterCompletedRequests<Type>(resultArr: Type[]): Type[] {
     if ('error' in res && res.error) {
       return false;
     }
+    if (!('result' in res && res.result)) {
+      return false;
+    }
     return true;
   });
 }
