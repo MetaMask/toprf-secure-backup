@@ -208,7 +208,7 @@ export const recoverTOPRFSeed = async (params: {
 
   if (authTokens.length < EXISTING_USER_AUTHENTICATION_THRESHOLD) {
     throw TOPRFError.insufficientAuthTokens(
-      `At least ${EXISTING_USER_AUTHENTICATION_THRESHOLD} auth tokens are required`,
+      `At least ${EXISTING_USER_AUTHENTICATION_THRESHOLD} auth tokens are required.`,
     );
   }
   const { a, r } = OPRF.blind(userInput);

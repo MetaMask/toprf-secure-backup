@@ -109,7 +109,7 @@ export const getPubKey = async (params: {
 
   if (authTokens.length < EXISTING_USER_AUTHENTICATION_THRESHOLD) {
     throw TOPRFError.insufficientAuthTokens(
-      `At least ${EXISTING_USER_AUTHENTICATION_THRESHOLD} auth tokens are required`,
+      `At least ${EXISTING_USER_AUTHENTICATION_THRESHOLD} auth tokens are required.`,
     );
   }
 
