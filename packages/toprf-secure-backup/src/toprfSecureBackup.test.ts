@@ -10,7 +10,6 @@ import {
   generateRandomPassword,
   generateRandomVerifierId,
 } from '../tests/testHelpers';
-import { EXISTING_USER_AUTHENTICATION_THRESHOLD } from './constants';
 
 const EXISTNG_USER_VERIFIER_ID = 'test-verifier-id-existing-user';
 
