@@ -88,13 +88,9 @@ export const validateSeed = async (
 ): Promise<Uint8Array> => {
   const completedRequests = resultArr.filter(
     (res): res is ToprfEvalJRPCResponse => {
-      if (!res || typeof res !== 'object') {
-        return false;
-      }
-      if ('error' in res && res.error) {
-        return false;
-      }
-      return true;
+      const isValidObject = res && typeof res === 'object';
+      const hasNoError = !('error' in res) || !res.error;
+      return isValidObject && hasNoError;
     },
   );
 
@@ -115,7 +111,6 @@ export const validateSeed = async (
   const sortedBlindedOutputs = completedRequests
     .reduce<BlindedOutputShare[]>((acc, resp) => {
       const { blindedOutputX, blindedOutputY, nodeIndex } = resp.result ?? {};
-
       // Skip if any required values are missing
       if (!blindedOutputX || !blindedOutputY || !nodeIndex) {
         return acc;
