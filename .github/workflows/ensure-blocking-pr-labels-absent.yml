@@ -1,11 +1,11 @@
 name: 'Check for PR labels that block merging'
-on: [] # disabled
-# pull_request:
-#   types:
-#     - opened
-#     - synchronize
-#     - labeled
-#     - unlabeled
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - labeled
+      - unlabeled
 
 jobs:
   ensure-blocking-pr-labels-absent:
