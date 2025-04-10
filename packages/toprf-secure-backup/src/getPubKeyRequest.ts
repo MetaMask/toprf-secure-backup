@@ -17,7 +17,7 @@ import type {
   GetPubKeyJRPCRequestParams,
   GetPubKeyJRPCResponse,
 } from './jrpcInterfaces';
-import { postJRPCRequest } from './utils';
+import { mergeEndpointsWithAuthTokens, postJRPCRequest } from './utils';
 
 /**
  * Creates the parameters for the get pub key request
@@ -108,27 +108,26 @@ export const getPubKey = async (params: {
   const { authTokens, nodeEndpointsMap, verifier, verifierId } = params;
 
   if (authTokens.length < EXISTING_USER_AUTHENTICATION_THRESHOLD) {
-    throw new Error(
+    throw TOPRFError.insufficientAuthTokens(
       `At least ${EXISTING_USER_AUTHENTICATION_THRESHOLD} auth tokens are required`,
     );
   }
 
-  const promises: Promise<GetPubKeyJRPCResponse>[] = [];
-  for (const authToken of authTokens) {
-    const endpoint = nodeEndpointsMap[authToken.nodeIndex];
-    if (!endpoint) {
-      throw new Error(
-        `Endpoint not found for node index ${authToken.nodeIndex}`,
-      );
-    }
+  const endpointsWithAuthTokens = mergeEndpointsWithAuthTokens(
+    authTokens,
+    nodeEndpointsMap,
+  );
 
-    const requestParams = createGetPubKeyRequestParams(
-      authToken.authToken,
-      verifier,
-      verifierId,
-    );
-    promises.push(sendGetPubKeyRequest(endpoint, requestParams));
-  }
+  const promises = endpointsWithAuthTokens.map(
+    async ({ endpoint, authToken }) => {
+      const requestParams = createGetPubKeyRequestParams(
+        authToken.authToken,
+        verifier,
+        verifierId,
+      );
+      return sendGetPubKeyRequest(endpoint, requestParams);
+    },
+  );
 
   return Some<GetPubKeyJRPCResponse, Uint8Array>(promises, async (resultArr) =>
     validatePubKey(resultArr),

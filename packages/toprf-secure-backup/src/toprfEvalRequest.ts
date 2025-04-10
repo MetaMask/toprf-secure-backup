@@ -22,7 +22,7 @@ import type {
 } from './jrpcInterfaces';
 import { deriveAuthenticationKeyPair } from './keyDerivation';
 import { OPRF } from './oprf';
-import { postJRPCRequest } from './utils';
+import { mergeEndpointsWithAuthTokens, postJRPCRequest } from './utils';
 
 type BlindedOutputShare = {
   blindedOutput: ProjPointType<bigint>;
@@ -206,29 +206,30 @@ export const recoverTOPRFSeed = async (params: {
   const { authTokens, nodeEndpointsMap, verifier, verifierId, userInput } =
     params;
 
-  if (authTokens.length < 3) {
-    throw new Error('At least 3 auth tokens are required');
+  if (authTokens.length < EXISTING_USER_AUTHENTICATION_THRESHOLD) {
+    throw TOPRFError.insufficientAuthTokens(
+      `At least ${EXISTING_USER_AUTHENTICATION_THRESHOLD} auth tokens are required`,
+    );
   }
   const { a, r } = OPRF.blind(userInput);
 
-  const promises: Promise<ToprfEvalJRPCResponse>[] = [];
-  for (const authToken of authTokens) {
-    const endpoint = nodeEndpointsMap[authToken.nodeIndex];
-    if (!endpoint) {
-      throw new Error(
-        `Endpoint not found for node index ${authToken.nodeIndex}`,
-      );
-    }
+  const endpointsWithAuthTokens = mergeEndpointsWithAuthTokens(
+    authTokens,
+    nodeEndpointsMap,
+  );
 
-    const requestParams = createToprfEvalRequestParams(
-      authToken.authToken,
-      a.x.toString(16),
-      a.y.toString(16),
-      verifier,
-      verifierId,
-    );
-    promises.push(sendToprfEvalRequest(endpoint, requestParams));
-  }
+  const promises = endpointsWithAuthTokens.map(
+    async ({ endpoint, authToken }) => {
+      const requestParams = createToprfEvalRequestParams(
+        authToken.authToken,
+        a.x.toString(16),
+        a.y.toString(16),
+        verifier,
+        verifierId,
+      );
+      return sendToprfEvalRequest(endpoint, requestParams);
+    },
+  );
 
   return Some<
     ToprfEvalJRPCResponse,

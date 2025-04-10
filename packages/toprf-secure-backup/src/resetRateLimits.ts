@@ -12,7 +12,7 @@ import type {
   ResetRateLimitJRPCRequestParams,
   ResetRateLimitJRPCResponse,
 } from './jrpcInterfaces';
-import { postJRPCRequest } from './utils';
+import { mergeEndpointsWithAuthTokens, postJRPCRequest } from './utils';
 
 /**
  * Creates the parameters for the reset rate limit request
@@ -113,27 +113,27 @@ export const resetRateLimits = async (params: {
     action: 'reset_ratelimit',
   });
 
-  const promises: Promise<ResetRateLimitJRPCResponse>[] = [];
-  for (const authToken of authTokens) {
-    const endpoint = nodeEndpointsMap[authToken.nodeIndex];
-    if (!endpoint) {
-      throw TOPRFError.endpointNotFound(
-        `Endpoint not found for node index ${authToken.nodeIndex}`,
+  const endpointsWithAuthTokens = mergeEndpointsWithAuthTokens(
+    authTokens,
+    nodeEndpointsMap,
+  );
+
+  const promises = endpointsWithAuthTokens.map(
+    async ({ endpoint, authToken }) => {
+      const requestParams = createResetRateLimitRequestParams(
+        authToken.authToken,
+        signature,
+        signedData,
+        verifier,
+        verifierId,
       );
-    }
-    const requestParams = createResetRateLimitRequestParams(
-      authToken.authToken,
-      signature,
-      signedData,
-      verifier,
-      verifierId,
-    );
-    promises.push(sendResetRateLimitRequest(endpoint, requestParams));
-  }
+      return sendResetRateLimitRequest(endpoint, requestParams);
+    },
+  );
 
   return Some<ResetRateLimitJRPCResponse, boolean>(
     promises,
-    async (resultArr: ResetRateLimitJRPCResponse[]) =>
+    async (resultArr) =>
       validateThresholdResetRateLimitResponses(resultArr, authTokens.length),
   );
 };
