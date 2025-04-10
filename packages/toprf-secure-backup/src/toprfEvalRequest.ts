@@ -26,6 +26,7 @@ import { postJRPCRequest } from './utils';
 type BlindedOutputShare = {
   blindedOutput: ProjPointType<bigint>;
   nodeIndex: number;
+  shareKeyIndex: number;
 };
 /**
  * Creates the parameters for the toprf eval request
@@ -80,13 +81,13 @@ const sendToprfEvalRequest = async (
  * @param userInput - The user input i.e. the password.
  * @param randomScalar - The random scalar used to blind the input.
  * @param resultArr - The toprf eval request result
- * @returns The toprf eval request result
+ * @returns The toprf eval request result and the share key index
  */
 export const validateSeed = async (
   userInput: Uint8Array,
   randomScalar: bigint,
   resultArr: ToprfEvalJRPCResponse[],
-): Promise<Uint8Array> => {
+): Promise<{ seed: Uint8Array; shareKeyIndex: number }> => {
   const completedRequests = resultArr.filter(
     (res): res is ToprfEvalJRPCResponse => {
       if (!res || typeof res !== 'object') {
@@ -115,10 +116,11 @@ export const validateSeed = async (
 
   const blindedOutputs = completedRequests
     .map((resp): BlindedOutputShare | null => {
-      const { blindedOutputX, blindedOutputY, nodeIndex } = resp.result ?? {};
+      const { blindedOutputX, blindedOutputY, nodeIndex, shareKeyIndex } =
+        resp.result ?? {};
 
       // Check if all required values are defined
-      if (!blindedOutputX || !blindedOutputY || !nodeIndex) {
+      if (!blindedOutputX || !blindedOutputY || !nodeIndex || !shareKeyIndex) {
         return null;
       }
       const blindedOutput = secp256k1.ProjectivePoint.fromAffine({
@@ -129,9 +131,16 @@ export const validateSeed = async (
       return {
         blindedOutput,
         nodeIndex,
+        shareKeyIndex,
       };
     })
     .filter((point): point is BlindedOutputShare => point !== null);
+
+  if (blindedOutputs.length < EXISTING_USER_AUTHENTICATION_THRESHOLD) {
+    throw TOPRFError.insufficientValidResponses(
+      `Insufficient valid blinded outputs, expected: ${EXISTING_USER_AUTHENTICATION_THRESHOLD}, received: ${blindedOutputs.length}`,
+    );
+  }
 
   // evaluate auth priv key using oprf and match with the threshold auth pub key
   const allCombis = kCombinations(
@@ -139,6 +148,7 @@ export const validateSeed = async (
     EXISTING_USER_AUTHENTICATION_THRESHOLD,
   );
   let seed: Uint8Array | null = null;
+  let shareKeyIndex = 0;
 
   for (const currentCombi of allCombis) {
     const currentCombiPoints = blindedOutputs.filter((_, index) =>
@@ -169,15 +179,17 @@ export const validateSeed = async (
       secp256k1.ProjectivePoint.fromHex(thresholdAuthPubKey);
     if (derivedPubKey.equals(thresholdPubKey)) {
       seed = recoveredSeed;
+      // All points in a valid combination will have the same shareKeyIndex
+      shareKeyIndex = currentCombiPoints[0].shareKeyIndex;
       break;
     }
   }
 
-  if (!seed) {
+  if (!seed || shareKeyIndex === 0) {
     throw TOPRFError.couldNotDeriveEncryptionKey();
   }
 
-  return Promise.resolve(seed);
+  return Promise.resolve({ seed, shareKeyIndex });
 };
 
 /**
@@ -190,7 +202,7 @@ export const validateSeed = async (
  * @param params.nodeEndpointsMap - Map of node index to endpoint to be used for the toprf eval request.
  * @param params.userInput - The user input i.e. the password.
  *
- * @returns - A promise that resolves with the key pair seed successfully.
+ * @returns - A promise that resolves with the key pair seed and share key index.
  */
 export const recoverTOPRFSeed = async (params: {
   authTokens: NodeAuthTokens;
@@ -198,7 +210,7 @@ export const recoverTOPRFSeed = async (params: {
   verifier: string;
   verifierId: string;
   userInput: Uint8Array;
-}): Promise<Uint8Array> => {
+}): Promise<{ seed: Uint8Array; shareKeyIndex: number }> => {
   const { authTokens, nodeEndpointsMap, verifier, verifierId, userInput } =
     params;
 
@@ -226,7 +238,8 @@ export const recoverTOPRFSeed = async (params: {
     promises.push(sendToprfEvalRequest(endpoint, requestParams));
   }
 
-  return Some<ToprfEvalJRPCResponse, Uint8Array>(promises, async (resultArr) =>
-    validateSeed(userInput, r, resultArr),
-  );
+  return Some<
+    ToprfEvalJRPCResponse,
+    { seed: Uint8Array; shareKeyIndex: number }
+  >(promises, async (resultArr) => validateSeed(userInput, r, resultArr));
 };
