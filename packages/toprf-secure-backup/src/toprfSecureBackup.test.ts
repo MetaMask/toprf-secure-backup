@@ -1,15 +1,15 @@
 import { TOPRFError } from '@metamask/auth-network-utils';
 import { utf8ToBytes } from '@noble/ciphers/utils';
 
+import { FIRST_KEY_INDEX } from './constants';
+import { MetadataStore } from './metadata';
+import * as resetRateLimitsModule from './resetRateLimits';
+import { ToprfSecureBackup } from './toprfSecureBackup';
 import {
   generateIdToken,
   generateRandomPassword,
   generateRandomVerifierId,
 } from '../tests/testHelpers';
-import { FIRST_KEY_INDEX } from './constants';
-import { MetadataStore } from './metadata';
-import * as resetRateLimitsModule from './resetRateLimits';
-import { ToprfSecureBackup } from './toprfSecureBackup';
 
 const EXISTNG_USER_VERIFIER_ID = 'test-verifier-id-existing-user';
 
