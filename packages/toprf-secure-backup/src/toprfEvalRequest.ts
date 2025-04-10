@@ -1,6 +1,7 @@
 import {
   Some,
   TOPRFError,
+  kCombinations,
   lagrangeInterpolationForPoints,
   thresholdSame,
 } from '@metamask/auth-network-utils';
@@ -71,6 +72,62 @@ const sendToprfEvalRequest = async (
   ) as ToprfEvalJRPCRequest;
 
   return postJRPCRequest<ToprfEvalJRPCResponse>(endpoint, toprfEvalJRPCRequest);
+};
+
+/**
+ * Finds the matching seed from the toprf eval responses
+ *
+ * @param sortedBlindedOutputs - The sorted blinded outputs from the toprf eval responses.
+ * @param userInput - The user input i.e. the password.
+ * @param randomScalar - The random scalar used to blind the input.
+ * @param thresholdAuthPubKey - The threshold auth pub key derived from the toprf eval responses.
+ *
+ * @returns The seed if found, otherwise null.
+ */
+const findMatchingSeedWithAllCombinations = (
+  sortedBlindedOutputs: BlindedOutputShare[],
+  userInput: Uint8Array,
+  randomScalar: bigint,
+  thresholdAuthPubKey: string,
+): Uint8Array | null => {
+  const allCombis = kCombinations(
+    sortedBlindedOutputs.length,
+    EXISTING_USER_AUTHENTICATION_THRESHOLD,
+  );
+
+  for (const currentCombi of allCombis) {
+    const currentCombiPoints = sortedBlindedOutputs.filter((_, index) =>
+      currentCombi.includes(index),
+    );
+    const selectedBlindedOutputs = currentCombiPoints.map(
+      (point) => point.blindedOutput,
+    );
+    const nodeIndexes = currentCombiPoints.map((point) =>
+      BigInt(point.nodeIndex),
+    );
+
+    const blindedOutput = lagrangeInterpolationForPoints(
+      secp256k1.CURVE.n,
+      selectedBlindedOutputs,
+      nodeIndexes,
+    );
+
+    const recoveredSeed = OPRF.unblindAndHash(
+      userInput,
+      blindedOutput,
+      randomScalar,
+    );
+    const { pk } = deriveAuthenticationKeyPair(recoveredSeed);
+    const derivedPubKey = secp256k1.ProjectivePoint.fromHex(pk);
+    const thresholdPubKey =
+      secp256k1.ProjectivePoint.fromHex(thresholdAuthPubKey);
+
+    if (derivedPubKey.equals(thresholdPubKey)) {
+      return recoveredSeed;
+    }
+  }
+
+  return null;
 };
 
 /**
@@ -153,6 +210,15 @@ export const validateSeed = async (
   if (derivedPubKey.equals(thresholdPubKey)) {
     seed = recoveredSeed;
   }
+  // if seed is not found, try to find it using all combinations
+  seed =
+    seed ??
+    findMatchingSeedWithAllCombinations(
+      sortedBlindedOutputs,
+      userInput,
+      randomScalar,
+      thresholdAuthPubKey,
+    );
 
   if (!seed) {
     throw TOPRFError.couldNotDeriveEncryptionKey();
