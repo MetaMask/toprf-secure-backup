@@ -163,7 +163,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       authPubKey,
       verifier,
       verifierId,
-      shareKeyIndex,
+      shareKeyIndex = FIRST_KEY_INDEX,
       oldAuthKeyPair,
     } = params;
     const { nodeEndpointsMap } = await this.#getNodeDetails();
@@ -223,7 +223,6 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       authPubKey: authKeyPair.pk,
       verifier,
       verifierId,
-      shareKeyIndex: FIRST_KEY_INDEX,
     });
 
     return {

@@ -107,7 +107,7 @@ export type PersistLocalEncKeyParams = {
   authPubKey: SEC1EncodedPublicKey;
   verifier: string;
   verifierId: string;
-  shareKeyIndex: number;
+  shareKeyIndex?: number;
   oldAuthKeyPair?: KeyPair;
 };
 
