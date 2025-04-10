@@ -1,4 +1,4 @@
-# `toprf-secure-backup-sdk`
+# `@metamask/toprf-secure-backup`
 
 This monorepo implements the SRP Backup feature for the MetaMask Wallet.
 

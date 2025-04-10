@@ -8,6 +8,7 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
+import { FIRST_KEY_INDEX } from './constants';
 import type {
   AuthenticateParams,
   AuthenticateResult,
@@ -18,6 +19,9 @@ import type {
   RecoverEncryptionKeyParams,
   RecoverEncryptionKeyResult,
   AddSecretDataItemParams,
+  CreateLocalEncKeyResult,
+  CreateLocalEncKeyParams,
+  PersistLocalEncKeyParams,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -31,6 +35,7 @@ import { recoverTOPRFSeed } from './toprfEvalRequest';
 import { createNodeEndpointsMap } from './utils';
 
 /**
+ * ToprfSecureBackup - The main class for the tOPRF Secure Backup service.
  *
  */
 export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
@@ -41,7 +46,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   /**
    *
    * @param params - The parameters for the constructor.
-   * @param params.network - The web3auth network to be used key management and authentication.
+   * @param params.network - The web3auth network to be used for key management and authentication.
    */
   constructor(params: { network: TORUS_SAPPHIRE_NETWORK_TYPE }) {
     this.#nodeDetailManager = new NodeDetailManager({
@@ -109,6 +114,69 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   }
 
   /**
+   * This function locally creates an OPRF key without storing it at the key
+   * management service. It returns the OPRF key, derives the corresponding key
+   * seed, authentication key pair and encryption key.
+   *
+   * @param params - The parameters for creating the encryption key.
+   * @param params.password - New password of the user.
+   * @param params.oprfKey - Optional OPRF key to be used for the OPRF evaluation.
+   *
+   * @returns The OPRF key, seed, and derived keys.
+   */
+  createLocalEncKey(params: CreateLocalEncKeyParams): CreateLocalEncKeyResult {
+    const { password, oprfKey = generateRandomScalar() } = params;
+    const pwBytes = utf8ToBytes(password);
+    const seed = OPRF.localEval(oprfKey, pwBytes);
+    const authKeyPair = deriveAuthenticationKeyPair(seed);
+    const encKey = deriveEncryptionKey(seed);
+
+    return {
+      oprfKey,
+      seed,
+      authKeyPair: {
+        sk: authKeyPair.sk,
+        pk: authKeyPair.pk,
+      },
+      encKey,
+    };
+  }
+
+  /**
+   * This function persists the OPRF key's shares at the servers.
+   *
+   * @param params - The parameters for persisting the OPRF key.
+   * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
+   * @param params.oprfKey - The OPRF key to be persisted.
+   * @param params.authPubKey - The authentication public key.
+   * @param params.verifier - The verifier name used for authentication.
+   * @param params.verifierId - The verifierId/userID of the user.
+   */
+  async persistLocalEncKey(params: PersistLocalEncKeyParams): Promise<void> {
+    const { nodeAuthTokens, oprfKey, authPubKey, verifier, verifierId } =
+      params;
+    const { nodeEndpointsMap } = await this.#getNodeDetails();
+
+    const selectedEndpointsMap = nodeAuthTokens.reduce<Record<number, string>>(
+      (acc, tokenData) => {
+        acc[tokenData.nodeIndex] = nodeEndpointsMap[tokenData.nodeIndex];
+        return acc;
+      },
+      {},
+    );
+
+    await storeKeyShares({
+      nodeEndpointsMap: selectedEndpointsMap,
+      verifier,
+      verifierId,
+      authTokens: nodeAuthTokens,
+      keyIndex: FIRST_KEY_INDEX,
+      oprfKey,
+      authPubKey,
+    });
+  }
+
+  /**
    * This function creates the encryption key which is used to encrypt/decrypt the secret data.
    *
    * @param params - The parameters for creating the encryption key.
@@ -121,28 +189,17 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     params: CreateEncryptionKeyParams,
   ): Promise<CreateEncryptionKeyResult> {
     const { nodeAuthTokens, password, verifier, verifierId } = params;
-    const { nodeEndpointsMap } = await this.#getNodeDetails();
-    const oprfKey = generateRandomScalar();
-    const pwBytes = utf8ToBytes(password);
-    const seed = OPRF.localEval(oprfKey, pwBytes);
-    const authKeyPair = deriveAuthenticationKeyPair(seed);
-    const selectedEndpointsMap = nodeAuthTokens.reduce<Record<number, string>>(
-      (acc, tokenData) => {
-        acc[tokenData.nodeIndex] = nodeEndpointsMap[tokenData.nodeIndex];
-        return acc;
-      },
-      {},
-    );
-    await storeKeyShares({
-      nodeEndpointsMap: selectedEndpointsMap,
-      verifier,
-      verifierId,
-      authTokens: nodeAuthTokens,
-      keyIndex: 1,
+    const { oprfKey, authKeyPair, encKey } = this.createLocalEncKey({
+      password,
+    });
+
+    await this.persistLocalEncKey({
+      nodeAuthTokens,
       oprfKey,
       authPubKey: authKeyPair.pk,
+      verifier,
+      verifierId,
     });
-    const encKey = deriveEncryptionKey(seed);
 
     return {
       authKeyPair: {

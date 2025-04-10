@@ -55,6 +55,59 @@ export type AuthenticateResult = {
 };
 
 /**
+ * CreateLocalEncryptionKeyParams - The parameters for creating an OPRF encryption key locally.
+ *
+ * password - The password of the user.
+ *
+ * oprfKey - Optional OPRF key to be used for the OPRF evaluation.
+ */
+export type CreateLocalEncKeyParams = {
+  password: string;
+  oprfKey?: bigint;
+};
+
+/**
+ * CreateLocalEncryptionKeyResult - The result of creating an encryption key.
+ *
+ * oprfKey - The OPRF key which is used to for local OPRF evaluation.
+ *
+ * seed - The seed which is used to derive the authentication and encryption keys.
+ *
+ * authKeyPair - The authentication key pair which is used to authenticate the user.
+ *
+ * encKey - The encryption key which is used to encrypt the secret data.
+ */
+export type CreateLocalEncKeyResult = {
+  oprfKey: bigint;
+  seed: Uint8Array;
+  authKeyPair: KeyPair;
+  encKey: Uint8Array;
+};
+
+/**
+ * PersistLocalEncKeyParams - The parameters for persisting an OPRF key's shares to the servers.
+ *
+ * nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
+ *
+ * keyIndex - The index of the key to be persisted.
+ *
+ * oprfKey - The OPRF key which is used to for local OPRF evaluation.
+ *
+ * authKeyPair - The authentication key pair which is used to authenticate the write request to the metadata store.
+ *
+ * verifier - The verifier name used for authentication.
+ *
+ * verifierId - The verifierId/userID of the user.
+ */
+export type PersistLocalEncKeyParams = {
+  nodeAuthTokens: NodeAuthTokens;
+  oprfKey: bigint;
+  authPubKey: SEC1EncodedPublicKey;
+  verifier: string;
+  verifierId: string;
+};
+
+/**
  * CreateEncryptionKeyParams - The parameters for creating an encryption key.
  *
  * verifier - The verifier of the user.
@@ -173,8 +226,47 @@ export type FetchAllSecretDataParams = {
   authKeyPair: KeyPair;
 };
 
+/**
+ * Proof that the user owns the old key when changing to a new password/key
+ * Contains a signature created with the old private key on a timestamp and new key share data.
+ */
+export type KeyChangeProof = {
+  oldKeySignature: string;
+  signatureTimestamp: number;
+};
+
 export type IToprfSecureBackup = {
   authenticate: (params: AuthenticateParams) => Promise<AuthenticateResult>;
+
+  /**
+   * This function locally creates an OPRF key without storing it at the key
+   * management service. It returns the OPRF key, derives the corresponding key
+   * seed, authentication key pair and encryption key.
+   *
+   * @param params - The parameters for creating the encryption key.
+   * @param params.password - New password of the user.
+   * @param params.blindingFactor - Optional blinding factor to be used for the OPRF evaluation.
+   *
+   * @returns A promise that resolves with the encryption key.
+   */
+  createLocalEncKey: (
+    params: CreateLocalEncKeyParams,
+  ) => CreateLocalEncKeyResult;
+
+  /**
+   * This function persists an OPRF key's shares to the servers.
+   *
+   * @param params - The parameters for persisting an OPRF key's shares.
+   * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
+   * @param params.keyIndex - The index of the key to be persisted.
+   * @param params.oprfKey - The OPRF key to be persisted.
+   * @param params.authKeyPair - The authentication key pair which is used to authenticate the write request to the metadata store.
+   * @param params.verifier - The verifier name used for authentication.
+   * @param params.verifierId - The verifierId/userID of the user.
+   *
+   * @returns A promise that resolves when the OPRF key's shares are persisted.
+   */
+  persistLocalEncKey: (params: PersistLocalEncKeyParams) => Promise<void>;
 
   createEncKey: (
     params: CreateEncryptionKeyParams,
@@ -192,7 +284,7 @@ export type IToprfSecureBackup = {
    * @param params.newPassword - The new password of the user.
    * @param params.keyPair - The current encryption key of the user.
    *
-   * @returns {ChangeEncryptionKeyResult} A promise that resolves with the new encryption key.
+   * @returns A promise that resolves with the new encryption key.
    */
   changeEncKey: (
     params: ChangeEncryptionKeyParams,
@@ -206,7 +298,7 @@ export type IToprfSecureBackup = {
    * @param params.authKeyPair - The authentication key to be used to provide valid signature for storing the secret data.
    * @param params.secretData - The array of secret data to be registered.
    *
-   * @returns {void}
+   * @returns A promise that resolves when the secret data is registered.
    */
   addSecretDataItem: (params: AddSecretDataItemParams) => Promise<void>;
 
@@ -215,7 +307,6 @@ export type IToprfSecureBackup = {
    * auth pub key, decrypts, and returns them.
    *
    * @param params - The parameters for fetching the secret data.
-   * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
    * @param params.decKey - The decryption key to be used to decrypt the secret data.
    * @param params.authKeyPair - The authentication key to be used to provide valid signature for fetching the secret data.
    *

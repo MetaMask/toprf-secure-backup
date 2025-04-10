@@ -1,5 +1,7 @@
 import type { JRPCResponse, JRPCRequest } from '@metamask/auth-network-utils';
 
+import type { KeyChangeProof } from './interfaces';
+
 export type CommitmentJRPCRequestParams = {
   tokenCommitment: string;
   verifier: string;
@@ -46,13 +48,23 @@ export type AuthRequestResult = {
 
 export type AuthJRPCResponse = JRPCResponse<AuthRequestResult>;
 
-export type ShareImportItem = {
+export type BaseShareImportItem = {
   encryptedAuthToken: string;
   encryptedShare: string;
   shareKeyIndex: number;
   nodeIndex: number;
   sssEndpoint: string;
 };
+
+export type NewUserShareImportItem = BaseShareImportItem;
+
+export type KeyChangeShareImportItem = BaseShareImportItem & KeyChangeProof;
+
+export type ShareImportItem<
+  ShareType extends 'standard' | 'keyChange' = 'standard',
+> = ShareType extends 'standard'
+  ? NewUserShareImportItem
+  : KeyChangeShareImportItem;
 
 export type StoreKeySharesJRPCRequestParams = {
   verifier: string;
