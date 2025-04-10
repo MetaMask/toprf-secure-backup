@@ -319,4 +319,188 @@ describe('secure backup operations', function () {
     expect(newShareKeyIndex).toBeDefined();
     expect(newShareKeyIndex).toBeGreaterThan(0);
   });
+
+  it('should fail when trying to change key before storing shares', async function () {
+    const privKey = secp256k1.utils.randomPrivateKey();
+    const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
+
+    const verifier = 'torus-test-health';
+    const verifierID = `test-verifier-id-${Math.random()}`;
+    const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
+      await nodeDetailManager.getNodeDetails({
+        verifier,
+        verifierId: verifierID,
+      });
+
+    if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
+      throw new Error('Failed to get node details');
+    }
+
+    const idToken = generateIdToken(verifierID, 'ES256');
+    const sessionPubKeyX = pubKey.x.toString(16);
+    const sessionPubKeyY = pubKey.y.toString(16);
+
+    const commitmentResults = await commitIdToken({
+      idToken,
+      verifier,
+      sessionPubKeyX,
+      sessionPubKeyY,
+      endpoints: torusNodeSSSEndpoints,
+    });
+
+    const nodeEndpointsMap = createNodeEndpointsMap(
+      torusNodeSSSEndpoints,
+      torusIndexes,
+    );
+
+    const selectedEndpointsMap = commitmentResults.reduce<
+      Record<number, string>
+    >((acc, result) => {
+      acc[result.nodeIndex] = nodeEndpointsMap[result.nodeIndex];
+      return acc;
+    }, {});
+
+    const { authTokensData } = await authenticateUser({
+      idToken,
+      verifier,
+      verifierID,
+      sessionPrivateKey: privKey,
+      nodeEndpointsMap: selectedEndpointsMap,
+      commitmentSignatures: commitmentResults,
+    });
+
+    expect(authTokensData).toBeDefined();
+
+    const originalPasswordBytes = toBytes('original-password');
+    const oprfKey = generateRandomScalar();
+    const originalSeed = OPRF.localEval(oprfKey, originalPasswordBytes);
+    const originalAuthKeyPair = deriveAuthenticationKeyPair(originalSeed);
+
+    const newPasswordBytes = toBytes('new-password');
+    const newOprfKey = generateRandomScalar();
+    const newSeed = OPRF.localEval(newOprfKey, newPasswordBytes);
+    const newAuthKeyPair = deriveAuthenticationKeyPair(newSeed);
+
+    // Attempt to change key before storing shares, which should fail
+    const changeKeyResponse = await changeKeyShares({
+      nodeEndpointsMap: selectedEndpointsMap,
+      verifier,
+      verifierId: verifierID,
+      authTokens: authTokensData,
+      oldAuthPrivKey: originalAuthKeyPair.sk,
+      shareKeyIndex: 2,
+      newOprfKey,
+      newAuthPubKey: newAuthKeyPair.pk,
+    });
+
+    expect(changeKeyResponse).toBeDefined();
+    expect(changeKeyResponse.error).toBeDefined();
+    expect(typeof changeKeyResponse.error?.message).toBe('string');
+    expect(changeKeyResponse.error?.message).toBe(
+      'Regular import flow invalid',
+    );
+    expect(changeKeyResponse.error?.data).toBe(
+      'KeyChangeProof should be nil for regular import',
+    );
+  });
+
+  it('should fail when trying to change to a lower key index', async function () {
+    const privKey = secp256k1.utils.randomPrivateKey();
+    const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
+
+    const verifier = 'torus-test-health';
+    const verifierID = `test-verifier-id-${Math.random()}`;
+    const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
+      await nodeDetailManager.getNodeDetails({
+        verifier,
+        verifierId: verifierID,
+      });
+
+    if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
+      throw new Error('Failed to get node details');
+    }
+
+    const idToken = generateIdToken(verifierID, 'ES256');
+    const sessionPubKeyX = pubKey.x.toString(16);
+    const sessionPubKeyY = pubKey.y.toString(16);
+
+    const commitmentResults = await commitIdToken({
+      idToken,
+      verifier,
+      sessionPubKeyX,
+      sessionPubKeyY,
+      endpoints: torusNodeSSSEndpoints,
+    });
+
+    const nodeEndpointsMap = createNodeEndpointsMap(
+      torusNodeSSSEndpoints,
+      torusIndexes,
+    );
+
+    const selectedEndpointsMap = commitmentResults.reduce<
+      Record<number, string>
+    >((acc, result) => {
+      acc[result.nodeIndex] = nodeEndpointsMap[result.nodeIndex];
+      return acc;
+    }, {});
+
+    const { authTokensData } = await authenticateUser({
+      idToken,
+      verifier,
+      verifierID,
+      sessionPrivateKey: privKey,
+      nodeEndpointsMap: selectedEndpointsMap,
+      commitmentSignatures: commitmentResults,
+    });
+
+    expect(authTokensData).toBeDefined();
+
+    const originalPasswordBytes = toBytes('original-password');
+    const oprfKey = generateRandomScalar();
+    const originalSeed = OPRF.localEval(oprfKey, originalPasswordBytes);
+    const originalAuthKeyPair = deriveAuthenticationKeyPair(originalSeed);
+
+    // Use a higher initial key index
+    const initialKeyIndex = 2;
+
+    const storeSharesResponse = await storeKeyShares({
+      nodeEndpointsMap: selectedEndpointsMap,
+      verifier,
+      verifierId: verifierID,
+      authTokens: authTokensData,
+      shareKeyIndex: initialKeyIndex,
+      oprfKey,
+      authPubKey: originalAuthKeyPair.pk,
+    });
+
+    expect(storeSharesResponse).toBeDefined();
+    expect(storeSharesResponse.error).toBeUndefined();
+
+    const newPasswordBytes = toBytes('new-password');
+    const newOprfKey = generateRandomScalar();
+    const newSeed = OPRF.localEval(newOprfKey, newPasswordBytes);
+    const newAuthKeyPair = deriveAuthenticationKeyPair(newSeed);
+
+    // Try to change key with a lower key index
+    const lowerKeyIndex = 1;
+
+    const keyChangeResponse = await changeKeyShares({
+      nodeEndpointsMap: selectedEndpointsMap,
+      verifier,
+      verifierId: verifierID,
+      authTokens: authTokensData,
+      oldAuthPrivKey: originalAuthKeyPair.sk,
+      shareKeyIndex: lowerKeyIndex,
+      newOprfKey,
+      newAuthPubKey: newAuthKeyPair.pk,
+    });
+
+    expect(keyChangeResponse).toBeDefined();
+    expect(keyChangeResponse.error).toBeDefined();
+    expect(typeof keyChangeResponse.error?.message).toBe('string');
+    expect(keyChangeResponse.error?.message).toBe(
+      'requested key index 1 must be at least equal to the existing key index 2',
+    );
+    expect(keyChangeResponse.error?.data).toBeUndefined();
+  });
 });
