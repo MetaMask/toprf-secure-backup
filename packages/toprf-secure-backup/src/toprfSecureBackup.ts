@@ -322,10 +322,15 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     });
 
     let metadataStore: MetadataStore | undefined;
-    let lockId: string | undefined;
+    let oldMetadataLockId: string | undefined;
+    let newMetadataLockId: string | undefined;
 
     try {
       metadataStore = await this.#createMetadataStore();
+
+      oldMetadataLockId =
+        await metadataStore.acquireMetadataLock(oldAuthKeyPair);
+      newMetadataLockId = await metadataStore.acquireMetadataLock(authKeyPair);
 
       const existingData = await metadataStore.fetchAllSecretDataItems(
         oldEncKey,
@@ -336,8 +341,6 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       if (!existingData || existingData.length === 0) {
         throw new Error('No existing data found to change key');
       }
-
-      lockId = await metadataStore.acquireMetadataLock(authKeyPair);
 
       await metadataStore.batchAddSecretData({
         secretData: existingData,
@@ -357,9 +360,16 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
 
       return { authKeyPair, encKey };
     } finally {
-      if (metadataStore && lockId) {
+      if (metadataStore && oldMetadataLockId && newMetadataLockId) {
         try {
-          await metadataStore.releaseMetadataLock(authKeyPair, lockId);
+          await metadataStore.releaseMetadataLock(
+            oldAuthKeyPair,
+            oldMetadataLockId,
+          );
+          await metadataStore.releaseMetadataLock(
+            authKeyPair,
+            newMetadataLockId,
+          );
         } catch (error) {
           console.error('Failed to release metadata lock:', error);
         }
