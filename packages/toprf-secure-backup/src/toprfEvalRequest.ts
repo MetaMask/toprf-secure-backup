@@ -136,6 +136,12 @@ export const validateSeed = async (
     })
     .filter((point): point is BlindedOutputShare => point !== null);
 
+  if (blindedOutputs.length < EXISTING_USER_AUTHENTICATION_THRESHOLD) {
+    throw TOPRFError.insufficientValidResponses(
+      `Insufficient valid blinded outputs, expected: ${EXISTING_USER_AUTHENTICATION_THRESHOLD}, received: ${blindedOutputs.length}`,
+    );
+  }
+
   // evaluate auth priv key using oprf and match with the threshold auth pub key
   const allCombis = kCombinations(
     completedRequests.length,

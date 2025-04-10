@@ -229,7 +229,6 @@ describe('toprf secret backup', function () {
     ).rejects.toBeDefined();
   });
 
-  // TODO: Tests failed at the moment. We need to wait for the metadata-server to be deployed in all nodes.
   it('should be able to store secret data', async function () {
     const secretData = utf8ToBytes('test-secret-data');
     const verifier = 'torus-test-health';
@@ -421,5 +420,43 @@ describe('toprf secret backup', function () {
     } finally {
       mockResetRateLimits.mockRestore();
     }
+  });
+
+  it('should throw error when trying to change encryption key without existing data', async function () {
+    const verifier = 'torus-test-health';
+    const verifierID = `test-verifier-id-${Math.random()}`;
+    const idToken = generateIdToken(verifierID, 'ES256');
+    const toprfSecureBackup = new ToprfSecureBackup({
+      network: 'sapphire_devnet',
+    });
+
+    const result = await toprfSecureBackup.authenticate({
+      idTokens: [idToken],
+      verifier,
+      verifierID,
+    });
+
+    // Creating keys but intentionally not storing any secret data
+    const originalPassword = generateRandomPassword();
+    const originalEncKeyResult = await toprfSecureBackup.createEncKey({
+      nodeAuthTokens: result.nodeAuthTokens,
+      password: originalPassword,
+      verifier,
+      verifierId: verifierID,
+    });
+
+    const newPassword = generateRandomPassword();
+
+    await expect(
+      toprfSecureBackup.changeEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        verifier,
+        verifierId: verifierID,
+        oldEncKey: originalEncKeyResult.encKey,
+        oldAuthKeyPair: originalEncKeyResult.authKeyPair,
+        newPassword,
+        newShareKeyIndex: FIRST_KEY_INDEX + 1,
+      }),
+    ).rejects.toThrow('No existing data found to change key');
   });
 });
