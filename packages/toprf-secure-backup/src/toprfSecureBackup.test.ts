@@ -1,14 +1,15 @@
 import { TOPRFError } from '@metamask/auth-network-utils';
 import { utf8ToBytes } from '@noble/ciphers/utils';
 
-import { FIRST_KEY_INDEX } from './constants';
-import * as resetRateLimitsModule from './resetRateLimits';
-import { ToprfSecureBackup } from './toprfSecureBackup';
 import {
   generateIdToken,
   generateRandomPassword,
   generateRandomVerifierId,
 } from '../tests/testHelpers';
+import { FIRST_KEY_INDEX } from './constants';
+import { MetadataStore } from './metadata';
+import * as resetRateLimitsModule from './resetRateLimits';
+import { ToprfSecureBackup } from './toprfSecureBackup';
 
 const EXISTNG_USER_VERIFIER_ID = 'test-verifier-id-existing-user';
 
@@ -458,5 +459,198 @@ describe('toprf secret backup', function () {
         newShareKeyIndex: FIRST_KEY_INDEX + 1,
       }),
     ).rejects.toThrow('No existing data found to change key');
+  });
+
+  it('should throw error when metadata server fails during change encryption key', async function () {
+    const secretData = utf8ToBytes('test-secret-data-for-metadata-failure');
+    const verifier = 'torus-test-health';
+    const verifierID = `test-verifier-id-${Math.random()}`;
+    const idToken = generateIdToken(verifierID, 'ES256');
+    const toprfSecureBackup = new ToprfSecureBackup({
+      network: 'sapphire_devnet',
+    });
+
+    // Setup initial data
+    const result = await toprfSecureBackup.authenticate({
+      idTokens: [idToken],
+      verifier,
+      verifierID,
+    });
+
+    const originalPassword = generateRandomPassword();
+    const originalEncKeyResult = await toprfSecureBackup.createEncKey({
+      nodeAuthTokens: result.nodeAuthTokens,
+      password: originalPassword,
+      verifier,
+      verifierId: verifierID,
+    });
+
+    await toprfSecureBackup.addSecretDataItem({
+      encKey: originalEncKeyResult.encKey,
+      secretData,
+      authKeyPair: originalEncKeyResult.authKeyPair,
+    });
+
+    const recoveredOriginalKey = await toprfSecureBackup.recoverEncKey({
+      nodeAuthTokens: result.nodeAuthTokens,
+      password: originalPassword,
+      verifier,
+      verifierId: verifierID,
+    });
+
+    // Mock MetadataStore.batchAddSecretData to throw an error
+    const batchAddSecretDataSpy = jest.spyOn(
+      MetadataStore.prototype,
+      'batchAddSecretData',
+    );
+    batchAddSecretDataSpy.mockRejectedValue(
+      new Error('Metadata server failed during batch data update'),
+    );
+
+    const newPassword = generateRandomPassword();
+    try {
+      // Attempt to change the encryption key - should fail during batch data update
+      await expect(
+        toprfSecureBackup.changeEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          verifier,
+          verifierId: verifierID,
+          oldEncKey: originalEncKeyResult.encKey,
+          oldAuthKeyPair: originalEncKeyResult.authKeyPair,
+          newPassword,
+          newShareKeyIndex: recoveredOriginalKey.shareKeyIndex + 1,
+        }),
+      ).rejects.toThrow('Metadata server failed during batch data update');
+
+      expect(batchAddSecretDataSpy).toHaveBeenCalled();
+    } finally {
+      jest.restoreAllMocks();
+    }
+
+    // verify the key cannot be recovered using the new password
+    await expect(
+      toprfSecureBackup.recoverEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        password: newPassword,
+        verifier,
+        verifierId: verifierID,
+      }),
+    ).rejects.toThrow('Could not derive encryption key');
+  });
+
+  it('should throw error when using incorrect authKeyPair during password change', async function () {
+    const secretData = utf8ToBytes('test-secret-data-for-incorrect-auth');
+    const verifier = 'torus-test-health';
+    const verifierID = `test-verifier-id-${Math.random()}`;
+    const idToken = generateIdToken(verifierID, 'ES256');
+    const toprfSecureBackup = new ToprfSecureBackup({
+      network: 'sapphire_devnet',
+    });
+
+    const result = await toprfSecureBackup.authenticate({
+      idTokens: [idToken],
+      verifier,
+      verifierID,
+    });
+
+    const originalPassword = generateRandomPassword();
+    const originalEncKeyResult = await toprfSecureBackup.createEncKey({
+      nodeAuthTokens: result.nodeAuthTokens,
+      password: originalPassword,
+      verifier,
+      verifierId: verifierID,
+    });
+
+    await toprfSecureBackup.addSecretDataItem({
+      encKey: originalEncKeyResult.encKey,
+      secretData,
+      authKeyPair: originalEncKeyResult.authKeyPair,
+    });
+
+    const recoveredOriginalKey = await toprfSecureBackup.recoverEncKey({
+      nodeAuthTokens: result.nodeAuthTokens,
+      password: originalPassword,
+      verifier,
+      verifierId: verifierID,
+    });
+
+    // Generate incorrect authKeyPair
+    const differentPassword = generateRandomPassword();
+    const incorrectKeyResult = toprfSecureBackup.createLocalEncKey({
+      password: differentPassword,
+    });
+
+    const newPassword = generateRandomPassword();
+
+    await expect(
+      toprfSecureBackup.changeEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        verifier,
+        verifierId: verifierID,
+        oldEncKey: originalEncKeyResult.encKey,
+        oldAuthKeyPair: incorrectKeyResult.authKeyPair, // Using incorrect authKeyPair
+        newPassword,
+        newShareKeyIndex: recoveredOriginalKey.shareKeyIndex + 1,
+      }),
+    ).rejects.toThrow('No existing data found to change key');
+  });
+
+  it('should throw error when using incorrect encryption key during password change', async function () {
+    const secretData = utf8ToBytes('test-secret-data-for-incorrect-enc-key');
+    const verifier = 'torus-test-health';
+    const verifierID = `test-verifier-id-${Math.random()}`;
+    const idToken = generateIdToken(verifierID, 'ES256');
+    const toprfSecureBackup = new ToprfSecureBackup({
+      network: 'sapphire_devnet',
+    });
+
+    const result = await toprfSecureBackup.authenticate({
+      idTokens: [idToken],
+      verifier,
+      verifierID,
+    });
+
+    const originalPassword = generateRandomPassword();
+    const originalEncKeyResult = await toprfSecureBackup.createEncKey({
+      nodeAuthTokens: result.nodeAuthTokens,
+      password: originalPassword,
+      verifier,
+      verifierId: verifierID,
+    });
+
+    await toprfSecureBackup.addSecretDataItem({
+      encKey: originalEncKeyResult.encKey,
+      secretData,
+      authKeyPair: originalEncKeyResult.authKeyPair,
+    });
+
+    const recoveredOriginalKey = await toprfSecureBackup.recoverEncKey({
+      nodeAuthTokens: result.nodeAuthTokens,
+      password: originalPassword,
+      verifier,
+      verifierId: verifierID,
+    });
+
+    // Generate incorrect encryption key
+    const differentPassword = generateRandomPassword();
+    const incorrectKeyResult = toprfSecureBackup.createLocalEncKey({
+      password: differentPassword,
+    });
+
+    const newPassword = generateRandomPassword();
+
+    await expect(
+      toprfSecureBackup.changeEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        verifier,
+        verifierId: verifierID,
+        oldEncKey: incorrectKeyResult.encKey, // Using incorrect encKey
+        oldAuthKeyPair: originalEncKeyResult.authKeyPair,
+        newPassword,
+        newShareKeyIndex: recoveredOriginalKey.shareKeyIndex + 1,
+      }),
+    ).rejects.toThrow(
+      'failed to fetch metadata: failed to fetch metadata: aes/gcm: invalid ghash tag',
+    );
   });
 });
