@@ -85,11 +85,11 @@ export type CreateLocalEncKeyResult = {
 };
 
 /**
- * PersistLocalEncKeyParams - The parameters for persisting an OPRF key's shares to the servers.
+ * PersistOprfKeyParams - The parameters for persisting an OPRF key's shares to the servers.
  *
  * nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
  *
- * keyIndex - The index of the key to be persisted.
+ * shareKeyIndex - The share key index to be persisted.
  *
  * oprfKey - The OPRF key which is used to for local OPRF evaluation.
  *
@@ -98,13 +98,17 @@ export type CreateLocalEncKeyResult = {
  * verifier - The verifier name used for authentication.
  *
  * verifierId - The verifierId/userID of the user.
+ *
+ * oldAuthKeyPair - Optional authentication key pair to be used for key change flow.
  */
-export type PersistLocalEncKeyParams = {
+export type PersistOprfKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
   oprfKey: bigint;
   authPubKey: SEC1EncodedPublicKey;
   verifier: string;
   verifierId: string;
+  shareKeyIndex?: number;
+  oldAuthKeyPair?: KeyPair;
 };
 
 /**
@@ -182,33 +186,48 @@ export type RecoverEncryptionKeyParams = {
 /**
  * authKeyPair - The authentication key pair which is used to authenticate the user.
  * encKey - The encryption key which is used to encrypt the secret data.
+ * shareKeyIndex - The index of the key shares on the nodes, used for key change operations.
  * rateLimitResetResult - A promise that resolves when the rate limit is reset.
  */
 export type RecoverEncryptionKeyResult = {
   authKeyPair: KeyPair;
   encKey: Uint8Array;
+  shareKeyIndex: number;
   rateLimitResetResult: Promise<void>;
 };
 
 /**
  * nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
  *
+ * verifier - The verifier name used for authentication.
+ *
+ * verifierId - The verifierId/userID of the user.
+ *
+ * oldEncKey - The old encryption key of the user.
+ *
+ * oldAuthKeyPair - The old authentication key pair of the user.
+ *
  * newPassword - The new password of the user.
  *
- * keyPair - The current encryption key of the user.
- *
+ * newShareKeyIndex - The share key index to be used for the new key.
  */
 export type ChangeEncryptionKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
+  verifier: string;
+  verifierId: string;
+  oldEncKey: Uint8Array;
+  oldAuthKeyPair: KeyPair;
   newPassword: string;
-  keyPair: KeyPair;
+  newShareKeyIndex: number;
 };
 
 /**
- * keyPair - The new encryption/decryption key pair which is used to decrypt the secret data.
+ * authKeyPair - The new authentication key pair which is used to authenticate the user.
+ * encKey - The new encryption key which is used to encrypt the secret data.
  */
 export type ChangeEncryptionKeyResult = {
-  keyPair: KeyPair;
+  authKeyPair: KeyPair;
+  encKey: Uint8Array;
 };
 
 /**
@@ -258,15 +277,15 @@ export type IToprfSecureBackup = {
    *
    * @param params - The parameters for persisting an OPRF key's shares.
    * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
-   * @param params.keyIndex - The index of the key to be persisted.
    * @param params.oprfKey - The OPRF key to be persisted.
    * @param params.authKeyPair - The authentication key pair which is used to authenticate the write request to the metadata store.
    * @param params.verifier - The verifier name used for authentication.
    * @param params.verifierId - The verifierId/userID of the user.
-   *
+   * @param params.shareKeyIndex - The share key index to be persisted. Required only during key change, defaults to FIRST_KEY_INDEX for first-time storage.
+   * @param params.oldAuthKeyPair - The old authentication key pair of the user. Required only during key change, not needed for first-time storage.
    * @returns A promise that resolves when the OPRF key's shares are persisted.
    */
-  persistLocalEncKey: (params: PersistLocalEncKeyParams) => Promise<void>;
+  persistOprfKey: (params: PersistOprfKeyParams) => Promise<void>;
 
   createEncKey: (
     params: CreateEncryptionKeyParams,

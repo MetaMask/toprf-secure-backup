@@ -26,6 +26,7 @@ import { postJRPCRequest } from './utils';
 type BlindedOutputShare = {
   blindedOutput: ProjPointType<bigint>;
   nodeIndex: number;
+  shareKeyIndex: number;
 };
 /**
  * Creates the parameters for the toprf eval request
@@ -82,14 +83,14 @@ const sendToprfEvalRequest = async (
  * @param randomScalar - The random scalar used to blind the input.
  * @param thresholdAuthPubKey - The threshold auth pub key derived from the toprf eval responses.
  *
- * @returns The seed if found, otherwise null.
+ * @returns The seed and share key index if found, otherwise null.
  */
 const findMatchingSeedWithAllCombinations = (
   sortedBlindedOutputs: BlindedOutputShare[],
   userInput: Uint8Array,
   randomScalar: bigint,
   thresholdAuthPubKey: string,
-): Uint8Array | null => {
+): { seed: Uint8Array; shareKeyIndex: number } | null => {
   const allCombis = kCombinations(
     sortedBlindedOutputs.length,
     EXISTING_USER_AUTHENTICATION_THRESHOLD,
@@ -123,7 +124,10 @@ const findMatchingSeedWithAllCombinations = (
       secp256k1.ProjectivePoint.fromHex(thresholdAuthPubKey);
 
     if (derivedPubKey.equals(thresholdPubKey)) {
-      return recoveredSeed;
+      return {
+        seed: recoveredSeed,
+        shareKeyIndex: currentCombiPoints[0].shareKeyIndex,
+      };
     }
   }
 
@@ -136,13 +140,13 @@ const findMatchingSeedWithAllCombinations = (
  * @param userInput - The user input i.e. the password.
  * @param randomScalar - The random scalar used to blind the input.
  * @param resultArr - The toprf eval request result
- * @returns The toprf eval request result
+ * @returns The toprf eval request result and the share key index
  */
 export const validateSeed = async (
   userInput: Uint8Array,
   randomScalar: bigint,
   resultArr: ToprfEvalJRPCResponse[],
-): Promise<Uint8Array> => {
+): Promise<{ seed: Uint8Array; shareKeyIndex: number }> => {
   const completedRequests = resultArr.filter(
     (res): res is ToprfEvalJRPCResponse => {
       const isValidObject = res && typeof res === 'object';
@@ -167,9 +171,10 @@ export const validateSeed = async (
 
   const sortedBlindedOutputs = completedRequests
     .reduce<BlindedOutputShare[]>((acc, resp) => {
-      const { blindedOutputX, blindedOutputY, nodeIndex } = resp.result ?? {};
+      const { blindedOutputX, blindedOutputY, nodeIndex, shareKeyIndex } =
+        resp.result ?? {};
       // Skip if any required values are missing
-      if (!blindedOutputX || !blindedOutputY || !nodeIndex) {
+      if (!blindedOutputX || !blindedOutputY || !nodeIndex || !shareKeyIndex) {
         return acc;
       }
 
@@ -179,13 +184,19 @@ export const validateSeed = async (
           y: BigInt(`0x${blindedOutputY}`),
         }),
         nodeIndex,
+        shareKeyIndex,
       });
 
       return acc;
     }, [])
     .sort((a, b) => a.nodeIndex - b.nodeIndex);
-
+  if (sortedBlindedOutputs.length < EXISTING_USER_AUTHENTICATION_THRESHOLD) {
+    throw TOPRFError.insufficientValidResponses(
+      `Insufficient valid blinded outputs, expected: ${EXISTING_USER_AUTHENTICATION_THRESHOLD}, received: ${sortedBlindedOutputs.length}`,
+    );
+  }
   let seed: Uint8Array | null = null;
+  let shareKeyIndex = 0;
 
   // Interpolate using sorted outputs
   // since key shares are also generated in ascending order of node index.
@@ -208,23 +219,27 @@ export const validateSeed = async (
     secp256k1.ProjectivePoint.fromHex(thresholdAuthPubKey);
 
   if (derivedPubKey.equals(thresholdPubKey)) {
+    shareKeyIndex = sortedBlindedOutputs[0].shareKeyIndex;
     seed = recoveredSeed;
   }
-  // if seed is not found, try to find it using all combinations
-  seed =
-    seed ??
-    findMatchingSeedWithAllCombinations(
-      sortedBlindedOutputs,
-      userInput,
-      randomScalar,
-      thresholdAuthPubKey,
-    );
 
-  if (!seed) {
+  if (seed && shareKeyIndex) {
+    return { seed, shareKeyIndex };
+  }
+
+  // if seed is not found, try to find it using all combinations
+  const seedAndShareKeyIndex = findMatchingSeedWithAllCombinations(
+    sortedBlindedOutputs,
+    userInput,
+    randomScalar,
+    thresholdAuthPubKey,
+  );
+
+  if (!seedAndShareKeyIndex?.seed || !seedAndShareKeyIndex?.shareKeyIndex) {
     throw TOPRFError.couldNotDeriveEncryptionKey();
   }
 
-  return seed;
+  return seedAndShareKeyIndex;
 };
 
 /**
@@ -237,7 +252,7 @@ export const validateSeed = async (
  * @param params.nodeEndpointsMap - Map of node index to endpoint to be used for the toprf eval request.
  * @param params.userInput - The user input i.e. the password.
  *
- * @returns - A promise that resolves with the key pair seed successfully.
+ * @returns - A promise that resolves with the key pair seed and share key index.
  */
 export const recoverTOPRFSeed = async (params: {
   authTokens: NodeAuthTokens;
@@ -245,7 +260,7 @@ export const recoverTOPRFSeed = async (params: {
   verifier: string;
   verifierId: string;
   userInput: Uint8Array;
-}): Promise<Uint8Array> => {
+}): Promise<{ seed: Uint8Array; shareKeyIndex: number }> => {
   const { authTokens, nodeEndpointsMap, verifier, verifierId, userInput } =
     params;
 
@@ -273,7 +288,8 @@ export const recoverTOPRFSeed = async (params: {
     promises.push(sendToprfEvalRequest(endpoint, requestParams));
   }
 
-  return Some<ToprfEvalJRPCResponse, Uint8Array>(promises, async (resultArr) =>
-    validateSeed(userInput, r, resultArr),
-  );
+  return Some<
+    ToprfEvalJRPCResponse,
+    { seed: Uint8Array; shareKeyIndex: number }
+  >(promises, async (resultArr) => validateSeed(userInput, r, resultArr));
 };

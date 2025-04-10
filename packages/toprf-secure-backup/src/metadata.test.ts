@@ -266,7 +266,7 @@ describe('MetadataStore', () => {
     expect(result?.length).toBe(0);
   });
 
-  it('should an error if the data is not present in the metadata response', async () => {
+  it('should throw an error if the data is not present in the metadata response', async () => {
     const fetchSpy = jest
       .spyOn(global, 'fetch')
       .mockImplementation(async () => {
