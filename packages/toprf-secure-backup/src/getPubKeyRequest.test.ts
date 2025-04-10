@@ -17,28 +17,11 @@ describe('getPubKey', () => {
   });
 
   it('should fail on inconsistent pub key responses', async function () {
-    const resultArr = [
-      {
-        id: 1,
-        jsonrpc: '2.0' as JsonRpcVersion,
-        result: { pubKey: '1234' },
-      },
-      {
-        id: 1,
-        jsonrpc: '2.0' as JsonRpcVersion,
-        result: { pubKey: '1234' },
-      },
-      {
-        id: 1,
-        jsonrpc: '2.0' as JsonRpcVersion,
-        result: { pubKey: '5678' },
-      },
-      {
-        id: 1,
-        jsonrpc: '2.0' as JsonRpcVersion,
-        result: { pubKey: '5678' },
-      },
-    ];
+    const resultArr = ['1234', '1234', '5678', '5678'].map((pubKey) => ({
+      id: 1,
+      jsonrpc: '2.0' as JsonRpcVersion,
+      result: { pubKey },
+    }));
 
     await expect(validatePubKey(resultArr)).rejects.toThrow(
       TOPRFError.couldNotDeriveThresholdAuthPubKey(),
