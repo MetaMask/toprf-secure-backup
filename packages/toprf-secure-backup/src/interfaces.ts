@@ -15,12 +15,19 @@ export type KeyPair = {
   pk: SEC1EncodedPublicKey;
 };
 
+export type SingleIdExtraOauthJrpcParams = {
+  subVerifierAuthParams: {
+    subVerifierIdToken: string;
+    subVerifier: string;
+  }[];
+};
 export type AuthenticateParams = {
   // for now we only support one idToken, in future we will support multiple to remove commitment call
   // so leaving it as an array for future use
   idTokens: string[];
   verifier: string;
   verifierID: string;
+  singleIdVerifierParams?: SingleIdExtraOauthJrpcParams;
 };
 
 /**

@@ -1,6 +1,9 @@
 import type { JRPCResponse, JRPCRequest } from '@metamask/auth-network-utils';
 
-import type { KeyChangeProof } from './interfaces';
+import type {
+  KeyChangeProof,
+  SingleIdExtraOauthJrpcParams,
+} from './interfaces';
 
 export type CommitmentJRPCRequestParams = {
   tokenCommitment: string;
@@ -30,6 +33,7 @@ export type AuthJRPCRequestParams = {
       verifier: string;
       verifierId: string;
     };
+    singleIdVerifierParams?: SingleIdExtraOauthJrpcParams;
     extraOauthParams?: Record<string, string | number | boolean>;
   };
   commitmentSignatures: CommitmentRequestResult[];
