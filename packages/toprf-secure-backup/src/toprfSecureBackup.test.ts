@@ -11,7 +11,7 @@ import {
   generateRandomVerifierId,
 } from '../tests/testHelpers';
 
-const EXISTNG_USER_VERIFIER_ID = 'test-verifier-id-existing-user';
+const EXISTING_USER_VERIFIER_ID = 'test-verifier-id-existing-user';
 
 /**
  * Sets up the test environment.
@@ -129,7 +129,7 @@ describe('toprf secret backup', function () {
 
   it('should return isNewUser as false for existing user', async function () {
     const { verifier, verifierID, idToken, toprfSecureBackup } = setup({
-      verifierID: EXISTNG_USER_VERIFIER_ID,
+      verifierID: EXISTING_USER_VERIFIER_ID,
     });
 
     const result = await toprfSecureBackup.authenticate({
