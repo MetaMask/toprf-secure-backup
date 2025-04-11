@@ -19,6 +19,19 @@ export type SingleIdVerifierParams = {
   subVerifierIdTokens: string[];
   subVerifier: string;
 };
+
+/**
+ * AuthenticateParams - The parameters for the authenticate request.
+ *
+ * idTokens - The idTokens to be used for the authenticate request.
+ *
+ * verifier - The verifier to be used for the authenticate request.
+ *
+ * verifierID - The verifierID to be used for the authenticate request.
+ *
+ * singleIdVerifierParams - Optional singleIdVerifierParams to be used for the authenticate request.
+ * You can pass this to use aggregate verifier.
+ */
 export type AuthenticateParams = {
   // for now we only support one idToken, in future we will support multiple to remove commitment call
   // so leaving it as an array for future use

@@ -1,4 +1,4 @@
-import { TOPRFError } from '@metamask/auth-network-utils';
+import { TOPRFError, keccak256AndHexify } from '@metamask/auth-network-utils';
 import { utf8ToBytes } from '@noble/ciphers/utils';
 
 import { FIRST_KEY_INDEX } from './constants';
@@ -18,16 +18,16 @@ const EXISTING_USER_VERIFIER_ID = 'test-verifier-id-existing-user';
  *
  * @param options - The options for the setup.
  * @param options.verifierID - The verifier id to be used for the test.
- *
+ * @param options.verifier - The verifier to be used for the test.
  * @returns The setup object.
  */
-function setup(options?: { verifierID?: string }): {
+function setup(options?: { verifierID?: string; verifier?: string }): {
   verifier: string;
   verifierID: string;
   idToken: string;
   toprfSecureBackup: ToprfSecureBackup;
 } {
-  const verifier = 'torus-test-health';
+  const verifier = options?.verifier ?? 'torus-test-health';
   const verifierID = options?.verifierID ?? generateRandomVerifierId();
   const idToken = generateIdToken(verifierID, 'ES256');
   const toprfSecureBackup = new ToprfSecureBackup({
@@ -47,6 +47,30 @@ describe('toprf secret backup', function () {
       verifier,
       verifierID,
     });
+    expect(result).toBeDefined();
+    expect(result.nodeAuthTokens).toBeDefined();
+    expect(result.nodeAuthTokens.length).toBeGreaterThan(0);
+    expect(result.isNewUser).toBe(true);
+  });
+
+  it('should be able to authenticate user with single id verifier', async function () {
+    const { verifier, verifierID, idToken, toprfSecureBackup } = setup({
+      verifierID: 'test-verifier-id-aggregate',
+      verifier: 'torus-test-health-aggregate',
+    });
+
+    const hashedIdToken = keccak256AndHexify(utf8ToBytes(idToken)).slice(2);
+
+    const result = await toprfSecureBackup.authenticate({
+      idTokens: [hashedIdToken],
+      verifier,
+      verifierID,
+      singleIdVerifierParams: {
+        subVerifier: 'torus-test-health',
+        subVerifierIdTokens: [idToken],
+      },
+    });
+
     expect(result).toBeDefined();
     expect(result.nodeAuthTokens).toBeDefined();
     expect(result.nodeAuthTokens.length).toBeGreaterThan(0);
