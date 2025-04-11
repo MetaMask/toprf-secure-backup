@@ -59,9 +59,7 @@ describe('toprf secret backup', function () {
       verifier: 'torus-test-health-aggregate',
     });
 
-    const hashedIdToken = keccak256AndHexify(
-      Buffer.from(idToken, 'utf8'),
-    ).slice(2);
+    const hashedIdToken = keccak256AndHexify(utf8ToBytes(idToken)).slice(2);
 
     const result = await toprfSecureBackup.authenticate({
       idTokens: [hashedIdToken],
@@ -72,7 +70,6 @@ describe('toprf secret backup', function () {
         subVerifierIdTokens: [idToken],
       },
     });
-    console.log('result', result);
 
     expect(result).toBeDefined();
     expect(result.nodeAuthTokens).toBeDefined();
