@@ -107,6 +107,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       sessionPrivateKey: sessionPrivKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
+      singleIdVerifierParams: params.singleIdVerifierParams,
     });
     return {
       nodeAuthTokens: authTokensData.map((tokenData) => ({
