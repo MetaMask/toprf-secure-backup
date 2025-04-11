@@ -138,6 +138,43 @@ export const validateThresholdAuthenticateResponses = async (
 };
 
 /**
+ * Validates the authenticate responses and waits for the maximum number of requests to complete.
+ *
+ * @param responses - Authenticate request responses.
+ * @param promiseArr - Authenticate request promises.
+ * @param startTime - Start time of initiating authenticate requests.
+ * @param bufferWaitTime - Buffer wait time to wait for the maximum number of requests to complete even if
+ * threshold number of requests is reached.
+ *
+ * @returns threshold or maximum number of authenticate request results.
+ * @throws Error if threshold number of requests is reached but buffer wait time has not elapsed.
+ * @throws Error if buffer wait time has elapsed but threshold number of requests is not reached.
+ */
+export const validateAndWaitForAllAuthResponses = async (
+  responses: AuthJRPCResponse[],
+  promiseArr: Promise<AuthJRPCResponse>[],
+  startTime: number,
+  bufferWaitTime: number,
+): Promise<{ authRequestResults: AuthRequestResult[]; isNewUser: boolean }> => {
+  const result = await validateThresholdAuthenticateResponses(responses);
+
+  // Return immediately if we have all responses
+  if (responses.length === promiseArr.length) {
+    return result;
+  }
+
+  // Return if buffer wait time has elapsed
+  if (Date.now() - startTime > bufferWaitTime) {
+    return result;
+  }
+
+  // Continue waiting by throwing error
+  throw new Error(
+    'Predicate Error: Threshold achieved, Waiting for maximum number of requests to complete',
+  );
+};
+
+/**
  * Authenticates the user with the given idToken and verifierID and validates the responses.
  *
  * @param params - The parameters for the authenticate request
@@ -186,14 +223,22 @@ export const authenticateUser = async (params: {
     sendAuthenticateRequest(endpoint, requestParams),
   );
 
+  // buffer wait time to wait for pending requests to complete even if we have achieved desired threshold.
+  const bufferWaitTime = 500;
+  const startTime = Date.now();
   const { authRequestResults, isNewUser } = await Some<
     AuthJRPCResponse,
     {
       authRequestResults: AuthRequestResult[];
       isNewUser: boolean;
     }
-  >(promiseArr, async (responses: AuthJRPCResponse[]) =>
-    validateThresholdAuthenticateResponses(responses),
+  >(promiseArr, async (responses) =>
+    validateAndWaitForAllAuthResponses(
+      responses,
+      promiseArr,
+      startTime,
+      bufferWaitTime,
+    ),
   );
 
   const decryptedAuthResults = await Promise.all(

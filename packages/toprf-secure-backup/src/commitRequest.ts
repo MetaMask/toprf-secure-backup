@@ -84,6 +84,43 @@ export const validateThresholdCommitmentResponses = async (
 };
 
 /**
+ * Validates the commitment responses and waits for the maximum number of requests to complete before
+ * buffer wait time has elapsed or the threshold number of requests is reached after buffer wait time.
+ *
+ * @param results - Commitment request responses.
+ * @param promiseArr - Commitment request promises.
+ * @param startTime - Start time of initiating commitment requests.
+ * @param bufferWaitTime - Buffer wait time to wait for the maximum number of requests to complete even if
+ * threshold number of requests is reached.
+ *
+ * @returns threshold or maximum number of commitment request results.
+ * @throws Error if threshold number of requests is not reached.
+ */
+export const validateAndWaitForCommitResponses = async (
+  results: CommitmentJRPCResponse[],
+  promiseArr: Promise<CommitmentJRPCResponse>[],
+  startTime: number,
+  bufferWaitTime: number,
+): Promise<CommitmentRequestResult[]> => {
+  const validatedResults = await validateThresholdCommitmentResponses(results);
+
+  // Return immediately if we have all responses
+  if (results.length === promiseArr.length) {
+    return validatedResults;
+  }
+
+  // Return if buffer wait time has elapsed
+  if (Date.now() - startTime > bufferWaitTime) {
+    return validatedResults;
+  }
+
+  // Continue waiting by throwing error
+  throw new Error(
+    'Predicate Error: Threshold achieved, Waiting for maximum number of requests to complete',
+  );
+};
+
+/**
  * Creates a commitment request to the given endpoints and validates the responses
  *
  * @param params - The parameters for the commitment request
@@ -116,9 +153,17 @@ export const commitIdToken = async (params: {
     sendCommitmentRequest(endpoint, requestParams),
   );
 
+  const bufferWaitTime = 500;
+  const startTime = Date.now();
+
   return Some<CommitmentJRPCResponse, CommitmentRequestResult[]>(
     promiseArr,
-    async (results: CommitmentJRPCResponse[]) =>
-      validateThresholdCommitmentResponses(results),
+    async (results) =>
+      validateAndWaitForCommitResponses(
+        results,
+        promiseArr,
+        startTime,
+        bufferWaitTime,
+      ),
   );
 };
