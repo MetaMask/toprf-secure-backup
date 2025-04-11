@@ -67,6 +67,8 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @param params.idTokens - An array of ID tokens for authentication.
    * @param params.verifier - The verifier who issued the idToken.
    * @param params.verifierID - The verifierID/userID assigned to the user by the verifier.
+   * @param params.singleIdVerifierParams - Optional singleIdVerifierParams to be used for the authenticate request.
+   * You can pass this to use aggregate verifier.
    *
    * @returns - The authentication result containing the authentication tokens and a boolean indicating if the user is new or not.
    * isNewUser - Indicates if the user has completed the key setup process or not.
