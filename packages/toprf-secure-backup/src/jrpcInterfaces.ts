@@ -23,6 +23,13 @@ export type CommitmentJRPCResponse = JRPCResponse<
   CommitmentRequestResult | undefined
 >;
 
+export type SingleIdVerifierJrpcParams = {
+  subVerifierAuthParams: {
+    subVerifierIdToken: string;
+    subVerifier: string;
+  }[];
+};
+
 export type AuthJRPCRequestParams = {
   authData: {
     authenticationContext: {
@@ -30,6 +37,7 @@ export type AuthJRPCRequestParams = {
       verifier: string;
       verifierId: string;
     };
+    singleIdVerifierParams?: SingleIdVerifierJrpcParams;
     extraOauthParams?: Record<string, string | number | boolean>;
   };
   commitmentSignatures: CommitmentRequestResult[];

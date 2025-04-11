@@ -4,6 +4,7 @@ import {
   TOPRFError,
   filterCompletedRequests,
 } from '@metamask/auth-network-utils';
+import { utf8ToBytes } from '@noble/hashes/utils';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
 import { COMMIT_RESPONSE_THRESHOLD, JRPC_METHODS } from './constants';
@@ -103,9 +104,7 @@ export const commitIdToken = async (params: {
 }): Promise<CommitmentRequestResult[]> => {
   const { idToken, endpoints, verifier, sessionPubKeyX, sessionPubKeyY } =
     params;
-  const tokenCommitment = keccak256AndHexify(
-    new TextEncoder().encode(idToken),
-  ).slice(2);
+  const tokenCommitment = keccak256AndHexify(utf8ToBytes(idToken)).slice(2);
 
   const requestParams = createCommitmentRequestParams(
     tokenCommitment,

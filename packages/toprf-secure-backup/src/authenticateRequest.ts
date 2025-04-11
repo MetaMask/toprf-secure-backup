@@ -11,6 +11,7 @@ import {
   JRPC_METHODS,
   NEW_USER_AUTHENTICATION_THRESHOLD,
 } from './constants';
+import type { SingleIdVerifierParams } from './interfaces';
 import type {
   AuthJRPCRequest,
   AuthJRPCResponse,
@@ -28,7 +29,7 @@ import { decryptAuthToken, postJRPCRequest } from './utils';
  * to be used for the authenticate request
  * @param verifierID - The verifierID to be used for the authenticate request
  * @param commitmentSignatures - The idToken commitment signatures to be used for the authenticate request.
- *
+ * @param singleIdVerifierParams - Optional singleIdVerifierParams to be used for the authenticate request.
  * @returns The parameters for the authenticate JRPC request.
  */
 const createAuthenticateRequestParams = (
@@ -36,7 +37,20 @@ const createAuthenticateRequestParams = (
   verifier: string,
   verifierID: string,
   commitmentSignatures: CommitmentRequestResult[],
+  singleIdVerifierParams?: SingleIdVerifierParams,
 ): AuthJRPCRequestParams => {
+  const singleIdVerifierParamsArr =
+    singleIdVerifierParams?.subVerifierIdTokens &&
+    singleIdVerifierParams?.subVerifier
+      ? {
+          subVerifierAuthParams: [
+            {
+              subVerifierIdToken: singleIdVerifierParams.subVerifierIdTokens[0],
+              subVerifier: singleIdVerifierParams.subVerifier,
+            },
+          ],
+        }
+      : undefined;
   return {
     authData: {
       authenticationContext: {
@@ -44,6 +58,7 @@ const createAuthenticateRequestParams = (
         verifier,
         verifierId: verifierID,
       },
+      singleIdVerifierParams: singleIdVerifierParamsArr,
     },
     commitmentSignatures,
     clientTime: Math.floor(Date.now() / 1000).toString(),
@@ -132,6 +147,9 @@ export const validateThresholdAuthenticateResponses = async (
  * @param params.sessionPrivateKey - The session private key used for commitment request.
  * @param params.nodeEndpointsMap - The map of node indexes to endpoints map to be used for the authenticate request.
  * @param params.commitmentSignatures - The idToken commitment signatures to be used for the authenticate request.
+ * @param params.singleIdVerifierParams - Optional singleIdVerifierParams to be used for the authenticate request.
+ * You can pass this to use aggregate verifier.
+ *
  * @returns resultArr - The authenticate request result, where each element is
  * a signed authenticate data from a node and a boolean indicating if the user is new or not.
  */
@@ -142,6 +160,7 @@ export const authenticateUser = async (params: {
   sessionPrivateKey: Uint8Array;
   nodeEndpointsMap: Record<number, string>;
   commitmentSignatures: CommitmentRequestResult[];
+  singleIdVerifierParams?: SingleIdVerifierParams;
 }): Promise<{
   authTokensData: AuthRequestResult[];
   isNewUser: boolean;
@@ -153,12 +172,14 @@ export const authenticateUser = async (params: {
     verifierID,
     commitmentSignatures,
     sessionPrivateKey,
+    singleIdVerifierParams,
   } = params;
   const requestParams = createAuthenticateRequestParams(
     idToken,
     verifier,
     verifierID,
     commitmentSignatures,
+    singleIdVerifierParams,
   );
   // start with half the nodes count optimistically.
   const promiseArr = Object.values(nodeEndpointsMap).map(async (endpoint) =>
