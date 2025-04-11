@@ -19,6 +19,7 @@ import type {
   ToprfEvalJRPCRequest,
   ToprfEvalJRPCRequestParams,
   ToprfEvalJRPCResponse,
+  ToprfEvalResult,
 } from './jrpcInterfaces';
 import { deriveAuthenticationKeyPair } from './keyDerivation';
 import { OPRF } from './oprf';
@@ -136,6 +137,34 @@ const findMatchingSeedWithAllCombinations = (
 };
 
 /**
+ * Asserts that the value given is a valid toprf eval result
+ *
+ * @param value - The value to be asserted
+ * @returns True if the value is a valid toprf eval result, otherwise false
+ */
+const assertIsValidToprfEvalResult = (
+  value: unknown,
+): value is ToprfEvalResult => {
+  if (
+    typeof value !== 'object' || // `value` should be an object
+    value === null || // `value` should not be null
+    !('blindedOutputX' in value) || // `value` should have `blindedOutputX`
+    typeof value.blindedOutputX !== 'string' || // `blindedOutputX` should be a string
+    !('blindedOutputY' in value) || // `value` should have `blindedOutputY`
+    typeof value.blindedOutputY !== 'string' || // `blindedOutputY` should be a string
+    !('nodeIndex' in value) || // `value` should have `nodeIndex`
+    typeof value.nodeIndex !== 'number' || // `nodeIndex` should be a number
+    !('shareKeyIndex' in value) || // should have shareKeyIndex
+    typeof value.shareKeyIndex !== 'number' || // `shareKeyIndex` should be a number
+    !('pubKey' in value) || // should have pubKey
+    typeof value.pubKey !== 'string' // `pubKey` should be a string
+  ) {
+    return false;
+  }
+  return true;
+};
+
+/**
  * Validates the seed from the toprf eval responses
  *
  * @param userInput - The user input i.e. the password.
@@ -167,12 +196,13 @@ export const validateSeed = async (
 
   const blindedOutputShares = completedRequests.reduce<BlindedOutputShare[]>(
     (acc, resp) => {
-      const { blindedOutputX, blindedOutputY, nodeIndex, shareKeyIndex } =
-        resp.result ?? {};
-      // Skip if any required values are missing
-      if (!blindedOutputX || !blindedOutputY || !nodeIndex || !shareKeyIndex) {
+      const evalResult = resp.result;
+      if (!assertIsValidToprfEvalResult(evalResult)) {
         return acc;
       }
+
+      const { blindedOutputX, blindedOutputY, nodeIndex, shareKeyIndex } =
+        evalResult;
 
       acc.push({
         blindedOutput: secp256k1.ProjectivePoint.fromAffine({
