@@ -9,6 +9,7 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
 import { FIRST_KEY_INDEX } from './constants';
+import { getPubKey } from './getPubKeyRequest';
 import type {
   AuthenticateParams,
   AuthenticateResult,
@@ -21,7 +22,11 @@ import type {
   AddSecretDataItemParams,
   CreateLocalEncKeyResult,
   CreateLocalEncKeyParams,
-  PersistLocalEncKeyParams,
+  PersistOprfKeyParams,
+  ChangeEncryptionKeyParams,
+  ChangeEncryptionKeyResult,
+  FetchAuthPubKeyParams,
+  FetchAuthPubKeyResult,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -30,7 +35,7 @@ import {
 import { MetadataStore } from './metadata';
 import { OPRF, generateRandomScalar } from './oprf';
 import { resetRateLimits } from './resetRateLimits';
-import { storeKeyShares } from './storeSharesRequest';
+import { storeKeyShares, changeKeyShares } from './storeSharesRequest';
 import { recoverTOPRFSeed } from './toprfEvalRequest';
 import { createNodeEndpointsMap } from './utils';
 
@@ -151,10 +156,19 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @param params.authPubKey - The authentication public key.
    * @param params.verifier - The verifier name used for authentication.
    * @param params.verifierId - The verifierId/userID of the user.
+   * @param params.shareKeyIndex - The share key index to be persisted. Required only during key change, defaults to FIRST_KEY_INDEX for first-time storage.
+   * @param params.oldAuthKeyPair - The old authentication key pair of the user. Required only during key change, not needed for first-time storage.
    */
-  async persistLocalEncKey(params: PersistLocalEncKeyParams): Promise<void> {
-    const { nodeAuthTokens, oprfKey, authPubKey, verifier, verifierId } =
-      params;
+  async persistOprfKey(params: PersistOprfKeyParams): Promise<void> {
+    const {
+      nodeAuthTokens,
+      oprfKey,
+      authPubKey,
+      verifier,
+      verifierId,
+      shareKeyIndex = FIRST_KEY_INDEX,
+      oldAuthKeyPair,
+    } = params;
     const { nodeEndpointsMap } = await this.#getNodeDetails();
 
     const selectedEndpointsMap = nodeAuthTokens.reduce<Record<number, string>>(
@@ -165,15 +179,28 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       {},
     );
 
-    await storeKeyShares({
-      nodeEndpointsMap: selectedEndpointsMap,
-      verifier,
-      verifierId,
-      authTokens: nodeAuthTokens,
-      keyIndex: FIRST_KEY_INDEX,
-      oprfKey,
-      authPubKey,
-    });
+    if (oldAuthKeyPair) {
+      await changeKeyShares({
+        nodeEndpointsMap: selectedEndpointsMap,
+        verifier,
+        verifierId,
+        authTokens: nodeAuthTokens,
+        shareKeyIndex,
+        newOprfKey: oprfKey,
+        newAuthPubKey: authPubKey,
+        oldAuthPrivKey: oldAuthKeyPair.sk,
+      });
+    } else {
+      await storeKeyShares({
+        nodeEndpointsMap: selectedEndpointsMap,
+        verifier,
+        verifierId,
+        authTokens: nodeAuthTokens,
+        shareKeyIndex,
+        oprfKey,
+        authPubKey,
+      });
+    }
   }
 
   /**
@@ -193,7 +220,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       password,
     });
 
-    await this.persistLocalEncKey({
+    await this.persistOprfKey({
       nodeAuthTokens,
       oprfKey,
       authPubKey: authKeyPair.pk,
@@ -219,7 +246,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @param params.verifier - The verifier name used for authentication.
    * @param params.verifierId - The verifierId/userID of the user.
    *
-   * @returns The encryption key.
+   * @returns The encryption key result with auth key pair, encryption key and share key index.
    */
   async recoverEncKey(
     params: RecoverEncryptionKeyParams,
@@ -227,13 +254,15 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     const { nodeAuthTokens, password, verifier, verifierId } = params;
     const { nodeEndpointsMap } = await this.#getNodeDetails();
     const pwBytes = utf8ToBytes(password);
-    const seed = await recoverTOPRFSeed({
+
+    const { seed, shareKeyIndex } = await recoverTOPRFSeed({
       authTokens: nodeAuthTokens,
       nodeEndpointsMap,
       verifier,
       verifierId,
       userInput: pwBytes,
     });
+
     const authKeyPair = deriveAuthenticationKeyPair(seed);
     const encKeyPair = deriveEncryptionKey(seed);
     const rateLimitResetResult = new Promise<void>((resolve, reject) => {
@@ -250,14 +279,105 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
           reject(error as Error);
         });
     });
+
     return {
       authKeyPair: {
         sk: authKeyPair.sk,
         pk: authKeyPair.pk,
       },
       encKey: encKeyPair,
+      shareKeyIndex,
       rateLimitResetResult,
     };
+  }
+
+  /**
+   * This function replaces the existing encryption key with a new one by generating a new key from
+   * the new password, copying all existing secret data encrypted with the old key to be encrypted
+   * with the new key, and updating the key shares on the nodes.
+   *
+   * @param params - The parameters for changing the encryption key.
+   * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
+   * @param params.verifier - The verifier name used for authentication.
+   * @param params.verifierId - The verifierId/userID of the user.
+   * @param params.oldEncKey - The old encryption key of the user.
+   * @param params.oldAuthKeyPair - The old authentication key pair of the user.
+   * @param params.newPassword - The new password of the user.
+   * @param params.newShareKeyIndex - The share key index to be used for the new key.
+   *
+   * @returns The new key pair and encryption key.
+   */
+  async changeEncKey(
+    params: ChangeEncryptionKeyParams,
+  ): Promise<ChangeEncryptionKeyResult> {
+    const {
+      nodeAuthTokens,
+      verifier,
+      verifierId,
+      oldEncKey,
+      oldAuthKeyPair,
+      newPassword,
+      newShareKeyIndex,
+    } = params;
+
+    const { oprfKey, authKeyPair, encKey } = this.createLocalEncKey({
+      password: newPassword,
+    });
+
+    let metadataStore: MetadataStore | undefined;
+    let oldMetadataLockId: string | undefined;
+    let newMetadataLockId: string | undefined;
+
+    try {
+      metadataStore = await this.#createMetadataStore();
+
+      [oldMetadataLockId, newMetadataLockId] = await Promise.all([
+        metadataStore.acquireMetadataLock(oldAuthKeyPair),
+        metadataStore.acquireMetadataLock(authKeyPair),
+      ]);
+
+      const existingData = await metadataStore.fetchAllSecretDataItems(
+        oldEncKey,
+        oldAuthKeyPair,
+      );
+
+      // Validate that this is actually a key change scenario
+      if (!existingData || existingData.length === 0) {
+        throw new Error('No existing data found to change key');
+      }
+
+      await metadataStore.batchAddSecretData({
+        secretData: existingData,
+        encKey,
+        authKeyPair,
+      });
+
+      await this.persistOprfKey({
+        nodeAuthTokens,
+        oprfKey,
+        authPubKey: authKeyPair.pk,
+        verifier,
+        verifierId,
+        shareKeyIndex: newShareKeyIndex,
+        oldAuthKeyPair,
+      });
+
+      return { authKeyPair, encKey };
+    } finally {
+      if (metadataStore && oldMetadataLockId && newMetadataLockId) {
+        try {
+          await Promise.all([
+            metadataStore.releaseMetadataLock(
+              oldAuthKeyPair,
+              oldMetadataLockId,
+            ),
+            metadataStore.releaseMetadataLock(authKeyPair, newMetadataLockId),
+          ]);
+        } catch (error) {
+          console.error('Failed to release metadata lock:', error);
+        }
+      }
+    }
   }
 
   /**
@@ -291,6 +411,30 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       params.decKey,
       params.authKeyPair,
     );
+  }
+
+  /**
+   * This function fetches the authentication public key.
+   *
+   * @param params - The parameters for getting the authentication public key.
+   * @param params.authTokens - The auth tokens issued by the nodes on authenticating the user.
+   * @param params.verifier - The verifier name used for authentication.
+   * @param params.verifierId - The verifierId issued to user after authentication.
+   *
+   * @returns The authentication public key.
+   */
+  async fetchAuthPubKey(
+    params: FetchAuthPubKeyParams,
+  ): Promise<FetchAuthPubKeyResult> {
+    const { nodeAuthTokens, verifier, verifierId } = params;
+    const { nodeEndpointsMap } = await this.#getNodeDetails();
+    const authPubKey = await getPubKey({
+      authTokens: nodeAuthTokens,
+      nodeEndpointsMap,
+      verifier,
+      verifierId,
+    });
+    return { authPubKey };
   }
 
   /**

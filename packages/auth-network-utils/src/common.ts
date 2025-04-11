@@ -61,40 +61,38 @@ export function thresholdSame<Type>(
  *
  * @param inputSet - The set to generate combinations from
  * @param k - The number of elements in each combination
- * @returns All possible combinations of k elements from the set s
+ * @yields All possible combinations of k elements from the set s
  */
-export function kCombinations(
+export function* kCombinations(
   inputSet: number | number[],
   k: number,
-): number[][] {
+): Generator<number[]> {
   let set = inputSet;
   if (typeof set === 'number') {
     set = Array.from({ length: set }, (_, i) => i);
   }
   if (k > set.length || k <= 0) {
-    return [];
+    return;
   }
 
   if (k === set.length) {
-    return [set];
+    yield set;
+    return;
   }
 
   if (k === 1) {
-    return set.reduce<number[][]>((acc, cur) => [...acc, [cur]], []);
+    for (const item of set) {
+      yield [item];
+    }
+    return;
   }
-
-  const combs: number[][] = [];
-  let tailCombs: number[][] = [];
 
   const indices = Array.from({ length: set.length - k + 2 }, (_, i) => i);
   for (const i of indices) {
-    tailCombs = kCombinations(set.slice(i + 1), k - 1);
-    for (const j of tailCombs) {
-      combs.push([set[i], ...j]);
+    for (const j of kCombinations(set.slice(i + 1), k - 1)) {
+      yield [set[i], ...j];
     }
   }
-
-  return combs;
 }
 
 /**
@@ -300,6 +298,27 @@ export async function Some<Input, Output>(
   handleSomeCallBackFnError(errorArr, resultArr, predicateError);
   // If handleSomeCallBackFnError doesn't throw, throw a generic error
   throw new Error('Some function failed to produce a valid result');
+}
+
+/**
+ * Filters out invalid responses.
+ *
+ * @param resultArr - The result array to filter.
+ * @returns The filtered result array.
+ */
+export function filterCompletedRequests<Type>(resultArr: Type[]): Type[] {
+  return resultArr.filter((res) => {
+    if (!res || typeof res !== 'object') {
+      return false;
+    }
+    if ('error' in res && res.error) {
+      return false;
+    }
+    if (!('result' in res && res.result)) {
+      return false;
+    }
+    return true;
+  });
 }
 
 export type Primitive = string | number | boolean | null;

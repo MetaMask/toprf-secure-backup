@@ -23,6 +23,13 @@ export type CommitmentJRPCResponse = JRPCResponse<
   CommitmentRequestResult | undefined
 >;
 
+export type SingleIdVerifierJrpcParams = {
+  subVerifierAuthParams: {
+    subVerifierIdToken: string;
+    subVerifier: string;
+  }[];
+};
+
 export type AuthJRPCRequestParams = {
   authData: {
     authenticationContext: {
@@ -30,6 +37,7 @@ export type AuthJRPCRequestParams = {
       verifier: string;
       verifierId: string;
     };
+    singleIdVerifierParams?: SingleIdVerifierJrpcParams;
     extraOauthParams?: Record<string, string | number | boolean>;
   };
   commitmentSignatures: CommitmentRequestResult[];
@@ -107,6 +115,21 @@ export type ToprfEvalResult = {
   blindedOutputY: string;
   nodeIndex: number;
   pubKey: string;
+  shareKeyIndex: number;
 };
 
 export type ToprfEvalJRPCResponse = JRPCResponse<ToprfEvalResult>;
+
+export type GetPubKeyJRPCRequestParams = {
+  authToken: string;
+  verifier: string;
+  verifierId: string;
+};
+
+export type GetPubKeyJRPCRequest = JRPCRequest<GetPubKeyJRPCRequestParams>;
+
+export type GetPubKeyResult = {
+  pubKey: string;
+};
+
+export type GetPubKeyJRPCResponse = JRPCResponse<GetPubKeyResult>;

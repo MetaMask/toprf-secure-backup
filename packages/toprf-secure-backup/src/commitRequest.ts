@@ -2,7 +2,9 @@ import {
   Some,
   keccak256AndHexify,
   TOPRFError,
+  filterCompletedRequests,
 } from '@metamask/auth-network-utils';
+import { utf8ToBytes } from '@noble/hashes/utils';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
 import { COMMIT_RESPONSE_THRESHOLD, JRPC_METHODS } from './constants';
@@ -68,17 +70,8 @@ const sendCommitmentRequest = async (
 export const validateThresholdCommitmentResponses = async (
   resultArr: CommitmentJRPCResponse[],
 ): Promise<CommitmentRequestResult[]> => {
-  const completedRequests = resultArr.filter(
-    (res): res is CommitmentJRPCResponse => {
-      if (!res || typeof res !== 'object') {
-        return false;
-      }
-      if ('error' in res && res.error) {
-        return false;
-      }
-      return true;
-    },
-  );
+  const completedRequests =
+    filterCompletedRequests<CommitmentJRPCResponse>(resultArr);
 
   if (completedRequests.length < COMMIT_RESPONSE_THRESHOLD) {
     throw TOPRFError.invalidCommitResults(
@@ -111,9 +104,7 @@ export const commitIdToken = async (params: {
 }): Promise<CommitmentRequestResult[]> => {
   const { idToken, endpoints, verifier, sessionPubKeyX, sessionPubKeyY } =
     params;
-  const tokenCommitment = keccak256AndHexify(
-    new TextEncoder().encode(idToken),
-  ).slice(2);
+  const tokenCommitment = keccak256AndHexify(utf8ToBytes(idToken)).slice(2);
 
   const requestParams = createCommitmentRequestParams(
     tokenCommitment,

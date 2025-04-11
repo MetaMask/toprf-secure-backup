@@ -26,16 +26,16 @@ module.exports = merge(baseConfig, {
       lines: 100,
     },
     './src/toprfEvalRequest.ts': {
-      statements: 91.17,
-      branches: 55.55,
+      statements: 100,
+      branches: 93.33,
       functions: 100,
-      lines: 90.9,
+      lines: 100,
     },
     './src/toprfSecureBackup.ts': {
-      statements: 97.36,
-      branches: 80,
-      functions: 94.11,
-      lines: 97.36,
+      statements: 97.97,
+      branches: 93.75,
+      functions: 100,
+      lines: 97.97,
     },
   },
 });

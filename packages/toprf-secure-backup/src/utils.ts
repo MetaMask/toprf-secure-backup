@@ -10,6 +10,7 @@ import {
   generateRandomPolynomial,
   getSecp256K1Curve,
   toCamelCaseKeys,
+  TOPRFError,
   toSnakeCaseKeys,
 } from '@metamask/auth-network-utils';
 import { secp256k1 as secp256k1Noble } from '@noble/curves/secp256k1';
@@ -20,7 +21,11 @@ import BN from 'bn.js';
 import type * as EC from 'elliptic';
 
 import { GENERATE_SHARE_THRESHOLD } from './constants';
-import type { KeyChangeProof, NodeAuthTokens } from './interfaces';
+import type {
+  KeyChangeProof,
+  NodeAuthToken,
+  NodeAuthTokens,
+} from './interfaces';
 import type { ShareImportItem } from './jrpcInterfaces';
 
 type EncryptedData = {
@@ -210,26 +215,26 @@ const createEthereumSignature = (
  * Creates a signature for key change using the share and old private key
  *
  * @param shareValue - Raw share value to sign
- * @param keyIndex - Key index for the share
+ * @param shareKeyIndex - Key index for the share
  * @param nodeIndex - Node index
  * @param oldAuthPrivKey - Old auth private key for signing
  * @returns The signature and timestamp as KeyChangeProof
  */
 export const createKeyChangeProof = (
   shareValue: BN,
-  keyIndex: number,
+  shareKeyIndex: number,
   nodeIndex: number,
   oldAuthPrivKey: bigint,
 ): KeyChangeProof => {
   const timestamp = Math.floor(Date.now() / 1000);
   const shareBase64 = formatShareForSigning(shareValue);
 
-  const dataToSign = {
-    share_data: shareBase64,
-    share_key_index: keyIndex,
-    node_index: nodeIndex,
+  const dataToSign = toSnakeCaseKeys({
+    shareData: shareBase64,
+    shareKeyIndex,
+    nodeIndex,
     timestamp,
-  };
+  });
 
   const jsonData = JSON.stringify(dataToSign);
   const dataHash = keccak256(jsonData);
@@ -247,14 +252,14 @@ export const createKeyChangeProof = (
  * @param shares - The raw shares generated for each node
  * @param nodeEndpointsMap - Map of node indexes to endpoints
  * @param authTokens - Auth tokens for each node
- * @param keyIndex - Key index for the shares
+ * @param shareKeyIndex - Key index for the shares
  * @returns Share import items for standard flow
  */
 export const createNewUserShareImportItems = async (
   shares: ShareMap,
   nodeEndpointsMap: Record<number, string>,
   authTokens: NodeAuthTokens,
-  keyIndex: number,
+  shareKeyIndex: number,
 ): Promise<ShareImportItem[]> => {
   return Promise.all(
     authTokens.map(async (tokenData) => {
@@ -281,7 +286,7 @@ export const createNewUserShareImportItems = async (
       return {
         encryptedShare: JSON.stringify(encryptedShare),
         encryptedAuthToken: JSON.stringify(encryptedAuthToken),
-        shareKeyIndex: keyIndex,
+        shareKeyIndex,
         nodeIndex,
         sssEndpoint: nodeEndpointsMap[nodeIndex],
       };
@@ -295,7 +300,7 @@ export const createNewUserShareImportItems = async (
  * @param shares - The raw shares generated for each node
  * @param nodeEndpointsMap - Map of node indexes to endpoints
  * @param authTokens - Auth tokens for each node
- * @param keyIndex - Key index for the shares
+ * @param shareKeyIndex - Key index for the shares
  * @param oldAuthPrivKey - Old private key for signing
  * @returns Share import items for key change flow
  */
@@ -303,7 +308,7 @@ export const createKeyChangeShareImportItems = async (
   shares: ShareMap,
   nodeEndpointsMap: Record<number, string>,
   authTokens: NodeAuthTokens,
-  keyIndex: number,
+  shareKeyIndex: number,
   oldAuthPrivKey: bigint,
 ): Promise<ShareImportItem<'keyChange'>[]> => {
   return Promise.all(
@@ -319,7 +324,7 @@ export const createKeyChangeShareImportItems = async (
       const shareValue = new BN(shareJson.share, 16);
       const keyChangeProof = createKeyChangeProof(
         shareValue,
-        keyIndex,
+        shareKeyIndex,
         nodeIndex,
         oldAuthPrivKey,
       );
@@ -340,7 +345,7 @@ export const createKeyChangeShareImportItems = async (
       return {
         encryptedShare: JSON.stringify(encryptedShare),
         encryptedAuthToken: JSON.stringify(encryptedAuthToken),
-        shareKeyIndex: keyIndex,
+        shareKeyIndex,
         nodeIndex,
         sssEndpoint: nodeEndpointsMap[nodeIndex],
         ...keyChangeProof,
@@ -355,7 +360,7 @@ export const createKeyChangeShareImportItems = async (
  * @param nodeEndpointsMap - Map of node indexes to endpoints.
  * @param authTokens - The auth tokens issued by the nodes on authenticating the user.
  * @param privKey - The private key to be used for the share import items.
- * @param keyIndex - The key index to be used for the share import items.
+ * @param shareKeyIndex - The share key index to be used for the share import items.
  * @param args - Additional arguments based on ShareType.
  * When ShareType is 'keyChange', this must include the old auth private key for signing.
  *
@@ -369,7 +374,7 @@ export const generateShareImportItems = async <
   nodeEndpointsMap: Record<number, string>,
   authTokens: NodeAuthTokens,
   privKey: bigint,
-  keyIndex: number,
+  shareKeyIndex: number,
   ...args: ShareType extends 'keyChange' ? [oldAuthPrivKey: bigint] : []
 ): Promise<ShareImportItem<ShareType>[]> => {
   // First prepare the shares for all nodes
@@ -383,7 +388,7 @@ export const generateShareImportItems = async <
       shares,
       nodeEndpointsMap,
       authTokens,
-      keyIndex,
+      shareKeyIndex,
       oldAuthPrivKey,
     ) as unknown as ShareImportItem<ShareType>[];
   }
@@ -392,7 +397,7 @@ export const generateShareImportItems = async <
     shares,
     nodeEndpointsMap,
     authTokens,
-    keyIndex,
+    shareKeyIndex,
   ) as unknown as ShareImportItem<ShareType>[];
 };
 
@@ -413,3 +418,31 @@ export const createNodeEndpointsMap = (
     return acc;
   }, {});
 };
+
+/**
+ * Merges the auth tokens with the endpoints.
+ *
+ * @param authTokens - The auth tokens issued by the nodes on authenticating the user.
+ * @param nodeEndpointsMap - Map of node index to endpoint to be used for the get pub key request.
+ *
+ * @returns The merged auth tokens and endpoints.
+ *
+ * @throws If the endpoint is not found for a node index.
+ */
+export function mergeEndpointsWithAuthTokens(
+  authTokens: NodeAuthTokens,
+  nodeEndpointsMap: Record<number, string>,
+): { endpoint: string; authToken: NodeAuthToken }[] {
+  return authTokens.map((authToken) => {
+    const endpoint = nodeEndpointsMap[authToken.nodeIndex];
+    if (!endpoint) {
+      throw TOPRFError.endpointNotFound(
+        `Endpoint not found for node index ${authToken.nodeIndex}`,
+      );
+    }
+    return {
+      endpoint,
+      authToken,
+    };
+  });
+}
