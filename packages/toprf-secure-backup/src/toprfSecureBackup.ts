@@ -159,7 +159,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @param params.authPubKey - The authentication public key.
    * @param params.verifier - The verifier name used for authentication.
    * @param params.verifierId - The verifierId/userID of the user.
-   * @param params.shareKeyIndex - The share key index to be persisted. Required only during key change, defaults to FIRST_KEY_INDEX for first-time storage.
+   * @param params.keyShareIndex - The key share index to be persisted. Required only during key change, defaults to FIRST_KEY_INDEX for first-time storage.
    * @param params.oldAuthKeyPair - The old authentication key pair of the user. Required only during key change, not needed for first-time storage.
    */
   async persistOprfKey(params: PersistOprfKeyParams): Promise<void> {
@@ -169,7 +169,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       authPubKey,
       verifier,
       verifierId,
-      shareKeyIndex = FIRST_KEY_INDEX,
+      keyShareIndex = FIRST_KEY_INDEX,
       oldAuthKeyPair,
     } = params;
     const { nodeEndpointsMap } = await this.#getNodeDetails();
@@ -188,7 +188,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
         verifier,
         verifierId,
         authTokens: nodeAuthTokens,
-        shareKeyIndex,
+        keyShareIndex,
         newOprfKey: oprfKey,
         newAuthPubKey: authPubKey,
         oldAuthPrivKey: oldAuthKeyPair.sk,
@@ -199,7 +199,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
         verifier,
         verifierId,
         authTokens: nodeAuthTokens,
-        shareKeyIndex,
+        keyShareIndex,
         oprfKey,
         authPubKey,
       });
@@ -249,7 +249,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @param params.verifier - The verifier name used for authentication.
    * @param params.verifierId - The verifierId/userID of the user.
    *
-   * @returns The encryption key result with auth key pair, encryption key and share key index.
+   * @returns The encryption key result with auth key pair, encryption key and key share index.
    */
   async recoverEncKey(
     params: RecoverEncryptionKeyParams,
@@ -258,7 +258,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     const { nodeEndpointsMap } = await this.#getNodeDetails();
     const pwBytes = utf8ToBytes(password);
 
-    const { seed, shareKeyIndex } = await recoverTOPRFSeed({
+    const { seed, keyShareIndex } = await recoverTOPRFSeed({
       authTokens: nodeAuthTokens,
       nodeEndpointsMap,
       verifier,
@@ -289,7 +289,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
         pk: authKeyPair.pk,
       },
       encKey: encKeyPair,
-      shareKeyIndex,
+      keyShareIndex,
       rateLimitResetResult,
     };
   }
@@ -306,7 +306,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @param params.oldEncKey - The old encryption key of the user.
    * @param params.oldAuthKeyPair - The old authentication key pair of the user.
    * @param params.newPassword - The new password of the user.
-   * @param params.newShareKeyIndex - The share key index to be used for the new key.
+   * @param params.newKeyShareIndex - The key share index to be used for the new key.
    *
    * @returns The new key pair and encryption key.
    */
@@ -320,7 +320,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
       oldEncKey,
       oldAuthKeyPair,
       newPassword,
-      newShareKeyIndex,
+      newKeyShareIndex,
     } = params;
 
     const { oprfKey, authKeyPair, encKey } = this.createLocalEncKey({
@@ -361,7 +361,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
         authPubKey: authKeyPair.pk,
         verifier,
         verifierId,
-        shareKeyIndex: newShareKeyIndex,
+        keyShareIndex: newKeyShareIndex,
         oldAuthKeyPair,
       });
 

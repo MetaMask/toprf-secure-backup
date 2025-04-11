@@ -107,7 +107,7 @@ export type CreateLocalEncKeyResult = {
  *
  * nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
  *
- * shareKeyIndex - The share key index to be persisted.
+ * keyShareIndex - The key share index to be persisted.
  *
  * oprfKey - The OPRF key which is used to for local OPRF evaluation.
  *
@@ -125,7 +125,7 @@ export type PersistOprfKeyParams = {
   authPubKey: SEC1EncodedPublicKey;
   verifier: string;
   verifierId: string;
-  shareKeyIndex?: number;
+  keyShareIndex?: number;
   oldAuthKeyPair?: KeyPair;
 };
 
@@ -204,13 +204,13 @@ export type RecoverEncryptionKeyParams = {
 /**
  * authKeyPair - The authentication key pair which is used to authenticate the user.
  * encKey - The encryption key which is used to encrypt the secret data.
- * shareKeyIndex - The index of the key shares on the nodes, used for key change operations.
+ * keyShareIndex - The index of the key shares on the nodes, used for key change operations.
  * rateLimitResetResult - A promise that resolves when the rate limit is reset.
  */
 export type RecoverEncryptionKeyResult = {
   authKeyPair: KeyPair;
   encKey: Uint8Array;
-  shareKeyIndex: number;
+  keyShareIndex: number;
   rateLimitResetResult: Promise<void>;
 };
 
@@ -227,7 +227,7 @@ export type RecoverEncryptionKeyResult = {
  *
  * newPassword - The new password of the user.
  *
- * newShareKeyIndex - The share key index to be used for the new key.
+ * newKeyShareIndex - The key share index to be used for the new key.
  */
 export type ChangeEncryptionKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
@@ -236,7 +236,7 @@ export type ChangeEncryptionKeyParams = {
   oldEncKey: Uint8Array;
   oldAuthKeyPair: KeyPair;
   newPassword: string;
-  newShareKeyIndex: number;
+  newKeyShareIndex: number;
 };
 
 /**
@@ -309,7 +309,7 @@ export type IToprfSecureBackup = {
    * @param params.authKeyPair - The authentication key pair which is used to authenticate the write request to the metadata store.
    * @param params.verifier - The verifier name used for authentication.
    * @param params.verifierId - The verifierId/userID of the user.
-   * @param params.shareKeyIndex - The share key index to be persisted. Required only during key change, defaults to FIRST_KEY_INDEX for first-time storage.
+   * @param params.keyShareIndex - The key share index to be persisted. Required only during key change, defaults to FIRST_KEY_INDEX for first-time storage.
    * @param params.oldAuthKeyPair - The old authentication key pair of the user. Required only during key change, not needed for first-time storage.
    * @returns A promise that resolves when the OPRF key's shares are persisted.
    */

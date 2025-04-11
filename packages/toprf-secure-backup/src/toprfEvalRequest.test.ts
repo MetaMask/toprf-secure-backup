@@ -20,7 +20,7 @@ describe('toprfEvalRequest', () => {
             blindedOutputX: 'abc',
             blindedOutputY: 'def',
             nodeIndex: 1,
-            shareKeyIndex: 1,
+            keyShareIndex: 1,
             pubKey: 'pubKey',
           },
         }));
@@ -48,7 +48,7 @@ describe('toprfEvalRequest', () => {
             blindedOutputX: 'abc',
             blindedOutputY: 'def',
             nodeIndex: i + 1,
-            shareKeyIndex: 1,
+            keyShareIndex: 1,
             pubKey: `pubKey${i}`,
           },
         }));
@@ -73,7 +73,7 @@ describe('toprfEvalRequest', () => {
             blindedOutputX: 'abc',
             blindedOutputY: 'def',
             nodeIndex: i + 1,
-            shareKeyIndex: 1,
+            keyShareIndex: 1,
             pubKey: 'pubKey',
           },
         }));
@@ -86,7 +86,7 @@ describe('toprfEvalRequest', () => {
           blindedOutputX: undefined as unknown as string,
           blindedOutputY: 'def',
           nodeIndex: 5,
-          shareKeyIndex: 1,
+          keyShareIndex: 1,
           pubKey: 'pubKey',
         },
       };

@@ -28,7 +28,7 @@ import { mergeEndpointsWithAuthTokens, postJRPCRequest } from './utils';
 type BlindedOutputShare = {
   blindedOutput: ProjPointType<bigint>;
   nodeIndex: number;
-  shareKeyIndex: number;
+  keyShareIndex: number;
 };
 /**
  * Creates the parameters for the toprf eval request
@@ -85,14 +85,14 @@ const sendToprfEvalRequest = async (
  * @param blindingFactor - The random scalar used to blind the input.
  * @param thresholdAuthPubKey - The threshold auth pub key derived from the toprf eval responses.
  *
- * @returns The seed and share key index if found, otherwise null.
+ * @returns The seed and key share index if found, otherwise null.
  */
 const findMatchingSeedWithAllCombinations = (
   sortedBlindedOutputs: BlindedOutputShare[],
   userInput: Uint8Array,
   blindingFactor: bigint,
   thresholdAuthPubKey: string,
-): { seed: Uint8Array; shareKeyIndex: number } | null => {
+): { seed: Uint8Array; keyShareIndex: number } | null => {
   const allCombis = kCombinations(
     sortedBlindedOutputs.length,
     EXISTING_USER_AUTHENTICATION_THRESHOLD,
@@ -128,7 +128,7 @@ const findMatchingSeedWithAllCombinations = (
     if (derivedPubKey.equals(thresholdPubKey)) {
       return {
         seed: recoveredSeed,
-        shareKeyIndex: currentCombiPoints[0].shareKeyIndex,
+        keyShareIndex: currentCombiPoints[0].keyShareIndex,
       };
     }
   }
@@ -154,8 +154,8 @@ const assertIsValidToprfEvalResult = (
     typeof value.blindedOutputY !== 'string' || // `blindedOutputY` should be a string
     !('nodeIndex' in value) || // `value` should have `nodeIndex`
     typeof value.nodeIndex !== 'number' || // `nodeIndex` should be a number
-    !('shareKeyIndex' in value) || // should have shareKeyIndex
-    typeof value.shareKeyIndex !== 'number' || // `shareKeyIndex` should be a number
+    !('keyShareIndex' in value) || // should have keyShareIndex
+    typeof value.keyShareIndex !== 'number' || // `keyShareIndex` should be a number
     !('pubKey' in value) || // should have pubKey
     typeof value.pubKey !== 'string' // `pubKey` should be a string
   ) {
@@ -170,13 +170,13 @@ const assertIsValidToprfEvalResult = (
  * @param userInput - The user input i.e. the password.
  * @param blindingFactor - The random scalar used to blind the input.
  * @param resultArr - The toprf eval request result
- * @returns The toprf eval request result and the share key index
+ * @returns The toprf eval request result and the key share index
  */
 export const validateSeed = async (
   userInput: Uint8Array,
   blindingFactor: bigint,
   resultArr: ToprfEvalJRPCResponse[],
-): Promise<{ seed: Uint8Array; shareKeyIndex: number }> => {
+): Promise<{ seed: Uint8Array; keyShareIndex: number }> => {
   const completedRequests =
     filterCompletedRequests<ToprfEvalJRPCResponse>(resultArr);
 
@@ -201,7 +201,7 @@ export const validateSeed = async (
         return acc;
       }
 
-      const { blindedOutputX, blindedOutputY, nodeIndex, shareKeyIndex } =
+      const { blindedOutputX, blindedOutputY, nodeIndex, keyShareIndex } =
         evalResult;
 
       acc.push({
@@ -210,7 +210,7 @@ export const validateSeed = async (
           y: BigInt(`0x${blindedOutputY}`),
         }),
         nodeIndex,
-        shareKeyIndex,
+        keyShareIndex,
       });
 
       return acc;
@@ -247,7 +247,7 @@ export const validateSeed = async (
  * @param params.nodeEndpointsMap - Map of node index to endpoint to be used for the toprf eval request.
  * @param params.userInput - The user input i.e. the password.
  *
- * @returns - A promise that resolves with the key pair seed and share key index.
+ * @returns - A promise that resolves with the key pair seed and key share index.
  */
 export const recoverTOPRFSeed = async (params: {
   authTokens: NodeAuthTokens;
@@ -255,7 +255,7 @@ export const recoverTOPRFSeed = async (params: {
   verifier: string;
   verifierId: string;
   userInput: Uint8Array;
-}): Promise<{ seed: Uint8Array; shareKeyIndex: number }> => {
+}): Promise<{ seed: Uint8Array; keyShareIndex: number }> => {
   const { authTokens, nodeEndpointsMap, verifier, verifierId, userInput } =
     params;
 
@@ -286,6 +286,6 @@ export const recoverTOPRFSeed = async (params: {
 
   return Some<
     ToprfEvalJRPCResponse,
-    { seed: Uint8Array; shareKeyIndex: number }
+    { seed: Uint8Array; keyShareIndex: number }
   >(promises, async (resultArr) => validateSeed(userInput, r, resultArr));
 };

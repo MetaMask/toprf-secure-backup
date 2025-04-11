@@ -196,7 +196,7 @@ describe('toprf secret backup', function () {
     expect(recoveredEncKey.authKeyPair.sk).toBeDefined();
     expect(recoveredEncKey.authKeyPair.pk).toBeDefined();
     expect(recoveredEncKey.encKey).toBeDefined();
-    expect(recoveredEncKey.shareKeyIndex).toBeDefined();
+    expect(recoveredEncKey.keyShareIndex).toBeDefined();
     expect(await recoveredEncKey.rateLimitResetResult).toBeUndefined();
 
     expect(recoveredEncKey.authKeyPair.sk).toStrictEqual(encKey.authKeyPair.sk);
@@ -318,7 +318,7 @@ describe('toprf secret backup', function () {
     expect(originalSecretData?.length).toBe(1);
     expect(originalSecretData?.[0]).toStrictEqual(secretData);
 
-    // Recover the original key to get the shareKeyIndex
+    // Recover the original key to get the keyShareIndex
     const recoveredOriginalKey = await toprfSecureBackup.recoverEncKey({
       nodeAuthTokens: result.nodeAuthTokens,
       password: originalPassword,
@@ -326,7 +326,7 @@ describe('toprf secret backup', function () {
       verifierId: verifierID,
     });
 
-    expect(recoveredOriginalKey.shareKeyIndex).toBe(FIRST_KEY_INDEX);
+    expect(recoveredOriginalKey.keyShareIndex).toBe(FIRST_KEY_INDEX);
 
     // Change to a new encryption key
     const newPassword = generateRandomPassword();
@@ -337,7 +337,7 @@ describe('toprf secret backup', function () {
       oldEncKey: originalEncKeyResult.encKey,
       oldAuthKeyPair: originalEncKeyResult.authKeyPair,
       newPassword,
-      newShareKeyIndex: recoveredOriginalKey.shareKeyIndex + 1,
+      newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 1,
     });
     expect(newEncKeyResult).toBeDefined();
     expect(newEncKeyResult.authKeyPair).toBeDefined();
@@ -350,8 +350,8 @@ describe('toprf secret backup', function () {
       verifierId: verifierID,
     });
 
-    expect(recoveredNewKey.shareKeyIndex).toBe(
-      recoveredOriginalKey.shareKeyIndex + 1,
+    expect(recoveredNewKey.keyShareIndex).toBe(
+      recoveredOriginalKey.keyShareIndex + 1,
     );
 
     // Verify the new key can access the data
@@ -419,7 +419,7 @@ describe('toprf secret backup', function () {
       expect(recoveredKey.encKey).toBeDefined();
       expect(recoveredKey.authKeyPair.sk).toStrictEqual(encKey.authKeyPair.sk);
       expect(recoveredKey.encKey).toStrictEqual(encKey.encKey);
-      expect(recoveredKey.shareKeyIndex).toBeDefined();
+      expect(recoveredKey.keyShareIndex).toBeDefined();
 
       // Rate limit reset should fail
       await expect(recoveredKey.rateLimitResetResult).rejects.toThrow(
@@ -460,7 +460,7 @@ describe('toprf secret backup', function () {
         oldEncKey: originalEncKeyResult.encKey,
         oldAuthKeyPair: originalEncKeyResult.authKeyPair,
         newPassword,
-        newShareKeyIndex: FIRST_KEY_INDEX + 1,
+        newKeyShareIndex: FIRST_KEY_INDEX + 1,
       }),
     ).rejects.toThrow('No existing data found to change key');
   });
@@ -517,7 +517,7 @@ describe('toprf secret backup', function () {
           oldEncKey: originalEncKeyResult.encKey,
           oldAuthKeyPair: originalEncKeyResult.authKeyPair,
           newPassword,
-          newShareKeyIndex: recoveredOriginalKey.shareKeyIndex + 1,
+          newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 1,
         }),
       ).rejects.toThrow('Metadata server failed during batch data update');
 
@@ -584,7 +584,7 @@ describe('toprf secret backup', function () {
         oldEncKey: originalEncKeyResult.encKey,
         oldAuthKeyPair: incorrectKeyResult.authKeyPair, // Using incorrect authKeyPair
         newPassword,
-        newShareKeyIndex: recoveredOriginalKey.shareKeyIndex + 1,
+        newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 1,
       }),
     ).rejects.toThrow('No existing data found to change key');
   });
@@ -636,7 +636,7 @@ describe('toprf secret backup', function () {
         oldEncKey: incorrectKeyResult.encKey, // Using incorrect encKey
         oldAuthKeyPair: originalEncKeyResult.authKeyPair,
         newPassword,
-        newShareKeyIndex: recoveredOriginalKey.shareKeyIndex + 1,
+        newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 1,
       }),
     ).rejects.toThrow(
       'failed to fetch metadata: failed to fetch metadata: aes/gcm: invalid ghash tag',
