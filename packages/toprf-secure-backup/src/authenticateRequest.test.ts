@@ -10,7 +10,10 @@ import {
 import { commitIdToken } from './commitRequest';
 import type { AuthJRPCResponse, AuthRequestResult } from './jrpcInterfaces';
 import { createNodeEndpointsMap } from './utils';
-import { generateIdToken } from '../tests/testHelpers';
+import {
+  generateIdToken,
+  generateRandomVerifierId,
+} from '../tests/testHelpers';
 
 describe('validateThresholdAuthenticateResponses', () => {
   /**
@@ -208,7 +211,7 @@ describe('authenticate request', function () {
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
     const verifier = 'torus-test-health-aggregate';
-    const verifierID = 'test-verifier-id-aggregate';
+    const verifierID = generateRandomVerifierId();
     const idToken = generateIdToken(verifierID, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);

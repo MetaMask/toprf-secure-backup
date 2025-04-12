@@ -457,7 +457,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
         verifierId: 'DEFAULT_VERIFIER_ID',
       });
 
-    if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
+    if (!torusNodeSSSEndpoints) {
       throw new Error('Failed to get node details');
     }
 
