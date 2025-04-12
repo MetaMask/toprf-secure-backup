@@ -105,7 +105,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     const { authTokensData, isNewUser } = await authenticateUser({
       idToken: params.idTokens[0],
       verifier: params.verifier,
-      verifierID: params.verifierID,
+      verifierId: params.verifierId,
       sessionPrivateKey: sessionPrivKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
@@ -158,7 +158,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @param params.oprfKey - The OPRF key to be persisted.
    * @param params.authPubKey - The authentication public key.
    * @param params.verifier - The verifier name used for authentication.
-   * @param params.verifierId - The verifierId/userID of the user.
+   * @param params.verifierID - The verifierId/userID of the user.
    * @param params.shareKeyIndex - The share key index to be persisted. Required only during key change, defaults to FIRST_KEY_INDEX for first-time storage.
    * @param params.oldAuthKeyPair - The old authentication key pair of the user. Required only during key change, not needed for first-time storage.
    */
@@ -316,7 +316,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     const {
       nodeAuthTokens,
       verifier,
-      verifierId,
+      verifierId: verifierID,
       oldEncKey,
       oldAuthKeyPair,
       newPassword,
@@ -360,7 +360,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
         oprfKey,
         authPubKey: authKeyPair.pk,
         verifier,
-        verifierId,
+        verifierId: verifierID,
         shareKeyIndex: newShareKeyIndex,
         oldAuthKeyPair,
       });

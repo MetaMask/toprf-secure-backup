@@ -18,36 +18,36 @@ const EXISTING_USER_VERIFIER_ID = 'test-verifier-id-existing-user';
  * Sets up the test environment.
  *
  * @param options - The options for the setup.
- * @param options.verifierID - The verifier id to be used for the test.
+ * @param options.verifierId - The verifier id to be used for the test.
  * @param options.verifier - The verifier to be used for the test.
  * @returns The setup object.
  */
-function setup(options?: { verifierID?: string; verifier?: string }): {
+function setup(options?: { verifierId?: string; verifier?: string }): {
   verifier: string;
-  verifierID: string;
+  verifierId: string;
   idToken: string;
   toprfSecureBackup: ToprfSecureBackup;
 } {
   const verifier = options?.verifier ?? 'torus-test-health';
-  const verifierID = options?.verifierID ?? generateRandomVerifierId();
-  const idToken = generateIdToken(verifierID, 'ES256');
+  const verifierId = options?.verifierId ?? generateRandomVerifierId();
+  const idToken = generateIdToken(verifierId, 'ES256');
   const toprfSecureBackup = new ToprfSecureBackup({
     network: 'sapphire_devnet',
   });
 
-  return { verifier, verifierID, idToken, toprfSecureBackup };
+  return { verifier, verifierId, idToken, toprfSecureBackup };
 }
 
 // TODO: add tests for the scenario when a existing user tries to create a new enc key.
 describe('toprf secret backup', function () {
   describe('authenticate', function () {
     it('should be able to authenticate user', async function () {
-      const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
+      const { verifier, verifierId, idToken, toprfSecureBackup } = setup();
 
       const result = await toprfSecureBackup.authenticate({
         idTokens: [idToken],
         verifier,
-        verifierID,
+        verifierId,
       });
       expect(result).toBeDefined();
       expect(result.nodeAuthTokens).toBeDefined();
@@ -56,7 +56,7 @@ describe('toprf secret backup', function () {
     });
 
     it('should be able to authenticate user with single id verifier', async function () {
-      const { verifier, verifierID, idToken, toprfSecureBackup } = setup({
+      const { verifier, verifierId, idToken, toprfSecureBackup } = setup({
         verifier: 'torus-test-health-aggregate',
       });
       const hashedIdToken = keccak256AndHexify(utf8ToBytes(idToken)).slice(2);
@@ -64,7 +64,7 @@ describe('toprf secret backup', function () {
       const result = await toprfSecureBackup.authenticate({
         idTokens: [hashedIdToken],
         verifier,
-        verifierID,
+        verifierId,
         singleIdVerifierParams: {
           subVerifier: 'torus-test-health',
           subVerifierIdTokens: [idToken],
@@ -78,14 +78,14 @@ describe('toprf secret backup', function () {
     });
 
     it('should return isNewUser as false for existing user', async function () {
-      const { verifier, verifierID, idToken, toprfSecureBackup } = setup({
-        verifierID: EXISTING_USER_VERIFIER_ID,
+      const { verifier, verifierId, idToken, toprfSecureBackup } = setup({
+        verifierId: EXISTING_USER_VERIFIER_ID,
       });
 
       const result = await toprfSecureBackup.authenticate({
         idTokens: [idToken],
         verifier,
-        verifierID,
+        verifierId,
       });
 
       expect(result).toBeDefined();
@@ -95,7 +95,7 @@ describe('toprf secret backup', function () {
     });
 
     it('should throw error if unable to fetch node details', async function () {
-      const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
+      const { verifier, verifierId, idToken, toprfSecureBackup } = setup();
 
       const fndSpy = jest
         .spyOn(NodeDetailManager.prototype, 'getNodeDetails')
@@ -110,7 +110,7 @@ describe('toprf secret backup', function () {
         toprfSecureBackup.authenticate({
           idTokens: [idToken],
           verifier,
-          verifierID,
+          verifierId,
         }),
       ).rejects.toThrow('Failed to get node details');
 
@@ -172,19 +172,19 @@ describe('toprf secret backup', function () {
     });
 
     it('should be able to create and persist enc key', async function () {
-      const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
+      const { verifier, verifierId, idToken, toprfSecureBackup } = setup();
 
       const result = await toprfSecureBackup.authenticate({
         idTokens: [idToken],
         verifier,
-        verifierID,
+        verifierId,
       });
       expect(result.isNewUser).toBe(true);
       const encKey = await toprfSecureBackup.createEncKey({
         nodeAuthTokens: result.nodeAuthTokens,
         password: generateRandomPassword(),
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
       expect(encKey).toBeDefined();
       expect(encKey.authKeyPair).toBeDefined();
@@ -194,14 +194,14 @@ describe('toprf secret backup', function () {
     });
 
     it('should throw error if user is not authenticated while creating enc key', async function () {
-      const { verifier, verifierID, toprfSecureBackup } = setup();
+      const { verifier, verifierId, toprfSecureBackup } = setup();
 
       await expect(
         toprfSecureBackup.createEncKey({
           nodeAuthTokens: [],
           password: generateRandomPassword(),
           verifier,
-          verifierId: verifierID,
+          verifierId,
         }),
       ).rejects.toBeDefined();
     });
@@ -209,12 +209,12 @@ describe('toprf secret backup', function () {
 
   describe('recoverEncKey', function () {
     it('should be able to recover enc key', async function () {
-      const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
+      const { verifier, verifierId, idToken, toprfSecureBackup } = setup();
 
       const result = await toprfSecureBackup.authenticate({
         idTokens: [idToken],
         verifier,
-        verifierID,
+        verifierId,
       });
 
       const password = generateRandomPassword();
@@ -222,14 +222,14 @@ describe('toprf secret backup', function () {
         nodeAuthTokens: result.nodeAuthTokens,
         password,
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
 
       const recoveredEncKey = await toprfSecureBackup.recoverEncKey({
         nodeAuthTokens: result.nodeAuthTokens,
         password,
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
       expect(recoveredEncKey).toBeDefined();
       expect(recoveredEncKey.authKeyPair).toBeDefined();
@@ -256,12 +256,12 @@ describe('toprf secret backup', function () {
         );
 
       try {
-        const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
+        const { verifier, verifierId, idToken, toprfSecureBackup } = setup();
 
         const result = await toprfSecureBackup.authenticate({
           idTokens: [idToken],
           verifier,
-          verifierID,
+          verifierId,
         });
 
         const password = generateRandomPassword();
@@ -269,14 +269,14 @@ describe('toprf secret backup', function () {
           nodeAuthTokens: result.nodeAuthTokens,
           password,
           verifier,
-          verifierId: verifierID,
+          verifierId,
         });
 
         const recoveredKey = await toprfSecureBackup.recoverEncKey({
           nodeAuthTokens: result.nodeAuthTokens,
           password,
           verifier,
-          verifierId: verifierID,
+          verifierId,
         });
 
         // Main functionality should work
@@ -313,7 +313,7 @@ describe('toprf secret backup', function () {
       const result = await toprfSecureBackup.authenticate({
         idTokens: [idToken],
         verifier,
-        verifierID,
+        verifierId: verifierID,
       });
       expect(result.nodeAuthTokens).toBeDefined();
       expect(result.nodeAuthTokens.length).toBeGreaterThan(0);
@@ -411,12 +411,12 @@ describe('toprf secret backup', function () {
     // hence, failed to release the lock should not affect the key change operation
     it('should not throw error when failed to released metadata lock', async function () {
       const secretData = utf8ToBytes('test-secret-data-for-key-change');
-      const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
+      const { verifier, verifierId, idToken, toprfSecureBackup } = setup();
 
       const result = await toprfSecureBackup.authenticate({
         idTokens: [idToken],
         verifier,
-        verifierID,
+        verifierId,
       });
 
       const originalPassword = generateRandomPassword();
@@ -424,7 +424,7 @@ describe('toprf secret backup', function () {
         nodeAuthTokens: result.nodeAuthTokens,
         password: originalPassword,
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
 
       await toprfSecureBackup.addSecretDataItem({
@@ -438,7 +438,7 @@ describe('toprf secret backup', function () {
         nodeAuthTokens: result.nodeAuthTokens,
         password: originalPassword,
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
 
       const releaseMetadataLockSpy = jest
@@ -450,7 +450,7 @@ describe('toprf secret backup', function () {
       const newEncKeyResult = await toprfSecureBackup.changeEncKey({
         nodeAuthTokens: result.nodeAuthTokens,
         verifier,
-        verifierId: verifierID,
+        verifierId,
         oldEncKey: originalEncKeyResult.encKey,
         oldAuthKeyPair: originalEncKeyResult.authKeyPair,
         newPassword,
@@ -464,12 +464,12 @@ describe('toprf secret backup', function () {
     });
 
     it('should throw error when trying to change encryption key without existing data', async function () {
-      const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
+      const { verifier, verifierId, idToken, toprfSecureBackup } = setup();
 
       const result = await toprfSecureBackup.authenticate({
         idTokens: [idToken],
         verifier,
-        verifierID,
+        verifierId,
       });
 
       // Creating keys but intentionally not storing any secret data
@@ -478,7 +478,7 @@ describe('toprf secret backup', function () {
         nodeAuthTokens: result.nodeAuthTokens,
         password: originalPassword,
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
 
       const newPassword = generateRandomPassword();
@@ -487,7 +487,7 @@ describe('toprf secret backup', function () {
         toprfSecureBackup.changeEncKey({
           nodeAuthTokens: result.nodeAuthTokens,
           verifier,
-          verifierId: verifierID,
+          verifierId,
           oldEncKey: originalEncKeyResult.encKey,
           oldAuthKeyPair: originalEncKeyResult.authKeyPair,
           newPassword,
@@ -498,13 +498,13 @@ describe('toprf secret backup', function () {
 
     it('should throw error when metadata server fails during change encryption key', async function () {
       const secretData = utf8ToBytes('test-secret-data-for-metadata-failure');
-      const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
+      const { verifier, verifierId, idToken, toprfSecureBackup } = setup();
 
       // Setup initial data
       const result = await toprfSecureBackup.authenticate({
         idTokens: [idToken],
         verifier,
-        verifierID,
+        verifierId,
       });
 
       const originalPassword = generateRandomPassword();
@@ -512,7 +512,7 @@ describe('toprf secret backup', function () {
         nodeAuthTokens: result.nodeAuthTokens,
         password: originalPassword,
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
 
       await toprfSecureBackup.addSecretDataItem({
@@ -525,7 +525,7 @@ describe('toprf secret backup', function () {
         nodeAuthTokens: result.nodeAuthTokens,
         password: originalPassword,
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
 
       // Mock MetadataStore.batchAddSecretData to throw an error
@@ -544,7 +544,7 @@ describe('toprf secret backup', function () {
           toprfSecureBackup.changeEncKey({
             nodeAuthTokens: result.nodeAuthTokens,
             verifier,
-            verifierId: verifierID,
+            verifierId,
             oldEncKey: originalEncKeyResult.encKey,
             oldAuthKeyPair: originalEncKeyResult.authKeyPair,
             newPassword,
@@ -563,19 +563,19 @@ describe('toprf secret backup', function () {
           nodeAuthTokens: result.nodeAuthTokens,
           password: newPassword,
           verifier,
-          verifierId: verifierID,
+          verifierId,
         }),
       ).rejects.toThrow('Could not derive encryption key');
     });
 
     it('should throw error when using incorrect authKeyPair during password change', async function () {
       const secretData = utf8ToBytes('test-secret-data-for-incorrect-auth');
-      const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
+      const { verifier, verifierId, idToken, toprfSecureBackup } = setup();
 
       const result = await toprfSecureBackup.authenticate({
         idTokens: [idToken],
         verifier,
-        verifierID,
+        verifierId,
       });
 
       const originalPassword = generateRandomPassword();
@@ -583,7 +583,7 @@ describe('toprf secret backup', function () {
         nodeAuthTokens: result.nodeAuthTokens,
         password: originalPassword,
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
 
       await toprfSecureBackup.addSecretDataItem({
@@ -596,7 +596,7 @@ describe('toprf secret backup', function () {
         nodeAuthTokens: result.nodeAuthTokens,
         password: originalPassword,
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
 
       // Generate incorrect authKeyPair
@@ -611,7 +611,7 @@ describe('toprf secret backup', function () {
         toprfSecureBackup.changeEncKey({
           nodeAuthTokens: result.nodeAuthTokens,
           verifier,
-          verifierId: verifierID,
+          verifierId,
           oldEncKey: originalEncKeyResult.encKey,
           oldAuthKeyPair: incorrectKeyResult.authKeyPair, // Using incorrect authKeyPair
           newPassword,
@@ -622,12 +622,12 @@ describe('toprf secret backup', function () {
 
     it('should throw error when using incorrect encryption key during password change', async function () {
       const secretData = utf8ToBytes('test-secret-data-for-incorrect-enc-key');
-      const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
+      const { verifier, verifierId, idToken, toprfSecureBackup } = setup();
 
       const result = await toprfSecureBackup.authenticate({
         idTokens: [idToken],
         verifier,
-        verifierID,
+        verifierId,
       });
 
       const originalPassword = generateRandomPassword();
@@ -635,7 +635,7 @@ describe('toprf secret backup', function () {
         nodeAuthTokens: result.nodeAuthTokens,
         password: originalPassword,
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
 
       await toprfSecureBackup.addSecretDataItem({
@@ -648,7 +648,7 @@ describe('toprf secret backup', function () {
         nodeAuthTokens: result.nodeAuthTokens,
         password: originalPassword,
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
 
       // Generate incorrect encryption key
@@ -663,7 +663,7 @@ describe('toprf secret backup', function () {
         toprfSecureBackup.changeEncKey({
           nodeAuthTokens: result.nodeAuthTokens,
           verifier,
-          verifierId: verifierID,
+          verifierId,
           oldEncKey: incorrectKeyResult.encKey, // Using incorrect encKey
           oldAuthKeyPair: originalEncKeyResult.authKeyPair,
           newPassword,
@@ -678,18 +678,18 @@ describe('toprf secret backup', function () {
   describe('addSecretDataItem', function () {
     it('should be able to store secret data', async function () {
       const secretData = utf8ToBytes('test-secret-data');
-      const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
+      const { verifier, verifierId, idToken, toprfSecureBackup } = setup();
 
       const result = await toprfSecureBackup.authenticate({
         idTokens: [idToken],
         verifier,
-        verifierID,
+        verifierId,
       });
       const encKeyResult = await toprfSecureBackup.createEncKey({
         nodeAuthTokens: result.nodeAuthTokens,
         password: generateRandomPassword(),
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
 
       await toprfSecureBackup.addSecretDataItem({
@@ -712,18 +712,18 @@ describe('toprf secret backup', function () {
   // somehow this test fails, need to check backend logs,.
   // eslint-disable-next-line jest/no-disabled-tests
   it.skip('should throw error if user is not authenticated by enough nodes while creating enc key', async function () {
-    const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
+    const { verifier, verifierId, idToken, toprfSecureBackup } = setup();
 
     const result = await toprfSecureBackup.authenticate({
       idTokens: [idToken],
       verifier,
-      verifierID,
+      verifierId,
     });
     const encKey = await toprfSecureBackup.createEncKey({
       nodeAuthTokens: result.nodeAuthTokens,
       password: generateRandomPassword(),
       verifier,
-      verifierId: verifierID,
+      verifierId,
     });
     expect(encKey).toBeDefined();
     expect(encKey.authKeyPair).toBeDefined();
@@ -736,18 +736,18 @@ describe('toprf secret backup', function () {
         nodeAuthTokens: result.nodeAuthTokens.slice(0, 2),
         password: generateRandomPassword(),
         verifier,
-        verifierId: verifierID,
+        verifierId,
       }),
     ).rejects.toBeDefined();
   });
 
   it('should return auth pub key', async function () {
-    const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
+    const { verifier, verifierId, idToken, toprfSecureBackup } = setup();
 
     const result = await toprfSecureBackup.authenticate({
       idTokens: [idToken],
       verifier,
-      verifierID,
+      verifierId,
     });
 
     const password = generateRandomPassword();
@@ -755,13 +755,13 @@ describe('toprf secret backup', function () {
       nodeAuthTokens: result.nodeAuthTokens,
       password,
       verifier,
-      verifierId: verifierID,
+      verifierId,
     });
 
     const authPubKey = await toprfSecureBackup.fetchAuthPubKey({
       nodeAuthTokens: result.nodeAuthTokens,
       verifier,
-      verifierId: verifierID,
+      verifierId,
     });
     expect(authPubKey.authPubKey).toBeDefined();
     expect(authPubKey.authPubKey).toStrictEqual(encKeyResult.authKeyPair.pk);

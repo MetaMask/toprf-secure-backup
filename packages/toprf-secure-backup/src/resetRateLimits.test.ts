@@ -63,7 +63,7 @@ describe('resetRateLimits', () => {
     const { authTokensData } = await authenticateUser({
       idToken,
       verifier,
-      verifierID,
+      verifierId: verifierID,
       sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
@@ -121,7 +121,7 @@ describe('resetRateLimits', () => {
     const { authTokensData } = await authenticateUser({
       idToken,
       verifier,
-      verifierID,
+      verifierId: verifierID,
       sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,

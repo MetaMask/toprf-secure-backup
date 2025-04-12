@@ -27,7 +27,7 @@ import { decryptAuthToken, postJRPCRequest } from './utils';
  * @param idToken - The idToken to be used for the authenticate request
  * @param verifier - The verifier
  * to be used for the authenticate request
- * @param verifierID - The verifierID to be used for the authenticate request
+ * @param verifierId - The verifierId to be used for the authenticate request
  * @param commitmentSignatures - The idToken commitment signatures to be used for the authenticate request.
  * @param singleIdVerifierParams - Optional singleIdVerifierParams to be used for the authenticate request.
  * @returns The parameters for the authenticate JRPC request.
@@ -35,7 +35,7 @@ import { decryptAuthToken, postJRPCRequest } from './utils';
 const createAuthenticateRequestParams = (
   idToken: string,
   verifier: string,
-  verifierID: string,
+  verifierId: string,
   commitmentSignatures: CommitmentRequestResult[],
   singleIdVerifierParams?: SingleIdVerifierParams,
 ): AuthJRPCRequestParams => {
@@ -56,7 +56,7 @@ const createAuthenticateRequestParams = (
       authenticationContext: {
         idToken,
         verifier,
-        verifierId: verifierID,
+        verifierId,
       },
       singleIdVerifierParams: singleIdVerifierParamsArr,
     },
@@ -175,12 +175,12 @@ export const validateAndWaitForAllAuthResponses = async (
 };
 
 /**
- * Authenticates the user with the given idToken and verifierID and validates the responses.
+ * Authenticates the user with the given idToken and verifierId and validates the responses.
  *
  * @param params - The parameters for the authenticate request
  * @param params.idToken - The idToken to be used for the authenticate request
  * @param params.verifier - The verifier to be used for the authenticate request
- * @param params.verifierID - The verifierID to be used for the authenticate request
+ * @param params.verifierId - The verifierId to be used for the authenticate request
  * @param params.sessionPrivateKey - The session private key used for commitment request.
  * @param params.nodeEndpointsMap - The map of node indexes to endpoints map to be used for the authenticate request.
  * @param params.commitmentSignatures - The idToken commitment signatures to be used for the authenticate request.
@@ -193,7 +193,7 @@ export const validateAndWaitForAllAuthResponses = async (
 export const authenticateUser = async (params: {
   idToken: string;
   verifier: string;
-  verifierID: string;
+  verifierId: string;
   sessionPrivateKey: Uint8Array;
   nodeEndpointsMap: Record<number, string>;
   commitmentSignatures: CommitmentRequestResult[];
@@ -206,7 +206,7 @@ export const authenticateUser = async (params: {
     idToken,
     nodeEndpointsMap,
     verifier,
-    verifierID,
+    verifierId,
     commitmentSignatures,
     sessionPrivateKey,
     singleIdVerifierParams,
@@ -214,7 +214,7 @@ export const authenticateUser = async (params: {
   const requestParams = createAuthenticateRequestParams(
     idToken,
     verifier,
-    verifierID,
+    verifierId,
     commitmentSignatures,
     singleIdVerifierParams,
   );

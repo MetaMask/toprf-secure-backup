@@ -196,7 +196,7 @@ describe('authenticate request', function () {
     const { authTokensData, isNewUser } = await authenticateUser({
       idToken,
       verifier,
-      verifierID,
+      verifierId: verifierID,
       sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
@@ -250,7 +250,7 @@ describe('authenticate request', function () {
     const { authTokensData, isNewUser } = await authenticateUser({
       idToken: hashedIdToken,
       verifier,
-      verifierID,
+      verifierId: verifierID,
       sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,

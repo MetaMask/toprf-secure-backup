@@ -27,7 +27,7 @@ export type SingleIdVerifierParams = {
  *
  * verifier - The verifier to be used for the authenticate request.
  *
- * verifierID - The verifierID to be used for the authenticate request.
+ * verifierId - The verifierId/userId to be used for the authenticate request.
  *
  * singleIdVerifierParams - Optional singleIdVerifierParams to be used for the authenticate request.
  * You can pass this to use aggregate verifier.
@@ -37,7 +37,7 @@ export type AuthenticateParams = {
   // so leaving it as an array for future use
   idTokens: string[];
   verifier: string;
-  verifierID: string;
+  verifierId: string;
   singleIdVerifierParams?: SingleIdVerifierParams;
 };
 
@@ -115,7 +115,7 @@ export type CreateLocalEncKeyResult = {
  *
  * verifier - The verifier name used for authentication.
  *
- * verifierId - The verifierId/userID of the user.
+ * verifierId - The verifierId/userId of the user.
  *
  * oldAuthKeyPair - Optional authentication key pair to be used for key change flow.
  */
