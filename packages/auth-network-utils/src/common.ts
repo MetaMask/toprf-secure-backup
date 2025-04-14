@@ -5,6 +5,7 @@ import JsonStringify from 'json-stable-stringify';
 
 import { SomeError } from './errors';
 import { waitFor } from './helpers';
+import type { JSONRPCError } from './interfaces';
 
 /**
  * Hashes a buffer using the keccak256 algorithm and hexify the result
@@ -251,7 +252,7 @@ function handleSomeCallBackFnError<Type>(
     });
   }
 
-  // throw an `unkown` error if there's no error or resolved result
+  // throw an `unknown` error if there's no error or resolved result
   throw new SomeError({
     errors: errorArr,
     responses: resultArr,
@@ -308,17 +309,49 @@ export async function Some<Input, Output>(
  */
 export function filterCompletedRequests<Type>(resultArr: Type[]): Type[] {
   return resultArr.filter((res) => {
-    if (!res || typeof res !== 'object') {
-      return false;
-    }
-    if ('error' in res && res.error) {
-      return false;
-    }
-    if (!('result' in res && res.result)) {
-      return false;
-    }
-    return true;
+    const isValidObject = res && typeof res === 'object';
+
+    const maybeRes = res as { error?: unknown; result?: unknown };
+    const hasNoError = !maybeRes?.error;
+    const hasResult = Boolean(maybeRes?.result);
+
+    return isValidObject && hasNoError && hasResult;
   });
+}
+
+/**
+ * Extracts error responses from a result array.
+ *
+ * @param resultArr - Array of responses to check for errors
+ * @returns Array of error responses extracted from the input array
+ */
+export function filterErrorResponses<Type>(
+  resultArr: Type[],
+): (Type & { error: unknown })[] {
+  return resultArr.filter((res): res is Type & { error: unknown } => {
+    const isValidObject = res && typeof res === 'object';
+
+    const maybeRes = res as { error?: unknown };
+    const hasError = Boolean(maybeRes?.error);
+
+    return isValidObject && hasError;
+  });
+}
+
+/**
+ * Checks if an unknown value is a properly structured JSON-RPC error object
+ *
+ * @param error - The value to check
+ * @returns True if the value is a JSON-RPC error object with the required properties
+ */
+export function isJSONRPCError(error: unknown): error is JSONRPCError {
+  const isValidObject = Boolean(error && typeof error === 'object');
+
+  const maybeError = error as Partial<JSONRPCError>;
+  const hasCode = typeof maybeError?.code === 'number';
+  const hasMessage = typeof maybeError?.message === 'string';
+
+  return isValidObject && hasCode && hasMessage;
 }
 
 export type Primitive = string | number | boolean | null;
