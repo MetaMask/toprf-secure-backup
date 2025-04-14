@@ -12,11 +12,11 @@
  * ```
  */
 export class AwaitHandler<T> {
-  appendedPromises: Promise<T>[] = [];
+  appendedPromises: Promise<T>[];
 
-  results: T[] = [];
+  results: T[];
 
-  errors: Error[] = [];
+  errors: Error[];
 
   /**
    * @param listofPromises - The list of promises to be awaited.
@@ -24,18 +24,16 @@ export class AwaitHandler<T> {
   constructor(listofPromises: Promise<T>[]) {
     this.results = Array(listofPromises.length).fill(null);
     this.errors = Array(listofPromises.length).fill(null);
-    this.appendedPromises = listofPromises.map(async (p) => {
-      return p
-        .then((r) => {
-          const index = listofPromises.indexOf(p);
-          this.results[index] = r;
-          return r;
-        })
-        .catch((e) => {
-          const index = listofPromises.indexOf(p);
-          this.errors[index] = e as Error;
-          throw e;
-        });
+    this.appendedPromises = listofPromises.map(async (task) => {
+      const index = listofPromises.indexOf(task);
+      try {
+        const promise = await task;
+        this.results[index] = promise;
+        return promise;
+      } catch (error) {
+        this.errors[index] = error as Error;
+        throw error;
+      }
     });
   }
 
@@ -51,34 +49,39 @@ export class AwaitHandler<T> {
     let failure = 0;
     const promisesLength = this.appendedPromises.length;
     return new Promise((resolve, reject) => {
-      const allPromises = this.appendedPromises.map(async (p) => {
-        await p
-          .then((r) => {
-            success += 1;
-            if (success >= waitFor) {
-              resolve(this.results);
-            }
-            return r;
-          })
-          .catch(async () => {
-            failure += 1;
-            if (failure >= promisesLength - waitFor) {
-              reject(
-                new Error('waitFor is greater than the number of promises'),
-              );
-            }
-            return p;
-          });
+      const allPromises = this.appendedPromises.map(async (task) => {
+        try {
+          const result = await task;
+          success += 1;
+          if (success >= waitFor) {
+            resolve(this.results);
+          }
+          return result;
+        } catch {
+          failure += 1;
+          if (failure >= promisesLength - waitFor) {
+            reject(
+              new Error(
+                `Number of promises that failed is greater than ${promisesLength - waitFor}`,
+              ),
+            );
+          }
+          return null;
+        }
       });
 
       Promise.allSettled(allPromises)
-        .then((r) => {
+        .then((tasks) => {
           if (this.results.length >= waitFor) {
             resolve(this.results);
           } else {
-            reject(new Error('waitFor is greater than the number of promises'));
+            reject(
+              new Error(
+                `waitFor is greater than the number of promises: ${waitFor} > ${this.results.length}`,
+              ),
+            );
           }
-          return r;
+          return tasks;
         })
         .catch((e) => {
           reject(e as Error);
