@@ -1,4 +1,21 @@
 /**
+ * Type for the rate limit error details
+ */
+export type RateLimitErrorData = {
+  message: string;
+  remainingTime: number;
+  isPermanent: boolean;
+};
+
+type ITOPRFError = {
+  name: string;
+  code: number;
+  message: string;
+  meta?: Record<string, unknown>;
+  toString(): string;
+} & CustomError;
+
+/**
  * Error class for handling errors from `some` function promises.
  */
 export class SomeError<TResponse> extends Error {
@@ -6,14 +23,14 @@ export class SomeError<TResponse> extends Error {
 
   responses: TResponse[];
 
-  predicate: string;
+  predicate: Error | undefined;
 
   /**
    *
    * @param options0 - options.
    * @param options0.errors - errors collected from promises.
    * @param options0.responses - responses collected from promises.
-   * @param options0.predicate - predicate that failed.
+   * @param options0.predicate - predicate error object that caused the failure.
    */
   constructor({
     errors,
@@ -22,14 +39,15 @@ export class SomeError<TResponse> extends Error {
   }: {
     errors: (Error | undefined)[];
     responses: TResponse[];
-    predicate: string;
+    predicate: Error | undefined;
   }) {
     // its fine to log responses in errors logs for better debugging,
     // as data is always encrypted with temp key
     // temp key should not be logged anywhere
+    const predicateMessage = predicate?.message ?? 'unknown error';
     const message = `Unable to resolve enough promises. 
       errors: ${errors.map((er: Error | undefined) => er?.message ?? er).join(', ')}, 
-      predicate error: ${predicate},
+      predicate error: ${predicateMessage},
       ${responses.length} responses,
       responses: ${JSON.stringify(responses)}`;
     super(message);
@@ -43,10 +61,11 @@ export class SomeError<TResponse> extends Error {
    * @returns - message with errors and responses from all promises.
    */
   get message(): string {
+    const predicateMessage = this.predicate?.message ?? 'unknown error';
     return `${super.message}. errors: ${this.errors.map((er: Error | undefined) => er?.message ?? er).join(', ')} and ${
       this.responses.length
     } responses: ${JSON.stringify(this.responses)},
-      predicate error: ${this.predicate}`;
+      predicate error: ${predicateMessage}`;
   }
 
   /**
@@ -99,10 +118,15 @@ function fixStack(target: Error, fn = target.constructor): void {
  */
 export class CustomError extends Error {
   /**
-   *
-   * @param message - The message of the error.
+   * Optional meta object that can contain any additional error details
    */
-  constructor(message?: string) {
+  meta?: Record<string, unknown>;
+
+  /**
+   * @param message - The message of the error.
+   * @param meta - Optional meta object with additional error details
+   */
+  constructor(message?: string, meta?: Record<string, unknown>) {
     super(message);
     // set error name as constructor name, make it not enumerable to keep native Error behavior
     // see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/new.target#new.target_in_constructors
@@ -118,15 +142,11 @@ export class CustomError extends Error {
     fixProto(this, new.target.prototype);
     // try to remove contructor from stack trace
     fixStack(this);
+
+    this.meta = meta;
   }
 }
 
-type ITOPRFError = {
-  name: string;
-  code: number;
-  message: string;
-  toString(): string;
-} & CustomError;
 /**
  * Base class for all T-OPRF errors.
  */
@@ -139,10 +159,14 @@ abstract class AbstractTOPRFError extends CustomError implements ITOPRFError {
    *
    * @param code - The code of the error.
    * @param message - The message of the error.
+   * @param meta - Optional meta for the error.
    */
-  public constructor(code: number, message: string) {
-    // takes care of stack and proto
-    super(message);
+  public constructor(
+    code: number,
+    message: string,
+    meta?: Record<string, unknown>,
+  ) {
+    super(message, meta);
 
     this.code = code;
     this.message = message || '';
@@ -154,11 +178,14 @@ abstract class AbstractTOPRFError extends CustomError implements ITOPRFError {
    * @returns - The JSON representation of the error.
    */
   toJSON(): ITOPRFError {
-    return {
+    const result: Omit<ITOPRFError, 'toString'> = {
       name: this.name,
       code: this.code,
       message: this.message,
+      meta: this.meta,
     };
+
+    return result as ITOPRFError;
   }
 
   /**
@@ -183,15 +210,21 @@ export class TOPRFError extends AbstractTOPRFError {
     1006: 'Could not derive encryption key.',
     1007: 'Endpoint not found.',
     1008: 'Insufficient number of auth tokens.',
+    1009: 'Rate limit error from server.',
   };
 
   /**
    *
    * @param code - The code of the error.
    * @param message - The message of the error.
+   * @param meta - Optional meta for the error.
    */
-  public constructor(code: number, message: string) {
-    super(code, message);
+  public constructor(
+    code: number,
+    message: string,
+    meta?: Record<string, unknown>,
+  ) {
+    super(code, message, meta);
     Object.defineProperty(this, 'name', { value: 'TOPRFError' });
   }
 
@@ -199,19 +232,26 @@ export class TOPRFError extends AbstractTOPRFError {
    *
    * @param code - The code of the error.
    * @param extraMessage - The extra message of the error.
+   * @param meta - Optional meta for the error.
    * @returns - The error for the given code.
    */
-  public static fromCode(code: number, extraMessage = ''): ITOPRFError {
+  public static fromCode(
+    code: number,
+    extraMessage = '',
+    meta?: Record<string, unknown>,
+  ): ITOPRFError {
     const extendedMessage = extraMessage ? ` ${extraMessage}` : '';
     if (!TOPRFError.messages[code]) {
       return new TOPRFError(
         1000,
         `${TOPRFError.messages[1000]}${extendedMessage}`,
+        meta,
       );
     }
     return new TOPRFError(
       code,
       `${TOPRFError.messages[code]}${extendedMessage}`,
+      meta,
     );
   }
 
@@ -296,5 +336,24 @@ export class TOPRFError extends AbstractTOPRFError {
    */
   public static insufficientAuthTokens(extraMessage = ''): ITOPRFError {
     return TOPRFError.fromCode(1008, extraMessage);
+  }
+
+  /**
+   * Creates a rate limit error with details from the server
+   *
+   * @param details - Details about the rate limit from the server
+   * @param details.message - The error message from the server
+   * @param details.remainingTime - Remaining time in seconds before retrying is allowed
+   * @param details.isPermanent - Whether the rate limit is permanent
+   * @param extraMessage - Additional message to include in the error
+   * @returns - The error instance for rate limit exceeded
+   */
+  public static rateLimitExceeded(
+    details: RateLimitErrorData,
+    extraMessage = '',
+  ): ITOPRFError {
+    return TOPRFError.fromCode(1009, extraMessage || details.message, {
+      rateLimitDetails: details,
+    });
   }
 }

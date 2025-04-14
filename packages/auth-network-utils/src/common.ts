@@ -231,7 +231,7 @@ function handleSomeCallBackFnError<Type>(
     throw new SomeError({
       errors: errorArr,
       responses: resultArr,
-      predicate: (predicateError as Error)?.message || 'unknown error',
+      predicate: predicateError,
     });
   }
 
@@ -248,7 +248,7 @@ function handleSomeCallBackFnError<Type>(
     throw new SomeError({
       errors,
       responses: resultArr,
-      predicate: (predicateError as Error)?.message || 'unknown error',
+      predicate: predicateError,
     });
   }
 
@@ -256,7 +256,7 @@ function handleSomeCallBackFnError<Type>(
   throw new SomeError({
     errors: errorArr,
     responses: resultArr,
-    predicate: (predicateError as Error)?.message || 'unknown error',
+    predicate: predicateError,
   });
 }
 
