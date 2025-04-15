@@ -396,11 +396,9 @@ describe('secure backup operations', function () {
     expect(changeKeyResponse).toBeDefined();
     expect(changeKeyResponse.error).toBeDefined();
     expect(typeof changeKeyResponse.error?.message).toBe('string');
-    expect(changeKeyResponse.error?.message).toBe(
-      'Regular import flow invalid',
-    );
+    expect(changeKeyResponse.error?.message).toBe('Internal error');
     expect(changeKeyResponse.error?.data).toBe(
-      'KeyChangeProof should be nil for regular import',
+      'Regular import flow invalid - KeyChangeProof should be nil for regular import',
     );
   });
 

@@ -55,7 +55,6 @@ describe('toprf secret backup', function () {
 
   it('should be able to authenticate user with single id verifier', async function () {
     const { verifier, verifierID, idToken, toprfSecureBackup } = setup({
-      verifierID: 'test-verifier-id-aggregate',
       verifier: 'torus-test-health-aggregate',
     });
 
