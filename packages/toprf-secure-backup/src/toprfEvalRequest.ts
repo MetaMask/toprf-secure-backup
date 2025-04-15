@@ -1,6 +1,5 @@
 import {
   Some,
-  TOPRFError,
   SomeError,
   filterCompletedRequests,
   kCombinations,
@@ -15,6 +14,7 @@ import {
   EXISTING_USER_AUTHENTICATION_THRESHOLD,
   JRPC_METHODS,
 } from './constants';
+import { TOPRFError } from './errors';
 import type { NodeAuthTokens } from './interfaces';
 import type {
   ToprfEvalJRPCRequest,

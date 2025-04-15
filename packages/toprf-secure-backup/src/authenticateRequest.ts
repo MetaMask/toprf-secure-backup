@@ -2,7 +2,6 @@ import {
   filterCompletedRequests,
   Some,
   thresholdSame,
-  TOPRFError,
 } from '@metamask/auth-network-utils';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
@@ -11,6 +10,7 @@ import {
   JRPC_METHODS,
   NEW_USER_AUTHENTICATION_THRESHOLD,
 } from './constants';
+import { TOPRFError } from './errors';
 import type { SingleIdVerifierParams } from './interfaces';
 import type {
   AuthJRPCRequest,
