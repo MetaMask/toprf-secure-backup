@@ -197,7 +197,7 @@ export class TOPRFError extends Error implements ITOPRFError {
    * @param extraMessage - The extra message of the error.
    * @returns - The error instance for json rpc error.
    */
-  public static jsonRpcError(extraMessage = ''): ITOPRFError {
+  public static jsonRpcError(extraMessage: string): ITOPRFError {
     return TOPRFError.fromCode(1012, extraMessage);
   }
 

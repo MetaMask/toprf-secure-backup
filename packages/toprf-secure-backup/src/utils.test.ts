@@ -2,6 +2,7 @@ import type { JSONRPCError } from '@metamask/auth-network-utils';
 
 import { TOPRFError } from './errors';
 import { checkRateLimitErrors, parseJsonRpcError } from './utils';
+import { JsonRpcErrorCodes } from './constants';
 
 describe('checkRateLimitErrors', () => {
   it('should return undefined for an empty array', () => {
@@ -180,7 +181,7 @@ describe('checkRateLimitErrors', () => {
 
   it('should correctly parse JsonRpcError', () => {
     const invalidAuthTokenError: JSONRPCError = {
-      code: -32602,
+      code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
       message: 'Invalid auth tokens',
     };
     const error = parseJsonRpcError(invalidAuthTokenError);
@@ -188,7 +189,7 @@ describe('checkRateLimitErrors', () => {
     expect(error.code).toBe(1010);
 
     const invalidParamsErrorWithoutData: JSONRPCError = {
-      code: -32602,
+      code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
       message: 'Insufficient share import items: got 3, expected 4',
     };
     const error2 = parseJsonRpcError(invalidParamsErrorWithoutData);
@@ -196,7 +197,7 @@ describe('checkRateLimitErrors', () => {
     expect(error2.code).toBe(1012);
 
     const invalidParamsErrorWithData: JSONRPCError = {
-      code: -32602,
+      code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
       message: 'Invalid params',
       data: 'Key change request invalid',
     };
@@ -205,7 +206,7 @@ describe('checkRateLimitErrors', () => {
     expect(error3.code).toBe(1012);
 
     const invalidParamsErrorWithJsonData: JSONRPCError = {
-      code: -32602,
+      code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
       message: 'Invalid params',
       data: {
         details: 'Missing required fields',
@@ -216,7 +217,7 @@ describe('checkRateLimitErrors', () => {
     expect(error4.code).toBe(1012);
 
     const internalError: JSONRPCError = {
-      code: -32603,
+      code: JsonRpcErrorCodes.ErrorCodeInternal,
       message: 'Internal error',
       data: 'Failed to prepare nodes',
     };
@@ -224,12 +225,20 @@ describe('checkRateLimitErrors', () => {
     expect(error5).toBeInstanceOf(TOPRFError);
     expect(error5.code).toBe(1012);
 
+    const internalErrorWithoutData: JSONRPCError = {
+      code: JsonRpcErrorCodes.ErrorCodeInternal,
+      message: 'Internal error',
+    };
+    const error6 = parseJsonRpcError(internalErrorWithoutData);
+    expect(error6).toBeInstanceOf(TOPRFError);
+    expect(error6.code).toBe(1012);
+
     const unknownError: JSONRPCError = {
       code: -404,
       message: 'Unknown error',
     };
-    const error6 = parseJsonRpcError(unknownError);
-    expect(error6).toBeInstanceOf(TOPRFError);
-    expect(error6.code).toBe(1000);
+    const error7 = parseJsonRpcError(unknownError);
+    expect(error7).toBeInstanceOf(TOPRFError);
+    expect(error7.code).toBe(1000);
   });
 });

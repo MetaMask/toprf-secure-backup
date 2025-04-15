@@ -544,13 +544,11 @@ export function parseJsonRpcError(rpcError: JSONRPCError): ITOPRFError {
     //   return TOPRFError.authTokenExpired('Auth token expired.');
     // }
 
-    let errorDescription = '';
+    let errorDescription = rpcError.message;;
     if (typeof rpcError.data === 'string') {
       errorDescription = rpcError.data;
     } else if (rpcError.data) {
       errorDescription = JSON.stringify(rpcError.data);
-    } else {
-      errorDescription = rpcError.message as string;
     }
 
     return TOPRFError.jsonRpcError(errorDescription);
