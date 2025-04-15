@@ -1,4 +1,4 @@
-import { type JsonRpcVersion } from '@metamask/auth-network-utils';
+import type { JsonRpcVersion } from '@metamask/auth-network-utils';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 

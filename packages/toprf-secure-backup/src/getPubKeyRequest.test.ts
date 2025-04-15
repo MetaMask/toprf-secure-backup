@@ -1,4 +1,4 @@
-import { type JsonRpcVersion } from '@metamask/auth-network-utils';
+import type { JsonRpcVersion } from '@metamask/auth-network-utils';
 
 import { TOPRFError } from './errors';
 import { getPubKey, validatePubKey } from './getPubKeyRequest';
