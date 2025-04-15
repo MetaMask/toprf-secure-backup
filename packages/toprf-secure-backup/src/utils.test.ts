@@ -14,6 +14,46 @@ describe('checkRateLimitErrors', () => {
     expect(checkRateLimitErrors(results)).toBeUndefined();
   });
 
+  it('should return undefined if rate limit errors have incorrect property types', () => {
+    const results = [
+      {
+        error: {
+          code: -32602,
+          message: 'Rate limit exceeded',
+          data: {
+            message: 123, // Wrong type - should be string
+            remaining_time: 300,
+            is_permanent: false,
+          },
+        },
+      },
+      {
+        error: {
+          code: -32602,
+          message: 'Rate limit exceeded',
+          data: {
+            message: 'Too many requests',
+            remaining_time: '300', // Wrong type - should be number
+            is_permanent: false,
+          },
+        },
+      },
+      {
+        error: {
+          code: -32602,
+          message: 'Rate limit exceeded',
+          data: {
+            message: 'Too many requests',
+            remaining_time: 300,
+            is_permanent: 'false', // Wrong type - should be boolean
+          },
+        },
+      },
+    ];
+
+    expect(checkRateLimitErrors(results)).toBeUndefined();
+  });
+
   it('should return rate limit details if a single rate limit error is found', () => {
     const results = [
       { result: 'success' },
