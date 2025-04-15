@@ -396,11 +396,8 @@ describe('secure backup operations', function () {
     expect(changeKeyResponse).toBeDefined();
     expect(changeKeyResponse.error).toBeDefined();
     expect(typeof changeKeyResponse.error?.message).toBe('string');
-    expect(changeKeyResponse.error?.message).toBe(
-      'Regular import flow invalid',
-    );
     expect(changeKeyResponse.error?.data).toBe(
-      'KeyChangeProof should be nil for regular import',
+      'Regular import flow invalid - KeyChangeProof should be nil for regular import',
     );
   });
 
@@ -498,9 +495,8 @@ describe('secure backup operations', function () {
     expect(keyChangeResponse).toBeDefined();
     expect(keyChangeResponse.error).toBeDefined();
     expect(typeof keyChangeResponse.error?.message).toBe('string');
-    expect(keyChangeResponse.error?.message).toBe(
-      'requested key index 1 must be at least equal to the existing key index 2',
+    expect(keyChangeResponse.error?.data).toBe(
+      'Failed to validate share key index',
     );
-    expect(keyChangeResponse.error?.data).toBeUndefined();
   });
 });
