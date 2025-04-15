@@ -239,10 +239,10 @@ export const changeKeyShares = async (
   const proxyNodeEndpoint = nodeEndpointsMap[proxyNodeEndpointIndex];
 
   // Use the same JRPC method as store shares but with the key change parameters
-  const keyChangeReqPromise = await sendStoreKeySharesRequest(
+  const keyChangeResponse = await sendStoreKeySharesRequest(
     proxyNodeEndpoint,
     requestParams,
   );
 
-  return keyChangeReqPromise;
+  return keyChangeResponse;
 };

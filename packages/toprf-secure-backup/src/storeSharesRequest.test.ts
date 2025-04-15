@@ -25,19 +25,19 @@ describe('secure backup operations', function () {
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
     const verifier = 'torus-test-health';
-    // generate a random verifierID string
-    const verifierID = `test-verifier-id-${Math.random()}`;
+    // generate a random verifierId string
+    const verifierId = `test-verifier-id-${Math.random()}`;
     const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
       await nodeDetailManager.getNodeDetails({
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
 
     if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
       throw new Error('Failed to get node details');
     }
 
-    const idToken = generateIdToken(verifierID, 'ES256');
+    const idToken = generateIdToken(verifierId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
 
@@ -65,7 +65,7 @@ describe('secure backup operations', function () {
     const { authTokensData } = await authenticateUser({
       idToken,
       verifier,
-      verifierID,
+      verifierId,
       sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
@@ -79,7 +79,7 @@ describe('secure backup operations', function () {
     const storeSharesResponse = await storeKeyShares({
       nodeEndpointsMap: selectedEndpointsMap,
       verifier,
-      verifierId: verifierID,
+      verifierId,
       authTokens: authTokensData,
       shareKeyIndex: 1,
       oprfKey,
@@ -95,12 +95,12 @@ describe('secure backup operations', function () {
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
     const verifier = 'torus-test-health';
-    // generate a random verifierID string
-    const verifierID = `test-verifier-id-${Math.random()}`;
+    // generate a random verifierId string
+    const verifierId = `test-verifier-id-${Math.random()}`;
     const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
       await nodeDetailManager.getNodeDetails({
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
 
     if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
@@ -115,7 +115,7 @@ describe('secure backup operations', function () {
     const endpoints = [...torusNodeSSSEndpoints];
     endpoints[0] = endpoints[0].replace('/jrpc', '');
 
-    const idToken = generateIdToken(verifierID, 'ES256');
+    const idToken = generateIdToken(verifierId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
 
@@ -137,7 +137,7 @@ describe('secure backup operations', function () {
     const { authTokensData } = await authenticateUser({
       idToken,
       verifier,
-      verifierID,
+      verifierId,
       sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
@@ -152,7 +152,7 @@ describe('secure backup operations', function () {
     const storeSharesResponse = await storeKeyShares({
       nodeEndpointsMap: selectedEndpointsMap,
       verifier,
-      verifierId: verifierID,
+      verifierId,
       authTokens: authTokensData,
       shareKeyIndex: 1,
       oprfKey,
@@ -168,19 +168,19 @@ describe('secure backup operations', function () {
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
     const verifier = 'torus-test-health';
-    // generate a random verifierID string
-    const verifierID = `test-verifier-id-${Math.random()}`;
+    // generate a random verifierId string
+    const verifierId = `test-verifier-id-${Math.random()}`;
     const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
       await nodeDetailManager.getNodeDetails({
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
 
     if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
       throw new Error('Failed to get node details');
     }
 
-    const idToken = generateIdToken(verifierID, 'ES256');
+    const idToken = generateIdToken(verifierId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
 
@@ -208,7 +208,7 @@ describe('secure backup operations', function () {
     const { authTokensData } = await authenticateUser({
       idToken,
       verifier,
-      verifierID,
+      verifierId,
       sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
@@ -226,7 +226,7 @@ describe('secure backup operations', function () {
     const storeSharesResponse = await storeKeyShares({
       nodeEndpointsMap: selectedEndpointsMap,
       verifier,
-      verifierId: verifierID,
+      verifierId,
       authTokens: authTokensData,
       shareKeyIndex: 1,
       oprfKey,
@@ -250,7 +250,7 @@ describe('secure backup operations', function () {
       authTokens: authTokensData,
       nodeEndpointsMap: selectedEndpointsMap,
       verifier,
-      verifierId: verifierID,
+      verifierId,
       userInput: originalPasswordBytes,
     });
 
@@ -265,7 +265,7 @@ describe('secure backup operations', function () {
         authTokens: authTokensData,
         nodeEndpointsMap: selectedEndpointsMap,
         verifier,
-        verifierId: verifierID,
+        verifierId,
         userInput: newPasswordBytes,
       }),
     ).rejects.toThrow('Could not derive encryption key');
@@ -275,14 +275,14 @@ describe('secure backup operations', function () {
       authTokens: authTokensData,
       nodeEndpointsMap: selectedEndpointsMap,
       verifier,
-      verifierId: verifierID,
+      verifierId,
     });
 
     // Change the key
     const keyChangeResponse = await changeKeyShares({
       nodeEndpointsMap: selectedEndpointsMap,
       verifier,
-      verifierId: verifierID,
+      verifierId,
       authTokens: authTokensData,
       oldAuthPrivKey: originalAuthKeyPair.sk,
       shareKeyIndex: 2,
@@ -299,7 +299,7 @@ describe('secure backup operations', function () {
         authTokens: authTokensData,
         nodeEndpointsMap: selectedEndpointsMap,
         verifier,
-        verifierId: verifierID,
+        verifierId,
         userInput: originalPasswordBytes,
       }),
     ).rejects.toThrow('Could not derive encryption key');
@@ -310,7 +310,7 @@ describe('secure backup operations', function () {
         authTokens: authTokensData,
         nodeEndpointsMap: selectedEndpointsMap,
         verifier,
-        verifierId: verifierID,
+        verifierId,
         userInput: newPasswordBytes,
       });
 
@@ -325,18 +325,18 @@ describe('secure backup operations', function () {
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
     const verifier = 'torus-test-health';
-    const verifierID = `test-verifier-id-${Math.random()}`;
+    const verifierId = `test-verifier-id-${Math.random()}`;
     const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
       await nodeDetailManager.getNodeDetails({
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
 
     if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
       throw new Error('Failed to get node details');
     }
 
-    const idToken = generateIdToken(verifierID, 'ES256');
+    const idToken = generateIdToken(verifierId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
 
@@ -363,7 +363,7 @@ describe('secure backup operations', function () {
     const { authTokensData } = await authenticateUser({
       idToken,
       verifier,
-      verifierID,
+      verifierId,
       sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
@@ -385,7 +385,7 @@ describe('secure backup operations', function () {
     const changeKeyResponse = await changeKeyShares({
       nodeEndpointsMap: selectedEndpointsMap,
       verifier,
-      verifierId: verifierID,
+      verifierId,
       authTokens: authTokensData,
       oldAuthPrivKey: originalAuthKeyPair.sk,
       shareKeyIndex: 2,
@@ -407,18 +407,18 @@ describe('secure backup operations', function () {
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
     const verifier = 'torus-test-health';
-    const verifierID = `test-verifier-id-${Math.random()}`;
+    const verifierId = `test-verifier-id-${Math.random()}`;
     const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
       await nodeDetailManager.getNodeDetails({
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
 
     if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
       throw new Error('Failed to get node details');
     }
 
-    const idToken = generateIdToken(verifierID, 'ES256');
+    const idToken = generateIdToken(verifierId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
 
@@ -445,7 +445,7 @@ describe('secure backup operations', function () {
     const { authTokensData } = await authenticateUser({
       idToken,
       verifier,
-      verifierID,
+      verifierId,
       sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
@@ -464,7 +464,7 @@ describe('secure backup operations', function () {
     const storeSharesResponse = await storeKeyShares({
       nodeEndpointsMap: selectedEndpointsMap,
       verifier,
-      verifierId: verifierID,
+      verifierId,
       authTokens: authTokensData,
       shareKeyIndex: initialKeyIndex,
       oprfKey,
@@ -485,7 +485,7 @@ describe('secure backup operations', function () {
     const keyChangeResponse = await changeKeyShares({
       nodeEndpointsMap: selectedEndpointsMap,
       verifier,
-      verifierId: verifierID,
+      verifierId,
       authTokens: authTokensData,
       oldAuthPrivKey: originalAuthKeyPair.sk,
       shareKeyIndex: lowerKeyIndex,
