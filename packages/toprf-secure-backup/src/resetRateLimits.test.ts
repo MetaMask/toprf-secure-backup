@@ -34,9 +34,9 @@ describe('resetRateLimits', () => {
 
     const privKey = secp256k1.utils.randomPrivateKey();
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
-    const verifierID = `test-verifier-id-${Math.random()}`;
+    const verifierId = `test-verifier-id-${Math.random()}`;
 
-    const idToken = generateIdToken(verifierID, 'ES256');
+    const idToken = generateIdToken(verifierId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
 
@@ -63,7 +63,7 @@ describe('resetRateLimits', () => {
     const { authTokensData } = await authenticateUser({
       idToken,
       verifier,
-      verifierId: verifierID,
+      verifierId,
       sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
@@ -73,7 +73,7 @@ describe('resetRateLimits', () => {
       authTokens: authTokensData,
       nodeEndpointsMap: selectedEndpointsMap,
       verifier,
-      verifierId: verifierID,
+      verifierId,
     });
     expect(result).toBe(true);
   });
@@ -92,9 +92,9 @@ describe('resetRateLimits', () => {
 
     const privKey = secp256k1.utils.randomPrivateKey();
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
-    const verifierID = `test-verifier-id-${Math.random()}`;
+    const verifierId = `test-verifier-id-${Math.random()}`;
 
-    const idToken = generateIdToken(verifierID, 'ES256');
+    const idToken = generateIdToken(verifierId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
 
@@ -121,7 +121,7 @@ describe('resetRateLimits', () => {
     const { authTokensData } = await authenticateUser({
       idToken,
       verifier,
-      verifierId: verifierID,
+      verifierId,
       sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
@@ -135,7 +135,7 @@ describe('resetRateLimits', () => {
           [authTokensData[0].nodeIndex]: '',
         },
         verifier,
-        verifierId: verifierID,
+        verifierId,
       }),
     ).rejects.toThrow(
       TOPRFError.endpointNotFound(

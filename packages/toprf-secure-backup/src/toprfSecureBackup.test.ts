@@ -304,8 +304,8 @@ describe('toprf secret backup', function () {
     it('should be able to change encryption key', async function () {
       const secretData = utf8ToBytes('test-secret-data-for-key-change');
       const verifier = 'torus-test-health';
-      const verifierID = `test-verifier-id-${Math.random()}`;
-      const idToken = generateIdToken(verifierID, 'ES256');
+      const verifierId = `test-verifier-id-${Math.random()}`;
+      const idToken = generateIdToken(verifierId, 'ES256');
       const toprfSecureBackup = new ToprfSecureBackup({
         network: 'sapphire_devnet',
       });
@@ -313,7 +313,7 @@ describe('toprf secret backup', function () {
       const result = await toprfSecureBackup.authenticate({
         idTokens: [idToken],
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
       expect(result.nodeAuthTokens).toBeDefined();
       expect(result.nodeAuthTokens.length).toBeGreaterThan(0);
@@ -323,7 +323,7 @@ describe('toprf secret backup', function () {
         nodeAuthTokens: result.nodeAuthTokens,
         password: originalPassword,
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
 
       await toprfSecureBackup.addSecretDataItem({
@@ -346,7 +346,7 @@ describe('toprf secret backup', function () {
         nodeAuthTokens: result.nodeAuthTokens,
         password: originalPassword,
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
 
       expect(recoveredOriginalKey.shareKeyIndex).toBe(FIRST_KEY_INDEX);
@@ -356,7 +356,7 @@ describe('toprf secret backup', function () {
       const newEncKeyResult = await toprfSecureBackup.changeEncKey({
         nodeAuthTokens: result.nodeAuthTokens,
         verifier,
-        verifierId: verifierID,
+        verifierId,
         oldEncKey: originalEncKeyResult.encKey,
         oldAuthKeyPair: originalEncKeyResult.authKeyPair,
         newPassword,
@@ -370,7 +370,7 @@ describe('toprf secret backup', function () {
         nodeAuthTokens: result.nodeAuthTokens,
         password: newPassword,
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
 
       expect(recoveredNewKey.shareKeyIndex).toBe(
@@ -406,9 +406,10 @@ describe('toprf secret backup', function () {
       );
     });
 
-    // metadata lock will be released automatically after the lock expiry time: 90 seconds
-    // releasing lock will only be doned after the successful key change
-    // hence, failed to release the lock should not affect the key change operation
+    // The metadata lock has a 90 second expiry time and will auto-release after that period,
+    // regardless of whether the key change succeeded or failed.
+    // While changeEncKey() attempts to manually release the lock after a successful key change,
+    // any failure to release the lock should not impact the overall key change operation.
     it('should not throw error when failed to released metadata lock', async function () {
       const secretData = utf8ToBytes('test-secret-data-for-key-change');
       const { verifier, verifierId, idToken, toprfSecureBackup } = setup();
@@ -709,7 +710,7 @@ describe('toprf secret backup', function () {
     });
   });
 
-  // somehow this test fails, need to check backend logs,.
+  // TODO: somehow this test fails, need to check backend logs,.
   // eslint-disable-next-line jest/no-disabled-tests
   it.skip('should throw error if user is not authenticated by enough nodes while creating enc key', async function () {
     const { verifier, verifierId, idToken, toprfSecureBackup } = setup();

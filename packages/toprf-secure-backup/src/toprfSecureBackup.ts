@@ -316,7 +316,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     const {
       nodeAuthTokens,
       verifier,
-      verifierId: verifierID,
+      verifierId,
       oldEncKey,
       oldAuthKeyPair,
       newPassword,
@@ -360,7 +360,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
         oprfKey,
         authPubKey: authKeyPair.pk,
         verifier,
-        verifierId: verifierID,
+        verifierId,
         shareKeyIndex: newShareKeyIndex,
         oldAuthKeyPair,
       });
