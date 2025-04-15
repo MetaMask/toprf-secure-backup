@@ -498,9 +498,8 @@ describe('secure backup operations', function () {
     expect(keyChangeResponse).toBeDefined();
     expect(keyChangeResponse.error).toBeDefined();
     expect(typeof keyChangeResponse.error?.message).toBe('string');
-    expect(keyChangeResponse.error?.message).toBe(
-      'requested key index 1 must be at least equal to the existing key index 2',
+    expect(keyChangeResponse.error?.data).toBe(
+      'Failed to validate share key index',
     );
-    expect(keyChangeResponse.error?.data).toBeUndefined();
   });
 });
