@@ -1,8 +1,8 @@
 import type { JSONRPCError } from '@metamask/auth-network-utils';
 
+import { JsonRpcErrorCodes } from './constants';
 import { TOPRFError } from './errors';
 import { checkRateLimitErrors, parseJsonRpcError } from './utils';
-import { JsonRpcErrorCodes } from './constants';
 
 describe('checkRateLimitErrors', () => {
   it('should return undefined for an empty array', () => {
