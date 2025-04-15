@@ -770,12 +770,12 @@ describe('toprf secret backup', function () {
 
   it('should trigger rate limiting after multiple incorrect password attempts', async function () {
     // Setup: Create user and password
-    const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
+    const { verifier, verifierId, idToken, toprfSecureBackup } = setup();
 
     const result = await toprfSecureBackup.authenticate({
       idTokens: [idToken],
       verifier,
-      verifierID,
+      verifierId,
     });
 
     const correctPassword = generateRandomPassword();
@@ -783,7 +783,7 @@ describe('toprf secret backup', function () {
       nodeAuthTokens: result.nodeAuthTokens,
       password: correctPassword,
       verifier,
-      verifierId: verifierID,
+      verifierId,
     });
 
     // Create an account with incorrect password for testing
@@ -797,7 +797,7 @@ describe('toprf secret backup', function () {
           nodeAuthTokens: result.nodeAuthTokens,
           password: incorrectPassword,
           verifier,
-          verifierId: verifierID,
+          verifierId,
         }),
       ).rejects.toThrow('Could not derive encryption key');
     }
@@ -808,7 +808,7 @@ describe('toprf secret backup', function () {
         nodeAuthTokens: result.nodeAuthTokens,
         password: incorrectPassword,
         verifier,
-        verifierId: verifierID,
+        verifierId,
       }),
     ).rejects.toMatchObject({
       code: 1009,

@@ -167,11 +167,11 @@ describe('toprfEvalRequest', () => {
       });
 
       const verifier = 'torus-test-health';
-      const verifierID = `test-verifier-id-${Math.random()}`;
+      const verifierId = `test-verifier-id-${Math.random()}`;
       const { torusNodeSSSEndpoints, torusIndexes } =
         await nodeDetailManager.getNodeDetails({
           verifier,
-          verifierId: verifierID,
+          verifierId,
         });
 
       if (!torusNodeSSSEndpoints || !torusIndexes) {
@@ -184,7 +184,7 @@ describe('toprfEvalRequest', () => {
         torusIndexes,
       );
 
-      const idToken = generateIdToken(verifierID, 'ES256');
+      const idToken = generateIdToken(verifierId, 'ES256');
       const sessionPubKeyX = pubKey.x.toString(16);
       const sessionPubKeyY = pubKey.y.toString(16);
 
@@ -206,7 +206,7 @@ describe('toprfEvalRequest', () => {
       const { authTokensData } = await authenticateUser({
         idToken,
         verifier,
-        verifierID,
+        verifierId,
         sessionPrivateKey: privKey,
         nodeEndpointsMap: selectedEndpointsMap,
         commitmentSignatures: commitmentResults,
@@ -223,7 +223,7 @@ describe('toprfEvalRequest', () => {
       const storeSharesResponse = await storeKeyShares({
         nodeEndpointsMap: selectedEndpointsMap,
         verifier,
-        verifierId: verifierID,
+        verifierId,
         authTokens: authTokensData,
         shareKeyIndex: 1,
         oprfKey,
@@ -239,7 +239,7 @@ describe('toprfEvalRequest', () => {
           authTokens: authTokensData,
           nodeEndpointsMap: selectedEndpointsMap,
           verifier,
-          verifierId: verifierID,
+          verifierId,
           userInput: passwordBytes,
         });
 
@@ -259,7 +259,7 @@ describe('toprfEvalRequest', () => {
           authTokens: authTokensData,
           nodeEndpointsMap: selectedEndpointsMap,
           verifier,
-          verifierId: verifierID,
+          verifierId,
           userInput: passwordBytes,
         });
       }).rejects.toMatchObject({
