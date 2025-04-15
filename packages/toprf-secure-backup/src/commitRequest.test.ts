@@ -1,4 +1,3 @@
-import { TOPRFError } from '@metamask/auth-network-utils';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
@@ -7,6 +6,7 @@ import {
   validateAndWaitForCommitResponses,
   validateThresholdCommitmentResponses,
 } from './commitRequest';
+import { TOPRFError } from './errors';
 import type {
   CommitmentJRPCResponse,
   CommitmentRequestResult,

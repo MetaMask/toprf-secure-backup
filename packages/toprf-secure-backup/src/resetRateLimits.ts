@@ -1,11 +1,8 @@
-import {
-  filterCompletedRequests,
-  Some,
-  TOPRFError,
-} from '@metamask/auth-network-utils';
+import { filterCompletedRequests, Some } from '@metamask/auth-network-utils';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
 import { JRPC_METHODS } from './constants';
+import { TOPRFError } from './errors';
 import type { NodeAuthTokens } from './interfaces';
 import type {
   ResetRateLimitJRPCRequest,
