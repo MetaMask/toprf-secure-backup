@@ -1,4 +1,7 @@
-import { checkRateLimitErrors } from './utils';
+import type { JSONRPCError } from '@metamask/auth-network-utils';
+
+import { TOPRFError } from './errors';
+import { checkRateLimitErrors, parseJsonRpcError } from './utils';
 
 describe('checkRateLimitErrors', () => {
   it('should return undefined for an empty array', () => {
@@ -173,5 +176,60 @@ describe('checkRateLimitErrors', () => {
     };
 
     expect(checkRateLimitErrors(results)).toStrictEqual(expected);
+  });
+
+  it('should correctly parse JsonRpcError', () => {
+    const invalidAuthTokenError: JSONRPCError = {
+      code: -32602,
+      message: 'Invalid auth tokens',
+    };
+    const error = parseJsonRpcError(invalidAuthTokenError);
+    expect(error).toBeInstanceOf(TOPRFError);
+    expect(error.code).toBe(1010);
+
+    const invalidParamsErrorWithoutData: JSONRPCError = {
+      code: -32602,
+      message: 'Insufficient share import items: got 3, expected 4',
+    };
+    const error2 = parseJsonRpcError(invalidParamsErrorWithoutData);
+    expect(error2).toBeInstanceOf(TOPRFError);
+    expect(error2.code).toBe(1012);
+
+    const invalidParamsErrorWithData: JSONRPCError = {
+      code: -32602,
+      message: 'Invalid params',
+      data: 'Key change request invalid',
+    };
+    const error3 = parseJsonRpcError(invalidParamsErrorWithData);
+    expect(error3).toBeInstanceOf(TOPRFError);
+    expect(error3.code).toBe(1012);
+
+    const invalidParamsErrorWithJsonData: JSONRPCError = {
+      code: -32602,
+      message: 'Invalid params',
+      data: {
+        details: 'Missing required fields',
+      },
+    };
+    const error4 = parseJsonRpcError(invalidParamsErrorWithJsonData);
+    expect(error4).toBeInstanceOf(TOPRFError);
+    expect(error4.code).toBe(1012);
+
+    const internalError: JSONRPCError = {
+      code: -32603,
+      message: 'Internal error',
+      data: 'Failed to prepare nodes',
+    };
+    const error5 = parseJsonRpcError(internalError);
+    expect(error5).toBeInstanceOf(TOPRFError);
+    expect(error5.code).toBe(1012);
+
+    const unknownError: JSONRPCError = {
+      code: -404,
+      message: 'Unknown error',
+    };
+    const error6 = parseJsonRpcError(unknownError);
+    expect(error6).toBeInstanceOf(TOPRFError);
+    expect(error6.code).toBe(1000);
   });
 });

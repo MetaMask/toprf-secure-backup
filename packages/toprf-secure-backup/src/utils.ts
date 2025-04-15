@@ -22,7 +22,7 @@ import { post } from '@toruslabs/http-helpers';
 import BN from 'bn.js';
 import type * as EC from 'elliptic';
 
-import { GENERATE_SHARE_THRESHOLD } from './constants';
+import { GENERATE_SHARE_THRESHOLD, JsonRpcErrorCodes } from './constants';
 import { TOPRFError } from './errors';
 import type { ITOPRFError, RateLimitErrorData } from './errors';
 import type {
@@ -534,14 +534,15 @@ export function mergeEndpointsWithAuthTokens(
  * @returns TOPRFError instance
  */
 export function parseJsonRpcError(rpcError: JSONRPCError): ITOPRFError {
-  if (rpcError.code === -32602) {
+  if (rpcError.code === JsonRpcErrorCodes.ErrorCodeInvalidParams) {
     if (rpcError.message === 'Invalid auth tokens') {
       return TOPRFError.invalidAuthTokens();
     }
 
-    if (rpcError.message === 'Auth token expired') {
-      return TOPRFError.authTokenExpired('Auth token expired.');
-    }
+    // Commenting this as backend is not returning the correct error code for auth token expired
+    // if (rpcError.message === 'Auth token expired') {
+    //   return TOPRFError.authTokenExpired('Auth token expired.');
+    // }
 
     let errorDescription = '';
     if (typeof rpcError.data === 'string') {
@@ -553,8 +554,10 @@ export function parseJsonRpcError(rpcError: JSONRPCError): ITOPRFError {
     }
 
     return TOPRFError.jsonRpcError(errorDescription);
+  } else if (rpcError.code === JsonRpcErrorCodes.ErrorCodeInternal) {
+    const errorDescription = rpcError.data ?? rpcError.message;
+    return TOPRFError.jsonRpcError(errorDescription as string);
   }
 
-  const errorDescription = rpcError.data ?? rpcError.message;
-  return TOPRFError.jsonRpcError(errorDescription as string);
+  return TOPRFError.default(rpcError.message);
 }

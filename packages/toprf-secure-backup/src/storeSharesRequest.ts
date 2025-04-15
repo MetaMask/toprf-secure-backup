@@ -137,12 +137,6 @@ export const storeKeyShares = async (
   );
 
   if (storeKeyShareResponse.error) {
-    console.log('[storeKeyShares] authTokens', authTokens);
-    console.log('[storeKeyShares] requestParams', requestParams);
-    console.log(
-      '[storeKeyShares] storeKeyShareResponse',
-      storeKeyShareResponse,
-    );
     const error = parseJsonRpcError(storeKeyShareResponse.error);
     throw error;
   }

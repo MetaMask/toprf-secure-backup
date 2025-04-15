@@ -32,7 +32,7 @@ export class TOPRFError extends Error implements ITOPRFError {
     1008: 'Insufficient number of auth tokens.',
     1009: 'Rate limit error from server.',
     1010: 'Invalid auth tokens.',
-    1011: 'Auth token expired.',
+    // 1011: 'Auth token expired.', // need to wait for the backend to update the error code
     1012: 'Json rpc error.', // should/must specify error description in `error.data` field from the server response
   };
 
@@ -190,15 +190,6 @@ export class TOPRFError extends Error implements ITOPRFError {
    */
   public static invalidAuthTokens(extraMessage = ''): ITOPRFError {
     return TOPRFError.fromCode(1010, extraMessage);
-  }
-
-  /**
-   *
-   * @param extraMessage - The extra message of the error.
-   * @returns - The error instance for auth token expired.
-   */
-  public static authTokenExpired(extraMessage = ''): ITOPRFError {
-    return TOPRFError.fromCode(1011, extraMessage);
   }
 
   /**

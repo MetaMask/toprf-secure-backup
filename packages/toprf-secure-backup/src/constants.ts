@@ -13,3 +13,8 @@ export const TOPRF_EVAL_THRESHOLD = 3;
 export const GET_PUB_KEY_THRESHOLD = 3;
 export const GENERATE_SHARE_THRESHOLD = 3;
 export const FIRST_KEY_INDEX = 1;
+
+export enum JsonRpcErrorCodes {
+  ErrorCodeInvalidParams = -32602,
+  ErrorCodeInternal = -32603,
+}
