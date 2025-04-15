@@ -258,7 +258,7 @@ describe('authenticate request', function () {
     });
     expect(authTokensData).toBeDefined();
     expect(authTokensData.length).toBeGreaterThanOrEqual(3);
-    expect(isNewUser).toBe(true);
+    expect(isNewUser).toBe(false);
   });
 });
 
