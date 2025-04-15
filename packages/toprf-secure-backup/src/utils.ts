@@ -3,6 +3,7 @@ import type {
   JRPCRequest,
   JSONValue,
   ShareMap,
+  JSONRPCError,
 } from '@metamask/auth-network-utils';
 import {
   encParamsHexToBuf,
@@ -23,7 +24,7 @@ import type * as EC from 'elliptic';
 
 import { GENERATE_SHARE_THRESHOLD } from './constants';
 import { TOPRFError } from './errors';
-import type { RateLimitErrorData } from './errors';
+import type { ITOPRFError, RateLimitErrorData } from './errors';
 import type {
   KeyChangeProof,
   NodeAuthToken,
@@ -524,4 +525,36 @@ export function mergeEndpointsWithAuthTokens(
       authToken,
     };
   });
+}
+
+/**
+ * Parses a JSON-RPC error and returns TOPRFError instance.
+ *
+ * @param rpcError - The error object from a JSON-RPC response
+ * @returns TOPRFError instance
+ */
+export function parseJsonRpcError(rpcError: JSONRPCError): ITOPRFError {
+  if (rpcError.code === -32602) {
+    if (rpcError.message === 'Invalid auth tokens') {
+      return TOPRFError.invalidAuthTokens();
+    }
+
+    if (rpcError.message === 'Auth token expired') {
+      return TOPRFError.authTokenExpired('Auth token expired.');
+    }
+
+    let errorDescription = '';
+    if (typeof rpcError.data === 'string') {
+      errorDescription = rpcError.data;
+    } else if (rpcError.data) {
+      errorDescription = JSON.stringify(rpcError.data);
+    } else {
+      errorDescription = rpcError.message as string;
+    }
+
+    return TOPRFError.jsonRpcError(errorDescription);
+  }
+
+  const errorDescription = rpcError.data ?? rpcError.message;
+  return TOPRFError.jsonRpcError(errorDescription as string);
 }

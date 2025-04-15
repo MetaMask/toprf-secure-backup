@@ -12,7 +12,11 @@ import type {
   StoreKeySharesJRPCResponse,
   StoreKeySharesJRPCRequest,
 } from './jrpcInterfaces';
-import { generateShareImportItems, postJRPCRequest } from './utils';
+import {
+  generateShareImportItems,
+  parseJsonRpcError,
+  postJRPCRequest,
+} from './utils';
 
 export type CreateStoreKeySharesRequestParamsInput = {
   nodeEndpointsMap: Record<number, string>;
@@ -127,11 +131,17 @@ export const storeKeyShares = async (
     verifierId,
   );
   const proxyNodeEndpoint = nodeEndpointsMap[proxyNodeEndpointIndex];
-  const storeReqPromise = await sendStoreKeySharesRequest(
+  const storeKeyShareResponse = await sendStoreKeySharesRequest(
     proxyNodeEndpoint,
     requestParams,
   );
-  return storeReqPromise;
+
+  if (storeKeyShareResponse.error) {
+    const error = parseJsonRpcError(storeKeyShareResponse.error);
+    throw error;
+  }
+
+  return storeKeyShareResponse;
 };
 
 export type CreateKeyChangeRequestParamsInput = {
@@ -243,6 +253,11 @@ export const changeKeyShares = async (
     proxyNodeEndpoint,
     requestParams,
   );
+
+  if (keyChangeResponse.error) {
+    const error = parseJsonRpcError(keyChangeResponse.error);
+    throw error;
+  }
 
   return keyChangeResponse;
 };

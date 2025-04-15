@@ -207,6 +207,45 @@ describe('toprf secret backup', function () {
         }),
       ).rejects.toBeDefined();
     });
+
+    it('should throw error if invalid auth tokens are provided', async function () {
+      const { verifier, verifierId, toprfSecureBackup } = setup();
+      const INVALID_NODE_AUTH_TOKENS = [
+        {
+          nodeIndex: 1,
+          authToken: 'invalid auth token',
+          nodePubKey:
+            '04b56541684ea5fa40c8337b7688d502f0e9e092098962ad344c34e94f06d293fb759a998cef79d389082f9a75061a29190eec0cac99b8c25ddcf6b58569dad55c',
+        },
+        {
+          nodeIndex: 2,
+          authToken: 'invalid auth token',
+          nodePubKey:
+            '04b56541684ea5fa40c8337b7688d502f0e9e092098962ad344c34e94f06d293fb759a998cef79d389082f9a75061a29190eec0cac99b8c25ddcf6b58569dad55c',
+        },
+        {
+          nodeIndex: 3,
+          authToken: 'invalid auth token',
+          nodePubKey:
+            '04b56541684ea5fa40c8337b7688d502f0e9e092098962ad344c34e94f06d293fb759a998cef79d389082f9a75061a29190eec0cac99b8c25ddcf6b58569dad55c',
+        },
+        {
+          nodeIndex: 4,
+          authToken: 'invalid auth token',
+          nodePubKey:
+            '04b56541684ea5fa40c8337b7688d502f0e9e092098962ad344c34e94f06d293fb759a998cef79d389082f9a75061a29190eec0cac99b8c25ddcf6b58569dad55c',
+        },
+      ];
+
+      await expect(
+        toprfSecureBackup.createEncKey({
+          nodeAuthTokens: INVALID_NODE_AUTH_TOKENS,
+          password: generateRandomPassword(),
+          verifier,
+          verifierId,
+        }),
+      ).rejects.toThrow(TOPRFError.invalidAuthTokens());
+    });
   });
 
   describe('recoverEncKey', function () {
@@ -305,12 +344,7 @@ describe('toprf secret backup', function () {
   describe('changeEncKey', function () {
     it('should be able to change encryption key', async function () {
       const secretData = utf8ToBytes('test-secret-data-for-key-change');
-      const verifier = 'torus-test-health';
-      const verifierId = `test-verifier-id-${Math.random()}`;
-      const idToken = generateIdToken(verifierId, 'ES256');
-      const toprfSecureBackup = new ToprfSecureBackup({
-        network: 'sapphire_devnet',
-      });
+      const { verifier, verifierId, idToken, toprfSecureBackup } = setup();
 
       const result = await toprfSecureBackup.authenticate({
         idTokens: [idToken],
@@ -738,6 +772,7 @@ describe('toprf secret backup', function () {
         verifier,
         verifierId,
       });
+      console.log('authenticate::result', result);
 
       const encKeyResult = await toprfSecureBackup.createEncKey({
         nodeAuthTokens: result.nodeAuthTokens,

@@ -4,6 +4,7 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
+import { TOPRFError } from './errors';
 import { deriveAuthenticationKeyPair } from './keyDerivation';
 import { OPRF, generateRandomScalar } from './oprf';
 import { resetRateLimits } from './resetRateLimits';
@@ -382,23 +383,21 @@ describe('secure backup operations', function () {
     const newAuthKeyPair = deriveAuthenticationKeyPair(newSeed);
 
     // Attempt to change key before storing shares, which should fail
-    const changeKeyResponse = await changeKeyShares({
-      nodeEndpointsMap: selectedEndpointsMap,
-      verifier,
-      verifierId,
-      authTokens: authTokensData,
-      oldAuthPrivKey: originalAuthKeyPair.sk,
-      shareKeyIndex: 2,
-      newOprfKey,
-      newAuthPubKey: newAuthKeyPair.pk,
-    });
-
-    expect(changeKeyResponse).toBeDefined();
-    expect(changeKeyResponse.error).toBeDefined();
-    expect(typeof changeKeyResponse.error?.message).toBe('string');
-    expect(changeKeyResponse.error?.message).toBe('Internal error');
-    expect(changeKeyResponse.error?.data).toBe(
-      'Regular import flow invalid - KeyChangeProof should be nil for regular import',
+    await expect(
+      changeKeyShares({
+        nodeEndpointsMap: selectedEndpointsMap,
+        verifier,
+        verifierId,
+        authTokens: authTokensData,
+        oldAuthPrivKey: originalAuthKeyPair.sk,
+        shareKeyIndex: 2,
+        newOprfKey,
+        newAuthPubKey: newAuthKeyPair.pk,
+      }),
+    ).rejects.toThrow(
+      TOPRFError.jsonRpcError(
+        'Regular import flow invalid - KeyChangeProof should be nil for regular import',
+      ),
     );
   });
 
@@ -482,22 +481,19 @@ describe('secure backup operations', function () {
     // Try to change key with a lower key index
     const lowerKeyIndex = 1;
 
-    const keyChangeResponse = await changeKeyShares({
-      nodeEndpointsMap: selectedEndpointsMap,
-      verifier,
-      verifierId,
-      authTokens: authTokensData,
-      oldAuthPrivKey: originalAuthKeyPair.sk,
-      shareKeyIndex: lowerKeyIndex,
-      newOprfKey,
-      newAuthPubKey: newAuthKeyPair.pk,
-    });
-
-    expect(keyChangeResponse).toBeDefined();
-    expect(keyChangeResponse.error).toBeDefined();
-    expect(typeof keyChangeResponse.error?.message).toBe('string');
-    expect(keyChangeResponse.error?.data).toBe(
-      'Failed to validate share key index',
+    await expect(
+      changeKeyShares({
+        nodeEndpointsMap: selectedEndpointsMap,
+        verifier,
+        verifierId,
+        authTokens: authTokensData,
+        shareKeyIndex: lowerKeyIndex,
+        newOprfKey,
+        newAuthPubKey: newAuthKeyPair.pk,
+        oldAuthPrivKey: originalAuthKeyPair.sk,
+      }),
+    ).rejects.toThrow(
+      TOPRFError.jsonRpcError('Failed to validate share key index'),
     );
   });
 });

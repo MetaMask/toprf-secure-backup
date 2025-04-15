@@ -31,6 +31,9 @@ export class TOPRFError extends Error implements ITOPRFError {
     1007: 'Endpoint not found.',
     1008: 'Insufficient number of auth tokens.',
     1009: 'Rate limit error from server.',
+    1010: 'Invalid auth tokens.',
+    1011: 'Auth token expired.',
+    1012: 'Json rpc error.', // should/must specify error description in `error.data` field from the server response
   };
 
   /**
@@ -178,6 +181,33 @@ export class TOPRFError extends Error implements ITOPRFError {
     return TOPRFError.fromCode(1009, extraMessage || details.message, {
       rateLimitDetails: details,
     });
+  }
+
+  /**
+   *
+   * @param extraMessage - The extra message of the error.
+   * @returns - The error instance for invalid auth tokens.
+   */
+  public static invalidAuthTokens(extraMessage = ''): ITOPRFError {
+    return TOPRFError.fromCode(1010, extraMessage);
+  }
+
+  /**
+   *
+   * @param extraMessage - The extra message of the error.
+   * @returns - The error instance for auth token expired.
+   */
+  public static authTokenExpired(extraMessage = ''): ITOPRFError {
+    return TOPRFError.fromCode(1011, extraMessage);
+  }
+
+  /**
+   *
+   * @param extraMessage - The extra message of the error.
+   * @returns - The error instance for json rpc error.
+   */
+  public static jsonRpcError(extraMessage = ''): ITOPRFError {
+    return TOPRFError.fromCode(1012, extraMessage);
   }
 
   /**

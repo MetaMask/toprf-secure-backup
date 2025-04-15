@@ -150,6 +150,7 @@ describe('validateThresholdAuthenticateResponses', () => {
     );
   });
 });
+
 describe('authenticate request', function () {
   let nodeDetailManager: NodeDetailManager;
   beforeAll(async function () {
