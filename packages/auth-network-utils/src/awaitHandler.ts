@@ -59,14 +59,14 @@ export class AwaitHandler<T> {
           return result;
         } catch {
           failure += 1;
-          if (failure >= promisesLength - waitFor) {
+          if (failure > promisesLength - waitFor) {
             reject(
               new Error(
-                `Number of promises that failed is greater than ${promisesLength - waitFor}`,
+                `Number of promises that failed is greater than wait threshold`,
               ),
             );
           }
-          return null;
+          return task;
         }
       });
 
@@ -83,9 +83,8 @@ export class AwaitHandler<T> {
           }
           return tasks;
         })
-        .catch((e) => {
-          reject(e as Error);
-          return e;
+        .catch((error) => {
+          reject(error as Error);
         });
     });
   }
