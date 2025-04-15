@@ -4,6 +4,7 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import { FIRST_KEY_INDEX } from './constants';
 import { TOPRFError } from './errors';
+import type { KeyPair } from './interfaces';
 import { MetadataStore } from './metadata';
 import * as resetRateLimitsModule from './resetRateLimits';
 import { ToprfSecureBackup } from './toprfSecureBackup';
@@ -708,6 +709,120 @@ describe('toprf secret backup', function () {
       );
       expect(fetchedSecretData).not.toBeNull();
       expect(fetchedSecretData?.[0]).toStrictEqual(secretData);
+    });
+  });
+
+  describe('batchAddSecretDataItems', function () {
+    const secretDataArray = [
+      utf8ToBytes('test-secret-data-1'),
+      utf8ToBytes('test-secret-data-2'),
+      utf8ToBytes('test-secret-data-3'),
+    ];
+    const verifier = 'torus-test-health';
+    const verifierId = generateRandomVerifierId();
+    const password = generateRandomPassword();
+
+    let toprfSecureBackup: ToprfSecureBackup;
+    let encKey: Uint8Array;
+    let authKeyPair: KeyPair;
+
+    beforeEach(async function () {
+      const { idToken, toprfSecureBackup: _toprfSecureBackup } = setup({
+        verifier,
+        verifierId,
+      });
+      toprfSecureBackup = _toprfSecureBackup;
+
+      const result = await toprfSecureBackup.authenticate({
+        idTokens: [idToken],
+        verifier,
+        verifierId,
+      });
+
+      const encKeyResult = await toprfSecureBackup.createEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        password,
+        verifier,
+        verifierId,
+      });
+      encKey = encKeyResult.encKey;
+      authKeyPair = encKeyResult.authKeyPair;
+    });
+
+    afterEach(function () {
+      jest.restoreAllMocks();
+    });
+
+    it('should be able to store secret data in batch', async function () {
+      await toprfSecureBackup.batchAddSecretDataItems({
+        encKey,
+        secretData: secretDataArray,
+        authKeyPair,
+      });
+
+      const fetchedSecretData = await toprfSecureBackup.fetchAllSecretDataItems(
+        {
+          decKey: encKey,
+          authKeyPair,
+        },
+      );
+
+      // should have the same length as the secret data array
+      expect(fetchedSecretData).toHaveLength(secretDataArray.length);
+
+      // since all the secret items are added at once, they might have the same creation timestamp in the backend
+      // so, we cannot assume that the fetched secret data is in the same order as the secret data array
+      // hence we sort both arrays and then compare
+      const sortedSecretDataArray = [...secretDataArray].sort();
+      const sortedFetchedSecretData = [...fetchedSecretData].sort();
+      expect(sortedFetchedSecretData).toStrictEqual(sortedSecretDataArray);
+    });
+
+    it('should throw an error when failed to acquire metadata lock', async function () {
+      jest
+        .spyOn(MetadataStore.prototype, 'acquireMetadataLock')
+        .mockRejectedValue(new Error('Failed to acquire metadata lock'));
+
+      await expect(
+        toprfSecureBackup.batchAddSecretDataItems({
+          encKey,
+          secretData: secretDataArray,
+          authKeyPair,
+        }),
+      ).rejects.toThrow('Failed to acquire metadata lock');
+    });
+
+    // The metadata lock has a 90 second expiry time and will auto-release after that period,
+    // regardless of whether the key change succeeded or failed.
+    // While changeEncKey() attempts to manually release the lock after a successful key change,
+    // any failure to release the lock should not impact the overall key change operation.
+    it('should `not` throw an error when failed to release metadata lock', async function () {
+      jest
+        .spyOn(MetadataStore.prototype, 'releaseMetadataLock')
+        .mockRejectedValue(new Error('Failed to release metadata lock'));
+
+      await toprfSecureBackup.batchAddSecretDataItems({
+        encKey,
+        secretData: secretDataArray,
+        authKeyPair,
+      });
+
+      const fetchedSecretData = await toprfSecureBackup.fetchAllSecretDataItems(
+        {
+          decKey: encKey,
+          authKeyPair,
+        },
+      );
+
+      // should have the same length as the secret data array
+      expect(fetchedSecretData).toHaveLength(secretDataArray.length);
+
+      // since all the secret items are added at once, they might have the same creation timestamp in the backend
+      // so, we cannot assume that the fetched secret data is in the same order as the secret data array
+      // hence we sort both arrays and then compare
+      const sortedSecretDataArray = [...secretDataArray].sort();
+      const sortedFetchedSecretData = [...fetchedSecretData].sort();
+      expect(sortedFetchedSecretData).toStrictEqual(sortedSecretDataArray);
     });
   });
 
