@@ -668,4 +668,59 @@ describe('toprf secret backup', function () {
     expect(authPubKey.authPubKey).toBeDefined();
     expect(authPubKey.authPubKey).toStrictEqual(encKeyResult.authKeyPair.pk);
   });
+
+  it('should trigger rate limiting after multiple incorrect password attempts', async function () {
+    // Setup: Create user and password
+    const { verifier, verifierID, idToken, toprfSecureBackup } = setup();
+
+    const result = await toprfSecureBackup.authenticate({
+      idTokens: [idToken],
+      verifier,
+      verifierID,
+    });
+
+    const correctPassword = generateRandomPassword();
+    const encKeyResult = await toprfSecureBackup.createEncKey({
+      nodeAuthTokens: result.nodeAuthTokens,
+      password: correctPassword,
+      verifier,
+      verifierId: verifierID,
+    });
+
+    // Create an account with incorrect password for testing
+    expect(encKeyResult).toBeDefined();
+    const incorrectPassword = generateRandomPassword();
+
+    // First 3 attempts fail normally
+    for (let i = 0; i < 3; i++) {
+      await expect(
+        toprfSecureBackup.recoverEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          password: incorrectPassword,
+          verifier,
+          verifierId: verifierID,
+        }),
+      ).rejects.toThrow('Could not derive encryption key');
+    }
+
+    // 4th attempt triggers rate limiting
+    await expect(
+      toprfSecureBackup.recoverEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        password: incorrectPassword,
+        verifier,
+        verifierId: verifierID,
+      }),
+    ).rejects.toMatchObject({
+      code: 1009,
+      message: expect.stringContaining('Rate limit error from server'),
+      meta: {
+        rateLimitDetails: {
+          message: expect.any(String),
+          remainingTime: expect.any(Number),
+          isPermanent: expect.any(Boolean),
+        },
+      },
+    });
+  });
 });
