@@ -27,13 +27,13 @@ describe('secure backup operations', function () {
     const verifier = 'torus-test-health';
     // generate a random verifierId string
     const verifierId = `test-verifier-id-${Math.random()}`;
-    const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
+    const { torusNodeSSSEndpoints, torusIndexes } =
       await nodeDetailManager.getNodeDetails({
         verifier,
         verifierId,
       });
 
-    if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
+    if (!torusNodeSSSEndpoints) {
       throw new Error('Failed to get node details');
     }
 
@@ -97,13 +97,13 @@ describe('secure backup operations', function () {
     const verifier = 'torus-test-health';
     // generate a random verifierId string
     const verifierId = `test-verifier-id-${Math.random()}`;
-    const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
+    const { torusNodeSSSEndpoints, torusIndexes } =
       await nodeDetailManager.getNodeDetails({
         verifier,
         verifierId,
       });
 
-    if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
+    if (!torusNodeSSSEndpoints) {
       throw new Error('Failed to get node details');
     }
 
@@ -170,13 +170,13 @@ describe('secure backup operations', function () {
     const verifier = 'torus-test-health';
     // generate a random verifierId string
     const verifierId = `test-verifier-id-${Math.random()}`;
-    const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
+    const { torusNodeSSSEndpoints, torusIndexes } =
       await nodeDetailManager.getNodeDetails({
         verifier,
         verifierId,
       });
 
-    if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
+    if (!torusNodeSSSEndpoints) {
       throw new Error('Failed to get node details');
     }
 
@@ -326,13 +326,13 @@ describe('secure backup operations', function () {
 
     const verifier = 'torus-test-health';
     const verifierId = `test-verifier-id-${Math.random()}`;
-    const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
+    const { torusNodeSSSEndpoints, torusIndexes } =
       await nodeDetailManager.getNodeDetails({
         verifier,
         verifierId,
       });
 
-    if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
+    if (!torusNodeSSSEndpoints) {
       throw new Error('Failed to get node details');
     }
 
@@ -408,13 +408,13 @@ describe('secure backup operations', function () {
 
     const verifier = 'torus-test-health';
     const verifierId = `test-verifier-id-${Math.random()}`;
-    const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
+    const { torusNodeSSSEndpoints, torusIndexes } =
       await nodeDetailManager.getNodeDetails({
         verifier,
         verifierId,
       });
 
-    if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
+    if (!torusNodeSSSEndpoints) {
       throw new Error('Failed to get node details');
     }
 

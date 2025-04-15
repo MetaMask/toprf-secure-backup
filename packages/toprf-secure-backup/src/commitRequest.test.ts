@@ -31,13 +31,12 @@ describe('commitment request', function () {
     const idToken = generateIdToken(verifierId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
-    const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
-      await nodeDetailManager.getNodeDetails({
-        verifier,
-        verifierId,
-      });
+    const { torusNodeSSSEndpoints } = await nodeDetailManager.getNodeDetails({
+      verifier,
+      verifierId,
+    });
 
-    if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
+    if (!torusNodeSSSEndpoints) {
       throw new Error('Failed to get node details');
     }
     const commitmentResults = await commitIdToken({
@@ -65,13 +64,12 @@ describe('commitment request', function () {
     const idToken = generateIdToken(verifierId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
-    const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
-      await nodeDetailManager.getNodeDetails({
-        verifier,
-        verifierId,
-      });
+    const { torusNodeSSSEndpoints } = await nodeDetailManager.getNodeDetails({
+      verifier,
+      verifierId,
+    });
 
-    if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
+    if (!torusNodeSSSEndpoints) {
       throw new Error('Failed to get node details');
     }
 
@@ -103,13 +101,12 @@ describe('commitment request', function () {
     const idToken = generateIdToken(verifierId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
-    const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
-      await nodeDetailManager.getNodeDetails({
-        verifier,
-        verifierId,
-      });
+    const { torusNodeSSSEndpoints } = await nodeDetailManager.getNodeDetails({
+      verifier,
+      verifierId,
+    });
 
-    if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
+    if (!torusNodeSSSEndpoints) {
       throw new Error('Failed to get node details');
     }
     const endpoints = [...torusNodeSSSEndpoints];
