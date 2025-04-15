@@ -1,8 +1,9 @@
-import { TOPRFError, keccak256AndHexify } from '@metamask/auth-network-utils';
+import { keccak256AndHexify } from '@metamask/auth-network-utils';
 import { utf8ToBytes } from '@noble/ciphers/utils';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import { FIRST_KEY_INDEX } from './constants';
+import { TOPRFError } from './errors';
 import { MetadataStore } from './metadata';
 import * as resetRateLimitsModule from './resetRateLimits';
 import { ToprfSecureBackup } from './toprfSecureBackup';

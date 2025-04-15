@@ -2,7 +2,6 @@ import type {
   EciesHex,
   JRPCRequest,
   JSONValue,
-  RateLimitErrorData,
   ShareMap,
 } from '@metamask/auth-network-utils';
 import {
@@ -13,7 +12,6 @@ import {
   getSecp256K1Curve,
   isJSONRPCError,
   toCamelCaseKeys,
-  TOPRFError,
   toSnakeCaseKeys,
 } from '@metamask/auth-network-utils';
 import { secp256k1 as secp256k1Noble } from '@noble/curves/secp256k1';
@@ -24,6 +22,8 @@ import BN from 'bn.js';
 import type * as EC from 'elliptic';
 
 import { GENERATE_SHARE_THRESHOLD } from './constants';
+import { TOPRFError } from './errors';
+import type { RateLimitErrorData } from './errors';
 import type {
   KeyChangeProof,
   NodeAuthToken,

@@ -2,7 +2,6 @@ import {
   filterCompletedRequests,
   Some,
   thresholdSame,
-  TOPRFError,
 } from '@metamask/auth-network-utils';
 import { hexToBytes } from '@noble/hashes/utils';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
@@ -11,6 +10,7 @@ import {
   EXISTING_USER_AUTHENTICATION_THRESHOLD,
   JRPC_METHODS,
 } from './constants';
+import { TOPRFError } from './errors';
 import type { NodeAuthTokens } from './interfaces';
 import type {
   GetPubKeyJRPCRequest,

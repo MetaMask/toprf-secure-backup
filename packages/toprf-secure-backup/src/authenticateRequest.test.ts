@@ -1,4 +1,4 @@
-import { TOPRFError, keccak256AndHexify } from '@metamask/auth-network-utils';
+import { keccak256AndHexify } from '@metamask/auth-network-utils';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
@@ -8,6 +8,7 @@ import {
   validateThresholdAuthenticateResponses,
 } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
+import { TOPRFError } from './errors';
 import type { AuthJRPCResponse, AuthRequestResult } from './jrpcInterfaces';
 import { createNodeEndpointsMap } from './utils';
 import {
