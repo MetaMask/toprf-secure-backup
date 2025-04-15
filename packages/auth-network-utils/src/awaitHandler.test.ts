@@ -8,7 +8,10 @@ import { AwaitHandler } from './awaitHandler';
  *
  * @returns The promise.
  */
-const delay = async (ms: number, type: 'success' | 'failure' = 'success') =>
+const delay = async (
+  ms: number,
+  type: 'success' | 'failure' = 'success',
+): Promise<number> =>
   new Promise((resolve, reject) =>
     setTimeout(() => {
       if (type === 'failure') {

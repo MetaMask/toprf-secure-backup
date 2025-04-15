@@ -11,17 +11,17 @@
  * console.log(awaitHandler.getResults());
  * ```
  */
-export class AwaitHandler<T> {
-  appendedPromises: Promise<T>[];
+export class AwaitHandler<GenericType> {
+  appendedPromises: Promise<GenericType>[];
 
-  results: T[];
+  results: GenericType[];
 
   errors: Error[];
 
   /**
    * @param listofPromises - The list of promises to be awaited.
    */
-  constructor(listofPromises: Promise<T>[]) {
+  constructor(listofPromises: Promise<GenericType>[]) {
     this.results = Array(listofPromises.length).fill(null);
     this.errors = Array(listofPromises.length).fill(null);
     this.appendedPromises = listofPromises.map(async (task) => {
@@ -44,7 +44,7 @@ export class AwaitHandler<T> {
    *
    * @returns The results.
    */
-  async waitForResults(waitFor: number): Promise<T[]> {
+  async waitForResults(waitFor: number): Promise<GenericType[]> {
     let success = 0;
     let failure = 0;
     const promisesLength = this.appendedPromises.length;
@@ -94,7 +94,7 @@ export class AwaitHandler<T> {
    *
    * @returns The results.
    */
-  getResults(): T[] {
+  getResults(): GenericType[] {
     return this.results;
   }
 
