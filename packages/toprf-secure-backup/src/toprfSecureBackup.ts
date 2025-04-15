@@ -27,6 +27,7 @@ import type {
   ChangeEncryptionKeyResult,
   FetchAuthPubKeyParams,
   FetchAuthPubKeyResult,
+  BatchAddSecretDataItemParams,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -43,7 +44,7 @@ import { createNodeEndpointsMap } from './utils';
  * ToprfSecureBackup - The main class for the tOPRF Secure Backup service.
  *
  */
-export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
+export class ToprfSecureBackup implements IToprfSecureBackup {
   readonly #nodeDetailManager: NodeDetailManager;
 
   #metadataStoreCache: MetadataStore | undefined;
@@ -394,6 +395,43 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
   async addSecretDataItem(params: AddSecretDataItemParams): Promise<void> {
     const metadataStore = await this.#createMetadataStore();
     await metadataStore.addSecretDataItem(params);
+  }
+
+  /**
+   * This function encrypts the array of secret data using the encryption key and stores it nodes metadata store in encrypted form in batch.
+   *
+   * @param params - The parameters for registering new secret data.
+   * @param params.encKey - The encryption key to be used to encrypt the secret data before storing it.
+   * @param params.secretData - The array of secret data to be stored.
+   * @param params.authKeyPair - The authentication key to be used to provide valid signature for storing the secret data.
+   */
+  async batchAddSecretDataItems(
+    params: BatchAddSecretDataItemParams,
+  ): Promise<void> {
+    const metadataStore = await this.#createMetadataStore();
+
+    let metadataLockId: string | undefined;
+
+    try {
+      // acquire metadata lock
+      metadataLockId = await metadataStore.acquireMetadataLock(
+        params.authKeyPair,
+      );
+
+      await metadataStore.batchAddSecretData(params);
+    } finally {
+      // release metadata lock
+      if (metadataLockId) {
+        try {
+          await metadataStore.releaseMetadataLock(
+            params.authKeyPair,
+            metadataLockId,
+          );
+        } catch (error) {
+          console.error('Failed to release metadata lock:', error);
+        }
+      }
+    }
   }
 
   /**
