@@ -25,7 +25,7 @@ describe('secure backup operations', function () {
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
     const verifier = 'torus-test-health';
-    // generate a random verifierID string
+    // generate a random verifierId string
     const verifierId = `test-verifier-id-${Math.random()}`;
     const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
       await nodeDetailManager.getNodeDetails({
@@ -95,7 +95,7 @@ describe('secure backup operations', function () {
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
     const verifier = 'torus-test-health';
-    // generate a random verifierID string
+    // generate a random verifierId string
     const verifierId = `test-verifier-id-${Math.random()}`;
     const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
       await nodeDetailManager.getNodeDetails({
@@ -168,7 +168,7 @@ describe('secure backup operations', function () {
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
     const verifier = 'torus-test-health';
-    // generate a random verifierID string
+    // generate a random verifierId string
     const verifierId = `test-verifier-id-${Math.random()}`;
     const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
       await nodeDetailManager.getNodeDetails({

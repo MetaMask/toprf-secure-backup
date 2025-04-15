@@ -66,7 +66,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @param params - The authentication parameters.
    * @param params.idTokens - An array of ID tokens for authentication.
    * @param params.verifier - The verifier who issued the idToken.
-   * @param params.verifierID - The verifierID/userID assigned to the user by the verifier.
+   * @param params.verifierId - The verifierId/userID assigned to the user by the verifier.
    * @param params.singleIdVerifierParams - Optional singleIdVerifierParams to be used for the authenticate request.
    * You can pass this to use aggregate verifier.
    *
@@ -158,7 +158,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @param params.oprfKey - The OPRF key to be persisted.
    * @param params.authPubKey - The authentication public key.
    * @param params.verifier - The verifier name used for authentication.
-   * @param params.verifierID - The verifierId/userID of the user.
+   * @param params.verifierId - The verifierId/userID of the user.
    * @param params.shareKeyIndex - The share key index to be persisted. Required only during key change, defaults to FIRST_KEY_INDEX for first-time storage.
    * @param params.oldAuthKeyPair - The old authentication key pair of the user. Required only during key change, not needed for first-time storage.
    */
