@@ -5,11 +5,7 @@ import {
 } from '@metamask/auth-network-utils';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
-import {
-  EXISTING_USER_AUTHENTICATION_THRESHOLD,
-  JRPC_METHODS,
-  NEW_USER_AUTHENTICATION_THRESHOLD,
-} from './constants';
+import { AUTHENTICATION_THRESHOLD, JRPC_METHODS } from './constants';
 import { TOPRFError } from './errors';
 import type { SingleIdVerifierParams } from './interfaces';
 import type {
@@ -97,9 +93,9 @@ export const validateThresholdAuthenticateResponses = async (
 }> => {
   const completedRequests =
     filterCompletedRequests<AuthJRPCResponse>(resultArr);
-  if (completedRequests.length < EXISTING_USER_AUTHENTICATION_THRESHOLD) {
+  if (completedRequests.length < AUTHENTICATION_THRESHOLD) {
     throw TOPRFError.invalidAuthenticateResults(
-      `Not enough completed requests. Expected: ${EXISTING_USER_AUTHENTICATION_THRESHOLD}, got: ${completedRequests.length}`,
+      `Not enough completed requests. Expected: ${AUTHENTICATION_THRESHOLD}, got: ${completedRequests.length}`,
     );
   }
   const pubData = completedRequests.map((res: AuthJRPCResponse) => {
@@ -109,26 +105,14 @@ export const validateThresholdAuthenticateResponses = async (
       keyIndex: result.keyIndex,
     };
   });
-  const thresholdPubData = thresholdSame(
-    pubData,
-    EXISTING_USER_AUTHENTICATION_THRESHOLD,
-  );
+  const thresholdPubData = thresholdSame(pubData, AUTHENTICATION_THRESHOLD);
   if (!thresholdPubData) {
     throw TOPRFError.invalidAuthenticateResults(
       `Threshold pubKey not found for ${JSON.stringify(pubData)}`,
     );
   }
   const isNewUser = !thresholdPubData.pubKey;
-  const hasMaxResponses =
-    completedRequests.length >= NEW_USER_AUTHENTICATION_THRESHOLD;
 
-  // if it is new user then we need to wait for all the responses because we will need all nodes to be online
-  // while storing shares of this new user.
-  if (isNewUser && !hasMaxResponses) {
-    throw TOPRFError.invalidAuthenticateResults(
-      `Not enough completed requests. Expected: ${NEW_USER_AUTHENTICATION_THRESHOLD}, got: ${completedRequests.length}`,
-    );
-  }
   return {
     authRequestResults: completedRequests.map(
       (res) => res.result as AuthRequestResult,

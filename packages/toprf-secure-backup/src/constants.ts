@@ -8,7 +8,8 @@ export const JRPC_METHODS = {
 };
 
 export const COMMIT_RESPONSE_THRESHOLD = 4;
-export const NEW_USER_AUTHENTICATION_THRESHOLD = 4;
-export const EXISTING_USER_AUTHENTICATION_THRESHOLD = 3;
+export const AUTHENTICATION_THRESHOLD = 4;
+export const TOPRF_EVAL_THRESHOLD = 3;
+export const GET_PUB_KEY_THRESHOLD = 3;
 export const GENERATE_SHARE_THRESHOLD = 3;
 export const FIRST_KEY_INDEX = 1;

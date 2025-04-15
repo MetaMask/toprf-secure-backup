@@ -752,8 +752,6 @@ describe('toprf secret backup', function () {
       utf8ToBytes('test-secret-data-2'),
       utf8ToBytes('test-secret-data-3'),
     ];
-    const verifier = 'torus-test-health';
-    const verifierId = generateRandomVerifierId();
     const password = generateRandomPassword();
 
     let toprfSecureBackup: ToprfSecureBackup;
@@ -761,10 +759,12 @@ describe('toprf secret backup', function () {
     let authKeyPair: KeyPair;
 
     beforeEach(async function () {
-      const { idToken, toprfSecureBackup: _toprfSecureBackup } = setup({
+      const {
         verifier,
         verifierId,
-      });
+        idToken,
+        toprfSecureBackup: _toprfSecureBackup,
+      } = setup();
       toprfSecureBackup = _toprfSecureBackup;
 
       const result = await toprfSecureBackup.authenticate({
@@ -772,7 +772,6 @@ describe('toprf secret backup', function () {
         verifier,
         verifierId,
       });
-      console.log('authenticate::result', result);
 
       const encKeyResult = await toprfSecureBackup.createEncKey({
         nodeAuthTokens: result.nodeAuthTokens,

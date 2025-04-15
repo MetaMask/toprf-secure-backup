@@ -51,6 +51,7 @@ describe('validateThresholdAuthenticateResponses', () => {
       createMockResponse({ ...mockAuthResult(1) }),
       createMockResponse({ ...mockAuthResult(2) }),
       createMockResponse({ ...mockAuthResult(3) }),
+      createMockResponse({ ...mockAuthResult(4) }),
     ];
 
     const result = await validateThresholdAuthenticateResponses(responses);
@@ -142,6 +143,7 @@ describe('validateThresholdAuthenticateResponses', () => {
       createMockResponse(undefined, { code: 500, message: 'Server error' }),
       createMockResponse({ ...mockAuthResult(2), nodeIndex: 3 }),
       createMockResponse({ ...mockAuthResult(3), nodeIndex: 4 }),
+      createMockResponse({ ...mockAuthResult(4), nodeIndex: 5 }),
     ];
 
     const result = await validateThresholdAuthenticateResponses(responses);
@@ -327,6 +329,7 @@ describe('validateAndWaitForAuthResponses', () => {
       mockAuthResponse(1),
       mockAuthResponse(2),
       mockAuthResponse(3),
+      mockAuthResponse(4),
     ];
     const promiseArr = createMockAuthPromises(5);
     const startTime = Date.now() - 600;
@@ -339,7 +342,7 @@ describe('validateAndWaitForAuthResponses', () => {
       bufferWaitTime,
     );
 
-    expect(result.authRequestResults).toHaveLength(3);
+    expect(result.authRequestResults).toHaveLength(responses.length);
   });
 
   it('should throw error to continue waiting if buffer time not elapsed', async () => {
