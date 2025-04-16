@@ -11,7 +11,10 @@ import { resetRateLimits } from './resetRateLimits';
 import { changeKeyShares, storeKeyShares } from './storeSharesRequest';
 import { recoverTOPRFSeed } from './toprfEvalRequest';
 import { createNodeEndpointsMap } from './utils';
-import { generateIdToken } from '../tests/testHelpers';
+import {
+  generateIdToken,
+  generateRandomVerifierId,
+} from '../tests/testHelpers';
 
 describe('secure backup operations', function () {
   let nodeDetailManager: NodeDetailManager;
@@ -27,7 +30,7 @@ describe('secure backup operations', function () {
 
     const verifier = 'torus-test-health';
     // generate a random verifierId string
-    const verifierId = `test-verifier-id-${Math.random()}`;
+    const verifierId = generateRandomVerifierId();
     const { torusNodeSSSEndpoints, torusIndexes } =
       await nodeDetailManager.getNodeDetails({
         verifier,
@@ -97,7 +100,7 @@ describe('secure backup operations', function () {
 
     const verifier = 'torus-test-health';
     // generate a random verifierId string
-    const verifierId = `test-verifier-id-${Math.random()}`;
+    const verifierId = generateRandomVerifierId();
     const { torusNodeSSSEndpoints, torusIndexes } =
       await nodeDetailManager.getNodeDetails({
         verifier,
@@ -170,7 +173,7 @@ describe('secure backup operations', function () {
 
     const verifier = 'torus-test-health';
     // generate a random verifierId string
-    const verifierId = `test-verifier-id-${Math.random()}`;
+    const verifierId = generateRandomVerifierId();
     const { torusNodeSSSEndpoints, torusIndexes } =
       await nodeDetailManager.getNodeDetails({
         verifier,
@@ -326,7 +329,7 @@ describe('secure backup operations', function () {
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
     const verifier = 'torus-test-health';
-    const verifierId = `test-verifier-id-${Math.random()}`;
+    const verifierId = generateRandomVerifierId();
     const { torusNodeSSSEndpoints, torusIndexes } =
       await nodeDetailManager.getNodeDetails({
         verifier,
@@ -406,7 +409,7 @@ describe('secure backup operations', function () {
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
     const verifier = 'torus-test-health';
-    const verifierId = `test-verifier-id-${Math.random()}`;
+    const verifierId = generateRandomVerifierId();
     const { torusNodeSSSEndpoints, torusIndexes } =
       await nodeDetailManager.getNodeDetails({
         verifier,
