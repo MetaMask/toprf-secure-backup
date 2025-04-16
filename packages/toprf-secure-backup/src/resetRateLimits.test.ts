@@ -10,7 +10,10 @@ import {
   validateThresholdResetRateLimitResponses,
 } from './resetRateLimits';
 import { createNodeEndpointsMap } from './utils';
-import { generateIdToken } from '../tests/testHelpers';
+import {
+  generateIdToken,
+  generateRandomVerifierId,
+} from '../tests/testHelpers';
 
 // TODO: add more tests to test rate limit affect on multiple password input attempts in future.
 describe('resetRateLimits', () => {
@@ -35,7 +38,7 @@ describe('resetRateLimits', () => {
 
     const privKey = secp256k1.utils.randomPrivateKey();
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
-    const verifierId = `test-verifier-id-${Math.random()}`;
+    const verifierId = generateRandomVerifierId();
 
     const idToken = generateIdToken(verifierId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
@@ -93,7 +96,7 @@ describe('resetRateLimits', () => {
 
     const privKey = secp256k1.utils.randomPrivateKey();
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
-    const verifierId = `test-verifier-id-${Math.random()}`;
+    const verifierId = generateRandomVerifierId();
 
     const idToken = generateIdToken(verifierId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);

@@ -305,7 +305,7 @@ describe('toprf secret backup', function () {
     it('should be able to change encryption key', async function () {
       const secretData = utf8ToBytes('test-secret-data-for-key-change');
       const verifier = 'torus-test-health';
-      const verifierId = `test-verifier-id-${Math.random()}`;
+      const verifierId = generateRandomVerifierId();
       const idToken = generateIdToken(verifierId, 'ES256');
       const toprfSecureBackup = new ToprfSecureBackup({
         network: 'sapphire_devnet',

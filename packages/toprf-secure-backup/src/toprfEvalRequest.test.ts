@@ -12,7 +12,10 @@ import { OPRF, generateRandomScalar } from './oprf';
 import { storeKeyShares } from './storeSharesRequest';
 import { recoverTOPRFSeed, validateSeed } from './toprfEvalRequest';
 import { createNodeEndpointsMap } from './utils';
-import { generateIdToken } from '../tests/testHelpers';
+import {
+  generateIdToken,
+  generateRandomVerifierId,
+} from '../tests/testHelpers';
 
 describe('toprfEvalRequest', () => {
   describe('validateSeed', () => {
@@ -167,7 +170,7 @@ describe('toprfEvalRequest', () => {
       });
 
       const verifier = 'torus-test-health';
-      const verifierId = `test-verifier-id-${Math.random()}`;
+      const verifierId = generateRandomVerifierId();
       const { torusNodeSSSEndpoints, torusIndexes } =
         await nodeDetailManager.getNodeDetails({
           verifier,
