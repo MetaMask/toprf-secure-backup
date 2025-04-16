@@ -1,6 +1,5 @@
 import {
   Some,
-  SomeError,
   filterCompletedRequests,
   kCombinations,
   lagrangeInterpolationForPoints,
@@ -25,6 +24,7 @@ import {
   checkRateLimitErrors,
   mergeEndpointsWithAuthTokens,
   postJRPCRequest,
+  getTOPRFError,
 } from './utils';
 
 type BlindedOutputShare = {
@@ -298,14 +298,6 @@ export const recoverTOPRFSeed = async (params: {
       { seed: Uint8Array; shareKeyIndex: number }
     >(promises, async (resultArr) => validateSeed(userInput, r, resultArr));
   } catch (error) {
-    if (
-      error instanceof SomeError &&
-      error.predicate &&
-      error.predicate instanceof TOPRFError
-    ) {
-      throw error.predicate;
-    }
-
-    throw error;
+    throw getTOPRFError(error as Error);
   }
 };

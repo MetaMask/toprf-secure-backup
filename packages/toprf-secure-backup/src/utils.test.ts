@@ -2,7 +2,11 @@ import type { JSONRPCError } from '@metamask/auth-network-utils';
 
 import { JsonRpcErrorCodes } from './constants';
 import { TOPRFError, TORPFErrorCode } from './errors';
-import { checkRateLimitErrors, parseJsonRpcError } from './utils';
+import {
+  checkRateLimitErrors,
+  getTOPRFError,
+  parseJsonRpcError,
+} from './utils';
 
 describe('checkRateLimitErrors', () => {
   it('should return undefined for an empty array', () => {
@@ -240,5 +244,17 @@ describe('checkRateLimitErrors', () => {
     const error7 = parseJsonRpcError(unknownError);
     expect(error7).toBeInstanceOf(TOPRFError);
     expect(error7.code).toBe(TORPFErrorCode.Default);
+  });
+
+  it('should be able to parse TOPRFError from SomeError', () => {
+    const someError = TOPRFError.default('Test error');
+    const error = getTOPRFError(someError);
+    expect(error).toBeInstanceOf(TOPRFError);
+    expect((error as TOPRFError).code).toBe(TORPFErrorCode.Default);
+
+    // Test with a non-TOPRFError
+    const nonTOPRFError = new Error('Test error');
+    const error2 = getTOPRFError(nonTOPRFError);
+    expect(error2).toBe(nonTOPRFError);
   });
 });

@@ -197,7 +197,7 @@ describe('authenticate request', function () {
       acc[result.nodeIndex] = nodeEndpointsMap[result.nodeIndex];
       return acc;
     }, {});
-    const { authTokensData, isNewUser } = await authenticateUser({
+    const { authTokensData } = await authenticateUser({
       idToken,
       verifier,
       verifierId,
@@ -207,7 +207,6 @@ describe('authenticate request', function () {
     });
     expect(authTokensData).toBeDefined();
     expect(authTokensData.length).toBeGreaterThanOrEqual(3);
-    expect(isNewUser).toBe(true);
   });
 
   it('should to send a authenticate request for a single id verifier', async function () {

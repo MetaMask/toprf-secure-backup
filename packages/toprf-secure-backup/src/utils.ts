@@ -6,6 +6,7 @@ import type {
   JSONRPCError,
 } from '@metamask/auth-network-utils';
 import {
+  SomeError,
   encParamsHexToBuf,
   encryptedParamsBufToHex,
   filterErrorResponses,
@@ -558,4 +559,22 @@ export function parseJsonRpcError(rpcError: JSONRPCError): ITOPRFError {
   }
 
   return TOPRFError.default(rpcError.message);
+}
+
+/**
+ * Parses a SomeError and returns the predicate error if it exists.
+ *
+ * @param error - The error object to parse
+ * @returns The predicate error if it exists, otherwise the original error
+ */
+export function getTOPRFError(error: Error): Error {
+  if (
+    error instanceof SomeError &&
+    error.predicate &&
+    error.predicate instanceof TOPRFError
+  ) {
+    return error.predicate;
+  }
+
+  return error;
 }
