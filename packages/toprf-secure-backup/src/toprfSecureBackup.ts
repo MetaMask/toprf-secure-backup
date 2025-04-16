@@ -66,7 +66,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
    * @param params - The authentication parameters.
    * @param params.idTokens - An array of ID tokens for authentication.
    * @param params.verifier - The verifier who issued the idToken.
-   * @param params.verifierID - The verifierID/userID assigned to the user by the verifier.
+   * @param params.verifierId - The verifierId/userID assigned to the user by the verifier.
    * @param params.singleIdVerifierParams - Optional singleIdVerifierParams to be used for the authenticate request.
    * You can pass this to use aggregate verifier.
    *
@@ -105,7 +105,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
     const { authTokensData, isNewUser } = await authenticateUser({
       idToken: params.idTokens[0],
       verifier: params.verifier,
-      verifierID: params.verifierID,
+      verifierId: params.verifierId,
       sessionPrivateKey: sessionPrivKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
@@ -457,7 +457,7 @@ export class ToprfSecureBackup implements Partial<IToprfSecureBackup> {
         verifierId: 'DEFAULT_VERIFIER_ID',
       });
 
-    if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
+    if (!torusNodeSSSEndpoints) {
       throw new Error('Failed to get node details');
     }
 

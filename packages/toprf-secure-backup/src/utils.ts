@@ -7,10 +7,11 @@ import type {
 import {
   encParamsHexToBuf,
   encryptedParamsBufToHex,
+  filterErrorResponses,
   generateRandomPolynomial,
   getSecp256K1Curve,
+  isJSONRPCError,
   toCamelCaseKeys,
-  TOPRFError,
   toSnakeCaseKeys,
 } from '@metamask/auth-network-utils';
 import { secp256k1 as secp256k1Noble } from '@noble/curves/secp256k1';
@@ -21,6 +22,8 @@ import BN from 'bn.js';
 import type * as EC from 'elliptic';
 
 import { GENERATE_SHARE_THRESHOLD } from './constants';
+import { TOPRFError } from './errors';
+import type { RateLimitErrorData } from './errors';
 import type {
   KeyChangeProof,
   NodeAuthToken,
@@ -418,6 +421,82 @@ export const createNodeEndpointsMap = (
     return acc;
   }, {});
 };
+
+/**
+ * Extracts rate limit details from a JSON-RPC error response if it's a rate limit error.
+ *
+ * @param error - The error object from a JSON-RPC response
+ * @returns Rate limit details if found, undefined otherwise
+ */
+function extractRateLimitDetails(
+  error: unknown,
+): RateLimitErrorData | undefined {
+  if (
+    !isJSONRPCError(error) ||
+    error.code !== -32602 ||
+    error.message !== 'Rate limit exceeded' ||
+    !error.data
+  ) {
+    return undefined;
+  }
+
+  const data = toCamelCaseKeys(error.data as JSONValue) as Record<
+    string,
+    unknown
+  >;
+
+  if (
+    typeof data?.message !== 'string' ||
+    typeof data?.remainingTime !== 'number' ||
+    typeof data?.isPermanent !== 'boolean'
+  ) {
+    return undefined;
+  }
+
+  return {
+    message: data.message,
+    remainingTime: data.remainingTime,
+    isPermanent: data.isPermanent,
+  };
+}
+
+/**
+ * Checks responses for rate limit errors and returns details if found.
+ * Examines all responses and returns the rate limit with the longest remaining time.
+ * Prioritizes permanent rate limits over temporary ones.
+ *
+ * @param resultArr - The result array to check for rate limit errors.
+ * @returns Rate limit details if found, undefined otherwise.
+ */
+export function checkRateLimitErrors<Type>(
+  resultArr: Type[],
+): RateLimitErrorData | undefined {
+  const errorResponses = filterErrorResponses(resultArr);
+  let maxRateLimit: RateLimitErrorData | undefined;
+
+  for (const res of errorResponses) {
+    const rateLimitDetails = extractRateLimitDetails(res.error);
+
+    if (!rateLimitDetails) {
+      continue;
+    }
+
+    const noMaxYet = !maxRateLimit;
+
+    const { isPermanent, remainingTime } = rateLimitDetails;
+
+    const maxIsNotPermanent = !maxRateLimit?.isPermanent;
+    const isPermanentRateLimit = maxIsNotPermanent && isPermanent;
+    const currentMaxTime = maxRateLimit?.remainingTime ?? 0;
+    const hasLongerTime = maxIsNotPermanent && remainingTime > currentMaxTime;
+
+    if (noMaxYet || isPermanentRateLimit || hasLongerTime) {
+      maxRateLimit = rateLimitDetails;
+    }
+  }
+
+  return maxRateLimit;
+}
 
 /**
  * Merges the auth tokens with the endpoints.

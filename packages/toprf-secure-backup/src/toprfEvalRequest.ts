@@ -1,6 +1,6 @@
 import {
   Some,
-  TOPRFError,
+  SomeError,
   filterCompletedRequests,
   kCombinations,
   lagrangeInterpolationForPoints,
@@ -14,6 +14,7 @@ import {
   EXISTING_USER_AUTHENTICATION_THRESHOLD,
   JRPC_METHODS,
 } from './constants';
+import { TOPRFError } from './errors';
 import type { NodeAuthTokens } from './interfaces';
 import type {
   ToprfEvalJRPCRequest,
@@ -23,7 +24,11 @@ import type {
 } from './jrpcInterfaces';
 import { deriveAuthenticationKeyPair } from './keyDerivation';
 import { OPRF } from './oprf';
-import { mergeEndpointsWithAuthTokens, postJRPCRequest } from './utils';
+import {
+  checkRateLimitErrors,
+  mergeEndpointsWithAuthTokens,
+  postJRPCRequest,
+} from './utils';
 
 type BlindedOutputShare = {
   blindedOutput: ProjPointType<bigint>;
@@ -177,6 +182,12 @@ export const validateSeed = async (
   blindingFactor: bigint,
   resultArr: ToprfEvalJRPCResponse[],
 ): Promise<{ seed: Uint8Array; shareKeyIndex: number }> => {
+  // Check for rate limit errors before filtering responses
+  const rateLimitDetails = checkRateLimitErrors(resultArr);
+  if (rateLimitDetails) {
+    throw TOPRFError.rateLimitExceeded(rateLimitDetails);
+  }
+
   const completedRequests =
     filterCompletedRequests<ToprfEvalJRPCResponse>(resultArr);
 
@@ -284,8 +295,22 @@ export const recoverTOPRFSeed = async (params: {
     },
   );
 
-  return Some<
-    ToprfEvalJRPCResponse,
-    { seed: Uint8Array; shareKeyIndex: number }
-  >(promises, async (resultArr) => validateSeed(userInput, r, resultArr));
+  try {
+    return await Some<
+      ToprfEvalJRPCResponse,
+      { seed: Uint8Array; shareKeyIndex: number }
+    >(promises, async (resultArr) => validateSeed(userInput, r, resultArr));
+  } catch (error) {
+    if (error instanceof SomeError && error.predicate) {
+      // Specifically handle rate limit errors
+      if (
+        error.predicate instanceof TOPRFError &&
+        error.predicate.code === 1009
+      ) {
+        throw error.predicate;
+      }
+    }
+
+    throw error;
+  }
 };
