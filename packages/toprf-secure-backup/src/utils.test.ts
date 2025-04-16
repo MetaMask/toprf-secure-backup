@@ -1,7 +1,7 @@
 import type { JSONRPCError } from '@metamask/auth-network-utils';
 
 import { JsonRpcErrorCodes } from './constants';
-import { TOPRFError } from './errors';
+import { TOPRFError, TORPFErrorCode } from './errors';
 import { checkRateLimitErrors, parseJsonRpcError } from './utils';
 
 describe('checkRateLimitErrors', () => {
@@ -186,7 +186,7 @@ describe('checkRateLimitErrors', () => {
     };
     const error = parseJsonRpcError(invalidAuthTokenError);
     expect(error).toBeInstanceOf(TOPRFError);
-    expect(error.code).toBe(1010);
+    expect(error.code).toBe(TORPFErrorCode.InvalidAuthTokens);
 
     const invalidParamsErrorWithoutData: JSONRPCError = {
       code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
@@ -194,7 +194,7 @@ describe('checkRateLimitErrors', () => {
     };
     const error2 = parseJsonRpcError(invalidParamsErrorWithoutData);
     expect(error2).toBeInstanceOf(TOPRFError);
-    expect(error2.code).toBe(1012);
+    expect(error2.code).toBe(TORPFErrorCode.JsonRpcError);
 
     const invalidParamsErrorWithData: JSONRPCError = {
       code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
@@ -203,7 +203,7 @@ describe('checkRateLimitErrors', () => {
     };
     const error3 = parseJsonRpcError(invalidParamsErrorWithData);
     expect(error3).toBeInstanceOf(TOPRFError);
-    expect(error3.code).toBe(1012);
+    expect(error3.code).toBe(TORPFErrorCode.JsonRpcError);
 
     const invalidParamsErrorWithJsonData: JSONRPCError = {
       code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
@@ -214,7 +214,7 @@ describe('checkRateLimitErrors', () => {
     };
     const error4 = parseJsonRpcError(invalidParamsErrorWithJsonData);
     expect(error4).toBeInstanceOf(TOPRFError);
-    expect(error4.code).toBe(1012);
+    expect(error4.code).toBe(TORPFErrorCode.JsonRpcError);
 
     const internalError: JSONRPCError = {
       code: JsonRpcErrorCodes.ErrorCodeInternal,
@@ -223,7 +223,7 @@ describe('checkRateLimitErrors', () => {
     };
     const error5 = parseJsonRpcError(internalError);
     expect(error5).toBeInstanceOf(TOPRFError);
-    expect(error5.code).toBe(1012);
+    expect(error5.code).toBe(TORPFErrorCode.JsonRpcError);
 
     const internalErrorWithoutData: JSONRPCError = {
       code: JsonRpcErrorCodes.ErrorCodeInternal,
@@ -231,7 +231,7 @@ describe('checkRateLimitErrors', () => {
     };
     const error6 = parseJsonRpcError(internalErrorWithoutData);
     expect(error6).toBeInstanceOf(TOPRFError);
-    expect(error6.code).toBe(1012);
+    expect(error6.code).toBe(TORPFErrorCode.JsonRpcError);
 
     const unknownError: JSONRPCError = {
       code: -404,
@@ -239,6 +239,6 @@ describe('checkRateLimitErrors', () => {
     };
     const error7 = parseJsonRpcError(unknownError);
     expect(error7).toBeInstanceOf(TOPRFError);
-    expect(error7.code).toBe(1000);
+    expect(error7.code).toBe(TORPFErrorCode.Default);
   });
 });

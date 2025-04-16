@@ -5,6 +5,7 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
 import { TOPRF_EVAL_THRESHOLD } from './constants';
+import { TORPFErrorCode } from './errors';
 import type { NodeAuthTokens } from './interfaces';
 import type { ToprfEvalJRPCResponse } from './jrpcInterfaces';
 import { deriveAuthenticationKeyPair } from './keyDerivation';
@@ -263,7 +264,7 @@ describe('toprfEvalRequest', () => {
           userInput: passwordBytes,
         });
       }).rejects.toMatchObject({
-        code: 1009,
+        code: TORPFErrorCode.RateLimitExceeded,
         message: expect.stringContaining('Rate limit error from server'),
         meta: {
           rateLimitDetails: {
