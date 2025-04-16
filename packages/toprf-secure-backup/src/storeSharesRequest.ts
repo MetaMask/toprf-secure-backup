@@ -1,5 +1,6 @@
 import {
   getProxyCoordinatorNodeIndex,
+  isJSONRPCError,
   toSnakeCaseKeys,
   uint8ArrayToHex,
 } from '@metamask/auth-network-utils';
@@ -136,7 +137,7 @@ export const storeKeyShares = async (
     requestParams,
   );
 
-  if (storeKeyShareResponse.error) {
+  if (isJSONRPCError(storeKeyShareResponse.error)) {
     const error = parseJsonRpcError(storeKeyShareResponse.error);
     throw error;
   }
@@ -254,7 +255,7 @@ export const changeKeyShares = async (
     requestParams,
   );
 
-  if (keyChangeResponse.error) {
+  if (isJSONRPCError(keyChangeResponse.error)) {
     const error = parseJsonRpcError(keyChangeResponse.error);
     throw error;
   }

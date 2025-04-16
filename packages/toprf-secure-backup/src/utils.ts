@@ -549,7 +549,11 @@ export function parseJsonRpcError(rpcError: JSONRPCError): ITOPRFError {
     if (typeof rpcError.data === 'string') {
       errorDescription = rpcError.data;
     } else if (rpcError.data) {
-      errorDescription = JSON.stringify(rpcError.data);
+      const data = toCamelCaseKeys(rpcError.data as JSONValue) as Record<
+        string,
+        unknown
+      >;
+      errorDescription = JSON.stringify(data);
     }
 
     return TOPRFError.jsonRpcError(errorDescription);
