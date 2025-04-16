@@ -3,7 +3,7 @@ import { utf8ToBytes } from '@noble/ciphers/utils';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import { FIRST_KEY_INDEX } from './constants';
-import { TOPRFError } from './errors';
+import { TOPRFError, TORPFErrorCode } from './errors';
 import type { KeyPair } from './interfaces';
 import { MetadataStore } from './metadata';
 import * as resetRateLimitsModule from './resetRateLimits';
@@ -338,6 +338,33 @@ describe('toprf secret backup', function () {
       } finally {
         mockResetRateLimits.mockRestore();
       }
+    });
+
+    it('should throw `TOPRFError.couldNotDeriveEncryptionKey` when the incorrect password is provided', async function () {
+      const { verifier, verifierId, idToken, toprfSecureBackup } = setup();
+
+      const result = await toprfSecureBackup.authenticate({
+        idTokens: [idToken],
+        verifier,
+        verifierId,
+      });
+
+      const password = generateRandomPassword();
+      await toprfSecureBackup.createEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        password,
+        verifier,
+        verifierId,
+      });
+
+      await expect(
+        toprfSecureBackup.recoverEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          password: 'INCORRECT_PASSWORD',
+          verifier,
+          verifierId,
+        }),
+      ).rejects.toThrow(TOPRFError.couldNotDeriveEncryptionKey());
     });
   });
 
@@ -961,7 +988,7 @@ describe('toprf secret backup', function () {
         verifierId,
       }),
     ).rejects.toMatchObject({
-      code: 1009,
+      code: TORPFErrorCode.RateLimitExceeded,
       message: expect.stringContaining('Rate limit error from server'),
       meta: {
         rateLimitDetails: {

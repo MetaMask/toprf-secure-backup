@@ -298,14 +298,12 @@ export const recoverTOPRFSeed = async (params: {
       { seed: Uint8Array; shareKeyIndex: number }
     >(promises, async (resultArr) => validateSeed(userInput, r, resultArr));
   } catch (error) {
-    if (error instanceof SomeError && error.predicate) {
-      // Specifically handle rate limit errors
-      if (
-        error.predicate instanceof TOPRFError &&
-        error.predicate.code === 1009
-      ) {
-        throw error.predicate;
-      }
+    if (
+      error instanceof SomeError &&
+      error.predicate &&
+      error.predicate instanceof TOPRFError
+    ) {
+      throw error.predicate;
     }
 
     throw error;
