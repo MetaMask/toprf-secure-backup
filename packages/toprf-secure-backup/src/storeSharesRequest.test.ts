@@ -496,7 +496,7 @@ describe('secure backup operations', function () {
         oldAuthPrivKey: originalAuthKeyPair.sk,
       }),
     ).rejects.toThrow(
-      TOPRFError.jsonRpcError('Failed to validate share key index'),
+      TOPRFError.jsonRpcError('Failed to validate key share index'),
     );
   });
 });
