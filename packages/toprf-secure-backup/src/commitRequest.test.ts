@@ -1,4 +1,3 @@
-import { TOPRFError } from '@metamask/auth-network-utils';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
@@ -7,6 +6,7 @@ import {
   validateAndWaitForCommitResponses,
   validateThresholdCommitmentResponses,
 } from './commitRequest';
+import { TOPRFError } from './errors';
 import type {
   CommitmentJRPCResponse,
   CommitmentRequestResult,
@@ -27,17 +27,16 @@ describe('commitment request', function () {
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
     const verifier = 'torus-test-health';
-    const verifierID = 'test-verifier-id';
-    const idToken = generateIdToken(verifierID, 'ES256');
+    const verifierId = 'test-verifier-id';
+    const idToken = generateIdToken(verifierId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
-    const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
-      await nodeDetailManager.getNodeDetails({
-        verifier,
-        verifierId: verifierID,
-      });
+    const { torusNodeSSSEndpoints } = await nodeDetailManager.getNodeDetails({
+      verifier,
+      verifierId,
+    });
 
-    if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
+    if (!torusNodeSSSEndpoints) {
       throw new Error('Failed to get node details');
     }
     const commitmentResults = await commitIdToken({
@@ -61,17 +60,16 @@ describe('commitment request', function () {
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
     const verifier = 'torus-test-health';
-    const verifierID = 'test-verifier-id';
-    const idToken = generateIdToken(verifierID, 'ES256');
+    const verifierId = 'test-verifier-id';
+    const idToken = generateIdToken(verifierId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
-    const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
-      await nodeDetailManager.getNodeDetails({
-        verifier,
-        verifierId: verifierID,
-      });
+    const { torusNodeSSSEndpoints } = await nodeDetailManager.getNodeDetails({
+      verifier,
+      verifierId,
+    });
 
-    if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
+    if (!torusNodeSSSEndpoints) {
       throw new Error('Failed to get node details');
     }
 
@@ -99,17 +97,16 @@ describe('commitment request', function () {
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
     const verifier = 'torus-test-health';
-    const verifierID = 'test-verifier-id';
-    const idToken = generateIdToken(verifierID, 'ES256');
+    const verifierId = 'test-verifier-id';
+    const idToken = generateIdToken(verifierId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
-    const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
-      await nodeDetailManager.getNodeDetails({
-        verifier,
-        verifierId: verifierID,
-      });
+    const { torusNodeSSSEndpoints } = await nodeDetailManager.getNodeDetails({
+      verifier,
+      verifierId,
+    });
 
-    if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
+    if (!torusNodeSSSEndpoints) {
       throw new Error('Failed to get node details');
     }
     const endpoints = [...torusNodeSSSEndpoints];

@@ -1,15 +1,19 @@
-import { TOPRFError, type JsonRpcVersion } from '@metamask/auth-network-utils';
+import type { JsonRpcVersion } from '@metamask/auth-network-utils';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
+import { TOPRFError } from './errors';
 import {
   resetRateLimits,
   validateThresholdResetRateLimitResponses,
 } from './resetRateLimits';
 import { createNodeEndpointsMap } from './utils';
-import { generateIdToken } from '../tests/testHelpers';
+import {
+  generateIdToken,
+  generateRandomVerifierId,
+} from '../tests/testHelpers';
 
 // TODO: add more tests to test rate limit affect on multiple password input attempts in future.
 describe('resetRateLimits', () => {
@@ -34,9 +38,9 @@ describe('resetRateLimits', () => {
 
     const privKey = secp256k1.utils.randomPrivateKey();
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
-    const verifierID = `test-verifier-id-${Math.random()}`;
+    const verifierId = generateRandomVerifierId();
 
-    const idToken = generateIdToken(verifierID, 'ES256');
+    const idToken = generateIdToken(verifierId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
 
@@ -63,7 +67,7 @@ describe('resetRateLimits', () => {
     const { authTokensData } = await authenticateUser({
       idToken,
       verifier,
-      verifierID,
+      verifierId,
       sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
@@ -73,7 +77,7 @@ describe('resetRateLimits', () => {
       authTokens: authTokensData,
       nodeEndpointsMap: selectedEndpointsMap,
       verifier,
-      verifierId: verifierID,
+      verifierId,
     });
     expect(result).toBe(true);
   });
@@ -92,9 +96,9 @@ describe('resetRateLimits', () => {
 
     const privKey = secp256k1.utils.randomPrivateKey();
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
-    const verifierID = `test-verifier-id-${Math.random()}`;
+    const verifierId = generateRandomVerifierId();
 
-    const idToken = generateIdToken(verifierID, 'ES256');
+    const idToken = generateIdToken(verifierId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
 
@@ -121,7 +125,7 @@ describe('resetRateLimits', () => {
     const { authTokensData } = await authenticateUser({
       idToken,
       verifier,
-      verifierID,
+      verifierId,
       sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
@@ -135,7 +139,7 @@ describe('resetRateLimits', () => {
           [authTokensData[0].nodeIndex]: '',
         },
         verifier,
-        verifierId: verifierID,
+        verifierId,
       }),
     ).rejects.toThrow(
       TOPRFError.endpointNotFound(

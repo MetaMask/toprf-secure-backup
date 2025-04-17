@@ -3,14 +3,17 @@ import type {
   JRPCRequest,
   JSONValue,
   ShareMap,
+  JSONRPCError,
 } from '@metamask/auth-network-utils';
 import {
+  SomeError,
   encParamsHexToBuf,
   encryptedParamsBufToHex,
+  filterErrorResponses,
   generateRandomPolynomial,
   getSecp256K1Curve,
+  isJSONRPCError,
   toCamelCaseKeys,
-  TOPRFError,
   toSnakeCaseKeys,
 } from '@metamask/auth-network-utils';
 import { secp256k1 as secp256k1Noble } from '@noble/curves/secp256k1';
@@ -20,7 +23,9 @@ import { post } from '@toruslabs/http-helpers';
 import BN from 'bn.js';
 import type * as EC from 'elliptic';
 
-import { GENERATE_SHARE_THRESHOLD } from './constants';
+import { GENERATE_SHARE_THRESHOLD, JsonRpcErrorCodes } from './constants';
+import { TOPRFError } from './errors';
+import type { ITOPRFError, RateLimitErrorData } from './errors';
 import type {
   KeyChangeProof,
   NodeAuthToken,
@@ -420,6 +425,82 @@ export const createNodeEndpointsMap = (
 };
 
 /**
+ * Extracts rate limit details from a JSON-RPC error response if it's a rate limit error.
+ *
+ * @param error - The error object from a JSON-RPC response
+ * @returns Rate limit details if found, undefined otherwise
+ */
+function extractRateLimitDetails(
+  error: unknown,
+): RateLimitErrorData | undefined {
+  if (
+    !isJSONRPCError(error) ||
+    error.code !== -32602 ||
+    error.message !== 'Rate limit exceeded' ||
+    !error.data
+  ) {
+    return undefined;
+  }
+
+  const data = toCamelCaseKeys(error.data as JSONValue) as Record<
+    string,
+    unknown
+  >;
+
+  if (
+    typeof data?.message !== 'string' ||
+    typeof data?.remainingTime !== 'number' ||
+    typeof data?.isPermanent !== 'boolean'
+  ) {
+    return undefined;
+  }
+
+  return {
+    message: data.message,
+    remainingTime: data.remainingTime,
+    isPermanent: data.isPermanent,
+  };
+}
+
+/**
+ * Checks responses for rate limit errors and returns details if found.
+ * Examines all responses and returns the rate limit with the longest remaining time.
+ * Prioritizes permanent rate limits over temporary ones.
+ *
+ * @param resultArr - The result array to check for rate limit errors.
+ * @returns Rate limit details if found, undefined otherwise.
+ */
+export function checkRateLimitErrors<Type>(
+  resultArr: Type[],
+): RateLimitErrorData | undefined {
+  const errorResponses = filterErrorResponses(resultArr);
+  let maxRateLimit: RateLimitErrorData | undefined;
+
+  for (const res of errorResponses) {
+    const rateLimitDetails = extractRateLimitDetails(res.error);
+
+    if (!rateLimitDetails) {
+      continue;
+    }
+
+    const noMaxYet = !maxRateLimit;
+
+    const { isPermanent, remainingTime } = rateLimitDetails;
+
+    const maxIsNotPermanent = !maxRateLimit?.isPermanent;
+    const isPermanentRateLimit = maxIsNotPermanent && isPermanent;
+    const currentMaxTime = maxRateLimit?.remainingTime ?? 0;
+    const hasLongerTime = maxIsNotPermanent && remainingTime > currentMaxTime;
+
+    if (noMaxYet || isPermanentRateLimit || hasLongerTime) {
+      maxRateLimit = rateLimitDetails;
+    }
+  }
+
+  return maxRateLimit;
+}
+
+/**
  * Merges the auth tokens with the endpoints.
  *
  * @param authTokens - The auth tokens issued by the nodes on authenticating the user.
@@ -445,4 +526,59 @@ export function mergeEndpointsWithAuthTokens(
       authToken,
     };
   });
+}
+
+/**
+ * Parses a JSON-RPC error and returns TOPRFError instance.
+ *
+ * @param rpcError - The error object from a JSON-RPC response
+ * @returns TOPRFError instance
+ */
+export function parseJsonRpcError(rpcError: JSONRPCError): ITOPRFError {
+  if (rpcError.code === JsonRpcErrorCodes.ErrorCodeInvalidParams) {
+    if (rpcError.message === 'Invalid auth tokens') {
+      return TOPRFError.invalidAuthTokens();
+    }
+
+    // Commenting this as backend is not returning the correct error code for auth token expired
+    // if (rpcError.message === 'Auth token expired') {
+    //   return TOPRFError.authTokenExpired('Auth token expired.');
+    // }
+
+    let errorDescription = rpcError.message;
+    if (typeof rpcError.data === 'string') {
+      errorDescription = rpcError.data;
+    } else if (rpcError.data) {
+      const data = toCamelCaseKeys(rpcError.data as JSONValue) as Record<
+        string,
+        unknown
+      >;
+      errorDescription = JSON.stringify(data);
+    }
+
+    return TOPRFError.jsonRpcError(errorDescription);
+  } else if (rpcError.code === JsonRpcErrorCodes.ErrorCodeInternal) {
+    const errorDescription = rpcError.data ?? rpcError.message;
+    return TOPRFError.jsonRpcError(errorDescription as string);
+  }
+
+  return TOPRFError.default(rpcError.message);
+}
+
+/**
+ * Parses a SomeError and returns the predicate error if it exists.
+ *
+ * @param error - The error object to parse
+ * @returns The predicate error if it exists, otherwise the original error
+ */
+export function getTOPRFError(error: Error): Error {
+  if (
+    error instanceof SomeError &&
+    error.predicate &&
+    error.predicate instanceof TOPRFError
+  ) {
+    return error.predicate;
+  }
+
+  return error;
 }

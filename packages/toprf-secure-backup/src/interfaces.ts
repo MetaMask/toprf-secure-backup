@@ -27,7 +27,7 @@ export type SingleIdVerifierParams = {
  *
  * verifier - The verifier to be used for the authenticate request.
  *
- * verifierID - The verifierID to be used for the authenticate request.
+ * verifierId - The verifierId/userId to be used for the authenticate request.
  *
  * singleIdVerifierParams - Optional singleIdVerifierParams to be used for the authenticate request.
  * You can pass this to use aggregate verifier.
@@ -37,7 +37,7 @@ export type AuthenticateParams = {
   // so leaving it as an array for future use
   idTokens: string[];
   verifier: string;
-  verifierID: string;
+  verifierId: string;
   singleIdVerifierParams?: SingleIdVerifierParams;
 };
 
@@ -115,7 +115,7 @@ export type CreateLocalKeyResult = {
  *
  * verifier - The verifier name used for authentication.
  *
- * verifierId - The verifierId/userID of the user.
+ * verifierId - The verifierId/userId of the user.
  *
  * oldAuthKeyPair - Optional authentication key pair to be used for key change flow.
  */
@@ -346,6 +346,20 @@ export type IToprfSecureBackup = {
    * @returns A promise that resolves when the secret data is registered.
    */
   addSecretDataItem: (params: AddSecretDataItemParams) => Promise<void>;
+
+  /**
+   * This function encrypts the array of secret data using the encryption key and stores it in the metadata store in encrypted form as a batch.
+   *
+   * @param params - The parameters for registering new secret data.
+   * @param params.encKey - The encryption key to be used to encrypt the secret data before storing it.
+   * @param params.authKeyPair - The authentication key to be used to provide valid signature for storing the secret data.
+   * @param params.secretData - The array of secret data to be stored.
+   *
+   * @returns A promise that resolves when the secret data is stored.
+   */
+  batchAddSecretDataItems: (
+    params: BatchAddSecretDataItemParams,
+  ) => Promise<void>;
 
   /**
    * This function fetches all secret data items associated with the given
