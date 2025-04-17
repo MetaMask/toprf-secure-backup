@@ -1,5 +1,6 @@
 import {
   TOPRFError,
+  TORPFErrorCode,
   type ITOPRFError,
   type RateLimitErrorData,
 } from './errors';
@@ -23,10 +24,11 @@ describe('TOPRFError', () => {
   it('should create a default error using fromCode with an unknown code', () => {
     const unknownCode = 9999;
     const extraMessage = 'Unknown issue';
+    // @ts-expect-error - Intentional providing an invalid value
     const error = TOPRFError.fromCode(unknownCode, extraMessage);
     const { message: expectedBaseMessage } = TOPRFError.default();
 
-    expect(error.code).toBe(1000);
+    expect(error.code).toBe(TORPFErrorCode.Default);
     expect(error.message).toContain(expectedBaseMessage);
     expect(error.message).toContain(extraMessage);
     expect(error.meta).toBeUndefined();
@@ -37,21 +39,37 @@ describe('TOPRFError', () => {
     const error = TOPRFError.default(extraMessage);
     const { message: expectedBaseMessage } = TOPRFError.default();
 
-    expect(error.code).toBe(1000);
+    expect(error.code).toBe(TORPFErrorCode.Default);
     expect(error.message).toContain(expectedBaseMessage);
     expect(error.message).toContain(extraMessage);
     expect(error.meta).toBeUndefined();
   });
 
   it('should create specific errors using static factory methods', () => {
-    expect(TOPRFError.invalidAuthenticateResults().code).toBe(1001);
-    expect(TOPRFError.invalidCommitResults().code).toBe(1002);
-    expect(TOPRFError.pwdInputRateLimitExceeded().code).toBe(1003);
-    expect(TOPRFError.insufficientValidResponses().code).toBe(1004);
-    expect(TOPRFError.couldNotDeriveThresholdAuthPubKey().code).toBe(1005);
-    expect(TOPRFError.couldNotDeriveEncryptionKey().code).toBe(1006);
-    expect(TOPRFError.endpointNotFound().code).toBe(1007);
-    expect(TOPRFError.insufficientAuthTokens().code).toBe(1008);
+    expect(TOPRFError.invalidAuthenticateResults().code).toBe(
+      TORPFErrorCode.InvalidAuthenticateResults,
+    );
+    expect(TOPRFError.invalidCommitResults().code).toBe(
+      TORPFErrorCode.InvalidCommitResults,
+    );
+    expect(TOPRFError.pwdInputRateLimitExceeded().code).toBe(
+      TORPFErrorCode.PwdInputRateLimitExceeded,
+    );
+    expect(TOPRFError.insufficientValidResponses().code).toBe(
+      TORPFErrorCode.InsufficientValidResponses,
+    );
+    expect(TOPRFError.couldNotDeriveThresholdAuthPubKey().code).toBe(
+      TORPFErrorCode.CouldNotDeriveThresholdAuthPubKey,
+    );
+    expect(TOPRFError.couldNotDeriveEncryptionKey().code).toBe(
+      TORPFErrorCode.CouldNotDeriveEncryptionKey,
+    );
+    expect(TOPRFError.endpointNotFound().code).toBe(
+      TORPFErrorCode.EndpointNotFound,
+    );
+    expect(TOPRFError.insufficientAuthTokens().code).toBe(
+      TORPFErrorCode.InsufficientAuthTokens,
+    );
   });
 
   it('should create a rate limit error with details', () => {
@@ -63,7 +81,7 @@ describe('TOPRFError', () => {
     const extraMessage = 'Please try again later';
     const error = TOPRFError.rateLimitExceeded(details, extraMessage);
 
-    expect(error.code).toBe(1009);
+    expect(error.code).toBe(TORPFErrorCode.RateLimitExceeded);
     expect(error.message).toContain(extraMessage);
     expect(error.meta?.rateLimitDetails).toStrictEqual(details);
   });
@@ -76,13 +94,13 @@ describe('TOPRFError', () => {
     };
     const error = TOPRFError.rateLimitExceeded(details);
 
-    expect(error.code).toBe(1009);
+    expect(error.code).toBe(TORPFErrorCode.RateLimitExceeded);
     expect(error.message).toContain(details.message);
     expect(error.meta?.rateLimitDetails).toStrictEqual(details);
   });
 
   it('should serialize to JSON correctly using toJSON() including stack', () => {
-    const code = 1004;
+    const code = TORPFErrorCode.InsufficientValidResponses;
     const { message } = TOPRFError.fromCode(code);
     const meta = { data: 'metadata' };
     const error = new TOPRFError(code, message, meta);
@@ -100,7 +118,7 @@ describe('TOPRFError', () => {
   });
 
   it('should serialize to JSON string correctly using toString()', () => {
-    const code = 1005;
+    const code = TORPFErrorCode.CouldNotDeriveThresholdAuthPubKey;
     const { message } = TOPRFError.fromCode(code);
     const meta = { key: 'value' };
     const error = new TOPRFError(code, message, meta);

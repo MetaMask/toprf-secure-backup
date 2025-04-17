@@ -4,7 +4,8 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
-import { EXISTING_USER_AUTHENTICATION_THRESHOLD } from './constants';
+import { TOPRF_EVAL_THRESHOLD } from './constants';
+import { TORPFErrorCode } from './errors';
 import type { NodeAuthTokens } from './interfaces';
 import type { ToprfEvalJRPCResponse } from './jrpcInterfaces';
 import { deriveAuthenticationKeyPair } from './keyDerivation';
@@ -22,7 +23,7 @@ describe('toprfEvalRequest', () => {
     it('should throw error if insufficient valid responses', async () => {
       // Create fewer responses than the threshold
       const insufficientResponses: ToprfEvalJRPCResponse[] = Array(
-        EXISTING_USER_AUTHENTICATION_THRESHOLD - 1,
+        TOPRF_EVAL_THRESHOLD - 1,
       )
         .fill(0)
         .map(() => ({
@@ -43,14 +44,14 @@ describe('toprfEvalRequest', () => {
       await expect(
         validateSeed(userInput, randomScalar, insufficientResponses),
       ).rejects.toThrow(
-        `Insufficient toprf eval request results, expected ${EXISTING_USER_AUTHENTICATION_THRESHOLD} but got ${EXISTING_USER_AUTHENTICATION_THRESHOLD - 1}`,
+        `Insufficient toprf eval request results, expected ${TOPRF_EVAL_THRESHOLD} but got ${TOPRF_EVAL_THRESHOLD - 1}`,
       );
     });
 
     it('should throw error if threshold auth pub key cannot be derived', async () => {
       // Create responses with different pubKeys so threshold cannot be derived
       const inconsistentResponses: ToprfEvalJRPCResponse[] = Array(
-        EXISTING_USER_AUTHENTICATION_THRESHOLD,
+        TOPRF_EVAL_THRESHOLD,
       )
         .fill(0)
         .map((_, i) => ({
@@ -75,7 +76,7 @@ describe('toprfEvalRequest', () => {
 
     it('should throw error when responses contain missing blinded outputs leading to insufficient valid responses', async () => {
       const validResponses: ToprfEvalJRPCResponse[] = Array(
-        EXISTING_USER_AUTHENTICATION_THRESHOLD - 1,
+        TOPRF_EVAL_THRESHOLD - 1,
       )
         .fill(0)
         .map((_, i) => ({
@@ -111,7 +112,7 @@ describe('toprfEvalRequest', () => {
       await expect(
         validateSeed(userInput, randomScalar, responsesWithIncomplete),
       ).rejects.toThrow(
-        `Insufficient valid blinded outputs, expected: ${EXISTING_USER_AUTHENTICATION_THRESHOLD}, received: ${EXISTING_USER_AUTHENTICATION_THRESHOLD - 1}`,
+        `Insufficient valid blinded outputs, expected: ${TOPRF_EVAL_THRESHOLD}, received: ${TOPRF_EVAL_THRESHOLD - 1}`,
       );
     });
   });
@@ -266,7 +267,7 @@ describe('toprfEvalRequest', () => {
           userInput: passwordBytes,
         });
       }).rejects.toMatchObject({
-        code: 1009,
+        code: TORPFErrorCode.RateLimitExceeded,
         message: expect.stringContaining('Rate limit error from server'),
         meta: {
           rateLimitDetails: {

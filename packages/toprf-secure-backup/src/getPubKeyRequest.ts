@@ -6,10 +6,7 @@ import {
 import { hexToBytes } from '@noble/hashes/utils';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
-import {
-  EXISTING_USER_AUTHENTICATION_THRESHOLD,
-  JRPC_METHODS,
-} from './constants';
+import { GET_PUB_KEY_THRESHOLD, JRPC_METHODS } from './constants';
 import { TOPRFError } from './errors';
 import type { NodeAuthTokens } from './interfaces';
 import type {
@@ -71,14 +68,14 @@ export const validatePubKey = async (
   const completedRequests =
     filterCompletedRequests<GetPubKeyJRPCResponse>(resultArr);
 
-  if (completedRequests.length < EXISTING_USER_AUTHENTICATION_THRESHOLD) {
+  if (completedRequests.length < GET_PUB_KEY_THRESHOLD) {
     throw TOPRFError.insufficientValidResponses(
-      `Insufficient get pub key request results, expected ${EXISTING_USER_AUTHENTICATION_THRESHOLD} but got ${completedRequests.length}`,
+      `Insufficient get pub key request results, expected ${GET_PUB_KEY_THRESHOLD} but got ${completedRequests.length}`,
     );
   }
   const thresholdPubKey = thresholdSame(
     completedRequests.map((res) => res.result?.pubKey),
-    EXISTING_USER_AUTHENTICATION_THRESHOLD,
+    GET_PUB_KEY_THRESHOLD,
   );
 
   if (!thresholdPubKey) {
@@ -107,9 +104,9 @@ export const getPubKey = async (params: {
 }): Promise<Uint8Array> => {
   const { authTokens, nodeEndpointsMap, verifier, verifierId } = params;
 
-  if (authTokens.length < EXISTING_USER_AUTHENTICATION_THRESHOLD) {
+  if (authTokens.length < GET_PUB_KEY_THRESHOLD) {
     throw TOPRFError.insufficientAuthTokens(
-      `At least ${EXISTING_USER_AUTHENTICATION_THRESHOLD} auth tokens are required.`,
+      `At least ${GET_PUB_KEY_THRESHOLD} auth tokens are required.`,
     );
   }
 

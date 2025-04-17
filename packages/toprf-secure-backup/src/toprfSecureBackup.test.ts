@@ -3,7 +3,8 @@ import { utf8ToBytes } from '@noble/ciphers/utils';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import { FIRST_KEY_INDEX } from './constants';
-import { TOPRFError } from './errors';
+import { TOPRFError, TORPFErrorCode } from './errors';
+import type { KeyPair } from './interfaces';
 import { MetadataStore } from './metadata';
 import * as resetRateLimitsModule from './resetRateLimits';
 import { ToprfSecureBackup } from './toprfSecureBackup';
@@ -206,6 +207,45 @@ describe('toprf secret backup', function () {
         }),
       ).rejects.toBeDefined();
     });
+
+    it('should throw error if invalid auth tokens are provided', async function () {
+      const { verifier, verifierId, toprfSecureBackup } = setup();
+      const INVALID_NODE_AUTH_TOKENS = [
+        {
+          nodeIndex: 1,
+          authToken: 'invalid auth token',
+          nodePubKey:
+            '04b56541684ea5fa40c8337b7688d502f0e9e092098962ad344c34e94f06d293fb759a998cef79d389082f9a75061a29190eec0cac99b8c25ddcf6b58569dad55c',
+        },
+        {
+          nodeIndex: 2,
+          authToken: 'invalid auth token',
+          nodePubKey:
+            '04b56541684ea5fa40c8337b7688d502f0e9e092098962ad344c34e94f06d293fb759a998cef79d389082f9a75061a29190eec0cac99b8c25ddcf6b58569dad55c',
+        },
+        {
+          nodeIndex: 3,
+          authToken: 'invalid auth token',
+          nodePubKey:
+            '04b56541684ea5fa40c8337b7688d502f0e9e092098962ad344c34e94f06d293fb759a998cef79d389082f9a75061a29190eec0cac99b8c25ddcf6b58569dad55c',
+        },
+        {
+          nodeIndex: 4,
+          authToken: 'invalid auth token',
+          nodePubKey:
+            '04b56541684ea5fa40c8337b7688d502f0e9e092098962ad344c34e94f06d293fb759a998cef79d389082f9a75061a29190eec0cac99b8c25ddcf6b58569dad55c',
+        },
+      ];
+
+      await expect(
+        toprfSecureBackup.createEncKey({
+          nodeAuthTokens: INVALID_NODE_AUTH_TOKENS,
+          password: generateRandomPassword(),
+          verifier,
+          verifierId,
+        }),
+      ).rejects.toThrow(TOPRFError.invalidAuthTokens());
+    });
   });
 
   describe('recoverEncKey', function () {
@@ -299,17 +339,39 @@ describe('toprf secret backup', function () {
         mockResetRateLimits.mockRestore();
       }
     });
+
+    it('should throw `TOPRFError.couldNotDeriveEncryptionKey` when the incorrect password is provided', async function () {
+      const { verifier, verifierId, idToken, toprfSecureBackup } = setup();
+
+      const result = await toprfSecureBackup.authenticate({
+        idTokens: [idToken],
+        verifier,
+        verifierId,
+      });
+
+      const password = generateRandomPassword();
+      await toprfSecureBackup.createEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        password,
+        verifier,
+        verifierId,
+      });
+
+      await expect(
+        toprfSecureBackup.recoverEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          password: 'INCORRECT_PASSWORD',
+          verifier,
+          verifierId,
+        }),
+      ).rejects.toThrow(TOPRFError.couldNotDeriveEncryptionKey());
+    });
   });
 
   describe('changeEncKey', function () {
     it('should be able to change encryption key', async function () {
       const secretData = utf8ToBytes('test-secret-data-for-key-change');
-      const verifier = 'torus-test-health';
-      const verifierId = generateRandomVerifierId();
-      const idToken = generateIdToken(verifierId, 'ES256');
-      const toprfSecureBackup = new ToprfSecureBackup({
-        network: 'sapphire_devnet',
-      });
+      const { verifier, verifierId, idToken, toprfSecureBackup } = setup();
 
       const result = await toprfSecureBackup.authenticate({
         idTokens: [idToken],
@@ -711,6 +773,120 @@ describe('toprf secret backup', function () {
     });
   });
 
+  describe('batchAddSecretDataItems', function () {
+    const secretDataArray = [
+      utf8ToBytes('test-secret-data-1'),
+      utf8ToBytes('test-secret-data-2'),
+      utf8ToBytes('test-secret-data-3'),
+    ];
+    const password = generateRandomPassword();
+
+    let toprfSecureBackup: ToprfSecureBackup;
+    let encKey: Uint8Array;
+    let authKeyPair: KeyPair;
+
+    beforeEach(async function () {
+      const {
+        verifier,
+        verifierId,
+        idToken,
+        toprfSecureBackup: _toprfSecureBackup,
+      } = setup();
+      toprfSecureBackup = _toprfSecureBackup;
+
+      const result = await toprfSecureBackup.authenticate({
+        idTokens: [idToken],
+        verifier,
+        verifierId,
+      });
+
+      const encKeyResult = await toprfSecureBackup.createEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        password,
+        verifier,
+        verifierId,
+      });
+      encKey = encKeyResult.encKey;
+      authKeyPair = encKeyResult.authKeyPair;
+    });
+
+    afterEach(function () {
+      jest.restoreAllMocks();
+    });
+
+    it('should be able to store secret data in batch', async function () {
+      await toprfSecureBackup.batchAddSecretDataItems({
+        encKey,
+        secretData: secretDataArray,
+        authKeyPair,
+      });
+
+      const fetchedSecretData = await toprfSecureBackup.fetchAllSecretDataItems(
+        {
+          decKey: encKey,
+          authKeyPair,
+        },
+      );
+
+      // should have the same length as the secret data array
+      expect(fetchedSecretData).toHaveLength(secretDataArray.length);
+
+      // since all the secret items are added at once, they might have the same creation timestamp in the backend
+      // so, we cannot assume that the fetched secret data is in the same order as the secret data array
+      // hence we sort both arrays and then compare
+      const sortedSecretDataArray = [...secretDataArray].sort();
+      const sortedFetchedSecretData = [...fetchedSecretData].sort();
+      expect(sortedFetchedSecretData).toStrictEqual(sortedSecretDataArray);
+    });
+
+    it('should throw an error when failed to acquire metadata lock', async function () {
+      jest
+        .spyOn(MetadataStore.prototype, 'acquireMetadataLock')
+        .mockRejectedValue(new Error('Failed to acquire metadata lock'));
+
+      await expect(
+        toprfSecureBackup.batchAddSecretDataItems({
+          encKey,
+          secretData: secretDataArray,
+          authKeyPair,
+        }),
+      ).rejects.toThrow('Failed to acquire metadata lock');
+    });
+
+    // The metadata lock has a 90 second expiry time and will auto-release after that period,
+    // regardless of whether the key change succeeded or failed.
+    // While changeEncKey() attempts to manually release the lock after a successful key change,
+    // any failure to release the lock should not impact the overall key change operation.
+    it('should `not` throw an error when failed to release metadata lock', async function () {
+      jest
+        .spyOn(MetadataStore.prototype, 'releaseMetadataLock')
+        .mockRejectedValue(new Error('Failed to release metadata lock'));
+
+      await toprfSecureBackup.batchAddSecretDataItems({
+        encKey,
+        secretData: secretDataArray,
+        authKeyPair,
+      });
+
+      const fetchedSecretData = await toprfSecureBackup.fetchAllSecretDataItems(
+        {
+          decKey: encKey,
+          authKeyPair,
+        },
+      );
+
+      // should have the same length as the secret data array
+      expect(fetchedSecretData).toHaveLength(secretDataArray.length);
+
+      // since all the secret items are added at once, they might have the same creation timestamp in the backend
+      // so, we cannot assume that the fetched secret data is in the same order as the secret data array
+      // hence we sort both arrays and then compare
+      const sortedSecretDataArray = [...secretDataArray].sort();
+      const sortedFetchedSecretData = [...fetchedSecretData].sort();
+      expect(sortedFetchedSecretData).toStrictEqual(sortedSecretDataArray);
+    });
+  });
+
   // TODO: somehow this test fails, need to check backend logs,.
   // eslint-disable-next-line jest/no-disabled-tests
   it.skip('should throw error if user is not authenticated by enough nodes while creating enc key', async function () {
@@ -812,7 +988,7 @@ describe('toprf secret backup', function () {
         verifierId,
       }),
     ).rejects.toMatchObject({
-      code: 1009,
+      code: TORPFErrorCode.RateLimitExceeded,
       message: expect.stringContaining('Rate limit error from server'),
       meta: {
         rateLimitDetails: {

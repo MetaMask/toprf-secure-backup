@@ -350,6 +350,20 @@ export type IToprfSecureBackup = {
   addSecretDataItem: (params: AddSecretDataItemParams) => Promise<void>;
 
   /**
+   * This function encrypts the array of secret data using the encryption key and stores it in the metadata store in encrypted form as a batch.
+   *
+   * @param params - The parameters for registering new secret data.
+   * @param params.encKey - The encryption key to be used to encrypt the secret data before storing it.
+   * @param params.authKeyPair - The authentication key to be used to provide valid signature for storing the secret data.
+   * @param params.secretData - The array of secret data to be stored.
+   *
+   * @returns A promise that resolves when the secret data is stored.
+   */
+  batchAddSecretDataItems: (
+    params: BatchAddSecretDataItemParams,
+  ) => Promise<void>;
+
+  /**
    * This function fetches all secret data items associated with the given
    * auth pub key, decrypts, and returns them.
    *

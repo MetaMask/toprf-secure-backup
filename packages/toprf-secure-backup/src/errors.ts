@@ -12,6 +12,22 @@ export type ITOPRFError = Error & {
   meta?: Record<string, unknown>;
 };
 
+export enum TORPFErrorCode {
+  Default = 1000,
+  InvalidAuthenticateResults = 1001,
+  InvalidCommitResults = 1002,
+  PwdInputRateLimitExceeded = 1003,
+  InsufficientValidResponses = 1004,
+  CouldNotDeriveThresholdAuthPubKey = 1005,
+  CouldNotDeriveEncryptionKey = 1006,
+  EndpointNotFound = 1007,
+  InsufficientAuthTokens = 1008,
+  RateLimitExceeded = 1009,
+  InvalidAuthTokens = 1010,
+  // AuthTokenExpired = 1011,
+  JsonRpcError = 1012,
+}
+
 /**
  * T-OPRF error.
  */
@@ -20,17 +36,26 @@ export class TOPRFError extends Error implements ITOPRFError {
 
   meta?: Record<string, unknown>;
 
-  protected static messages: { [key: number]: string } = {
-    1000: 'Something went wrong.',
-    1001: 'Invalid authenticate results.',
-    1002: 'Invalid commit results.',
-    1003: 'Rate limit exceeded for password input attempts.',
-    1004: 'Insufficient valid responses.',
-    1005: 'Could not derive threshold auth pub key.',
-    1006: 'Could not derive encryption key.',
-    1007: 'Endpoint not found.',
-    1008: 'Insufficient number of auth tokens.',
-    1009: 'Rate limit error from server.',
+  protected static messages: Record<TORPFErrorCode, string> = {
+    [TORPFErrorCode.Default]: 'Something went wrong.',
+    [TORPFErrorCode.InvalidAuthenticateResults]:
+      'Invalid authenticate results.',
+    [TORPFErrorCode.InvalidCommitResults]: 'Invalid commit results.',
+    [TORPFErrorCode.PwdInputRateLimitExceeded]:
+      'Rate limit exceeded for password input attempts.',
+    [TORPFErrorCode.InsufficientValidResponses]:
+      'Insufficient valid responses.',
+    [TORPFErrorCode.CouldNotDeriveThresholdAuthPubKey]:
+      'Could not derive threshold auth pub key.',
+    [TORPFErrorCode.CouldNotDeriveEncryptionKey]:
+      'Could not derive encryption key.',
+    [TORPFErrorCode.EndpointNotFound]: 'Endpoint not found.',
+    [TORPFErrorCode.InsufficientAuthTokens]:
+      'Insufficient number of auth tokens.',
+    [TORPFErrorCode.RateLimitExceeded]: 'Rate limit error from server.',
+    [TORPFErrorCode.InvalidAuthTokens]: 'Invalid auth tokens.',
+    // [TORPFErrorCode.AuthTokenExpired]: 'Auth token expired.', // need to wait for the backend to update the error code
+    [TORPFErrorCode.JsonRpcError]: 'Json rpc error.', // should/must specify error description in `error.data` field from the server response
   };
 
   /**
@@ -59,7 +84,7 @@ export class TOPRFError extends Error implements ITOPRFError {
    * @returns - The error for the given code.
    */
   public static fromCode(
-    code: number,
+    code: TORPFErrorCode,
     extraMessage = '',
     meta?: Record<string, unknown>,
   ): ITOPRFError {
@@ -67,7 +92,7 @@ export class TOPRFError extends Error implements ITOPRFError {
     if (!TOPRFError.messages[code]) {
       return new TOPRFError(
         1000,
-        `${TOPRFError.messages[1000]}${extendedMessage}`,
+        `${TOPRFError.messages[TORPFErrorCode.Default]}${extendedMessage}`,
         meta,
       );
     }
@@ -84,7 +109,10 @@ export class TOPRFError extends Error implements ITOPRFError {
    * @returns - The default error.
    */
   public static default(extraMessage = ''): ITOPRFError {
-    return new TOPRFError(1000, `${TOPRFError.messages[1000]} ${extraMessage}`);
+    return new TOPRFError(
+      TORPFErrorCode.Default,
+      `${TOPRFError.messages[TORPFErrorCode.Default]} ${extraMessage}`,
+    );
   }
 
   /**
@@ -93,7 +121,10 @@ export class TOPRFError extends Error implements ITOPRFError {
    * @returns - The error instance for invalid authenticate results.
    */
   public static invalidAuthenticateResults(extraMessage = ''): ITOPRFError {
-    return TOPRFError.fromCode(1001, extraMessage);
+    return TOPRFError.fromCode(
+      TORPFErrorCode.InvalidAuthenticateResults,
+      extraMessage,
+    );
   }
 
   /**
@@ -102,7 +133,10 @@ export class TOPRFError extends Error implements ITOPRFError {
    * @returns - The error instance for invalid commit results.
    */
   public static invalidCommitResults(extraMessage = ''): ITOPRFError {
-    return TOPRFError.fromCode(1002, extraMessage);
+    return TOPRFError.fromCode(
+      TORPFErrorCode.InvalidCommitResults,
+      extraMessage,
+    );
   }
 
   /**
@@ -111,7 +145,10 @@ export class TOPRFError extends Error implements ITOPRFError {
    * @returns - The error instance for rate limit exceeded for password input attempts.
    */
   public static pwdInputRateLimitExceeded(extraMessage = ''): ITOPRFError {
-    return TOPRFError.fromCode(1003, extraMessage);
+    return TOPRFError.fromCode(
+      TORPFErrorCode.PwdInputRateLimitExceeded,
+      extraMessage,
+    );
   }
 
   /**
@@ -120,7 +157,10 @@ export class TOPRFError extends Error implements ITOPRFError {
    * @returns - The error instance for insufficient valid responses.
    */
   public static insufficientValidResponses(extraMessage = ''): ITOPRFError {
-    return TOPRFError.fromCode(1004, extraMessage);
+    return TOPRFError.fromCode(
+      TORPFErrorCode.InsufficientValidResponses,
+      extraMessage,
+    );
   }
 
   /**
@@ -131,7 +171,10 @@ export class TOPRFError extends Error implements ITOPRFError {
   public static couldNotDeriveThresholdAuthPubKey(
     extraMessage = '',
   ): ITOPRFError {
-    return TOPRFError.fromCode(1005, extraMessage);
+    return TOPRFError.fromCode(
+      TORPFErrorCode.CouldNotDeriveThresholdAuthPubKey,
+      extraMessage,
+    );
   }
 
   /**
@@ -140,7 +183,10 @@ export class TOPRFError extends Error implements ITOPRFError {
    * @returns - The error instance for could not derive encryption key.
    */
   public static couldNotDeriveEncryptionKey(extraMessage = ''): ITOPRFError {
-    return TOPRFError.fromCode(1006, extraMessage);
+    return TOPRFError.fromCode(
+      TORPFErrorCode.CouldNotDeriveEncryptionKey,
+      extraMessage,
+    );
   }
 
   /**
@@ -149,7 +195,7 @@ export class TOPRFError extends Error implements ITOPRFError {
    * @returns - The error instance for endpoint not found.
    */
   public static endpointNotFound(extraMessage = ''): ITOPRFError {
-    return TOPRFError.fromCode(1007, extraMessage);
+    return TOPRFError.fromCode(TORPFErrorCode.EndpointNotFound, extraMessage);
   }
 
   /**
@@ -158,7 +204,10 @@ export class TOPRFError extends Error implements ITOPRFError {
    * @returns - The error instance for insufficient auth tokens.
    */
   public static insufficientAuthTokens(extraMessage = ''): ITOPRFError {
-    return TOPRFError.fromCode(1008, extraMessage);
+    return TOPRFError.fromCode(
+      TORPFErrorCode.InsufficientAuthTokens,
+      extraMessage,
+    );
   }
 
   /**
@@ -175,9 +224,31 @@ export class TOPRFError extends Error implements ITOPRFError {
     details: RateLimitErrorData,
     extraMessage = '',
   ): ITOPRFError {
-    return TOPRFError.fromCode(1009, extraMessage || details.message, {
-      rateLimitDetails: details,
-    });
+    return TOPRFError.fromCode(
+      TORPFErrorCode.RateLimitExceeded,
+      extraMessage || details.message,
+      {
+        rateLimitDetails: details,
+      },
+    );
+  }
+
+  /**
+   *
+   * @param extraMessage - The extra message of the error.
+   * @returns - The error instance for invalid auth tokens.
+   */
+  public static invalidAuthTokens(extraMessage = ''): ITOPRFError {
+    return TOPRFError.fromCode(TORPFErrorCode.InvalidAuthTokens, extraMessage);
+  }
+
+  /**
+   *
+   * @param extraMessage - The extra message of the error.
+   * @returns - The error instance for json rpc error.
+   */
+  public static jsonRpcError(extraMessage: string): ITOPRFError {
+    return TOPRFError.fromCode(TORPFErrorCode.JsonRpcError, extraMessage);
   }
 
   /**
