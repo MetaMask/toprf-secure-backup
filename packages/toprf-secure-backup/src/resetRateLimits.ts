@@ -1,5 +1,6 @@
 import {
   filterCompletedRequests,
+  safeStringify,
   Some,
   toSnakeCaseKeys,
 } from '@metamask/auth-network-utils';
@@ -127,7 +128,7 @@ export const resetRateLimits = async (params: {
         action: 'reset_ratelimit',
       });
 
-      const jsonData = JSON.stringify(dataToSign);
+      const jsonData = safeStringify(dataToSign);
       const dataHash = keccak256(jsonData);
       const signature = createEthereumSignature(dataHash, authPrivKey);
 
