@@ -203,7 +203,7 @@ const formatShareForSigning = (shareValue: BN): string => {
  * @param privateKeyBigInt - Private key as bigint
  * @returns Signature as r+s+v hex string
  */
-const createEthereumSignature = (
+export const createEthereumSignature = (
   dataHash: Uint8Array,
   privateKeyBigInt: bigint,
 ): string => {

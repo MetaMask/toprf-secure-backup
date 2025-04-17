@@ -1,14 +1,18 @@
 import type { JsonRpcVersion } from '@metamask/auth-network-utils';
 import { secp256k1 } from '@noble/curves/secp256k1';
+import { toBytes } from '@noble/hashes/utils';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
 import { TOPRFError } from './errors';
+import { deriveAuthenticationKeyPair } from './keyDerivation';
+import { generateRandomScalar, OPRF } from './oprf';
 import {
   resetRateLimits,
   validateThresholdResetRateLimitResponses,
 } from './resetRateLimits';
+import { storeKeyShares } from './storeSharesRequest';
 import { createNodeEndpointsMap } from './utils';
 import {
   generateIdToken,
@@ -73,11 +77,30 @@ describe('resetRateLimits', () => {
       commitmentSignatures: commitmentResults,
     });
 
+    const passwordBytes = toBytes('test-input');
+    const oprfKey = generateRandomScalar();
+    const seed = OPRF.localEval(oprfKey, passwordBytes);
+    const authKeyPair = deriveAuthenticationKeyPair(seed);
+
+    const storeSharesResponse = await storeKeyShares({
+      nodeEndpointsMap: selectedEndpointsMap,
+      verifier,
+      verifierId,
+      authTokens: authTokensData,
+      shareKeyIndex: 1,
+      oprfKey,
+      authPubKey: authKeyPair.pk,
+    });
+
+    expect(storeSharesResponse).toBeDefined();
+    expect(storeSharesResponse.error).toBeUndefined();
+
     const result = await resetRateLimits({
       authTokens: authTokensData,
       nodeEndpointsMap: selectedEndpointsMap,
       verifier,
       verifierId,
+      authPrivKey: authKeyPair.sk,
     });
     expect(result).toBe(true);
   });
@@ -131,6 +154,24 @@ describe('resetRateLimits', () => {
       commitmentSignatures: commitmentResults,
     });
 
+    const passwordBytes = toBytes('test-input');
+    const oprfKey = generateRandomScalar();
+    const seed = OPRF.localEval(oprfKey, passwordBytes);
+    const authKeyPair = deriveAuthenticationKeyPair(seed);
+
+    const storeSharesResponse = await storeKeyShares({
+      nodeEndpointsMap: selectedEndpointsMap,
+      verifier,
+      verifierId,
+      authTokens: authTokensData,
+      shareKeyIndex: 1,
+      oprfKey,
+      authPubKey: authKeyPair.pk,
+    });
+
+    expect(storeSharesResponse).toBeDefined();
+    expect(storeSharesResponse.error).toBeUndefined();
+
     await expect(
       resetRateLimits({
         authTokens: authTokensData,
@@ -140,6 +181,7 @@ describe('resetRateLimits', () => {
         },
         verifier,
         verifierId,
+        authPrivKey: authKeyPair.sk,
       }),
     ).rejects.toThrow(
       TOPRFError.endpointNotFound(

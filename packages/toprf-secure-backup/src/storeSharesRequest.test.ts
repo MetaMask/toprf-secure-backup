@@ -280,6 +280,7 @@ describe('secure backup operations', function () {
       nodeEndpointsMap: selectedEndpointsMap,
       verifier,
       verifierId,
+      authPrivKey: originalAuthKeyPair.sk,
     });
 
     // Change the key
