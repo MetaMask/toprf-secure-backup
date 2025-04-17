@@ -1,3 +1,4 @@
 export type * from './interfaces';
 export * from './toprfSecureBackup';
-export { TOPRFError } from './errors';
+export type { RateLimitErrorData } from './errors';
+export { TOPRFError, TORPFErrorCode } from './errors';
