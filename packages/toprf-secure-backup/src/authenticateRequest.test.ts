@@ -209,7 +209,7 @@ describe('authenticate request', function () {
     expect(authTokensData.length).toBeGreaterThanOrEqual(3);
   });
 
-  it('should to send a authenticate request for a single id verifier', async function () {
+  it('should to send a authenticate request for a new user with single id verifier', async function () {
     const privKey = secp256k1.utils.randomPrivateKey();
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
@@ -264,7 +264,7 @@ describe('authenticate request', function () {
     });
     expect(authTokensData).toBeDefined();
     expect(authTokensData.length).toBeGreaterThanOrEqual(3);
-    expect(isNewUser).toBe(false);
+    expect(isNewUser).toBe(true);
   });
 });
 
