@@ -30,7 +30,7 @@ import {
 type BlindedOutputShare = {
   blindedOutput: ProjPointType<bigint>;
   nodeIndex: number;
-  shareKeyIndex: number;
+  keyShareIndex: number;
 };
 /**
  * Creates the parameters for the toprf eval request
@@ -130,7 +130,7 @@ const findMatchingSeedWithAllCombinations = (
     if (derivedPubKey.equals(thresholdPubKey)) {
       return {
         seed: recoveredSeed,
-        shareKeyIndex: currentCombiPoints[0].shareKeyIndex,
+        shareKeyIndex: currentCombiPoints[0].keyShareIndex,
       };
     }
   }
@@ -156,8 +156,8 @@ const assertIsValidToprfEvalResult = (
     typeof value.blindedOutputY !== 'string' || // `blindedOutputY` should be a string
     !('nodeIndex' in value) || // `value` should have `nodeIndex`
     typeof value.nodeIndex !== 'number' || // `nodeIndex` should be a number
-    !('shareKeyIndex' in value) || // should have shareKeyIndex
-    typeof value.shareKeyIndex !== 'number' || // `shareKeyIndex` should be a number
+    !('keyShareIndex' in value) || // should have shareKeyIndex
+    typeof value.keyShareIndex !== 'number' || // `shareKeyIndex` should be a number
     !('pubKey' in value) || // should have pubKey
     typeof value.pubKey !== 'string' // `pubKey` should be a string
   ) {
@@ -209,7 +209,7 @@ export const validateSeed = async (
         return acc;
       }
 
-      const { blindedOutputX, blindedOutputY, nodeIndex, shareKeyIndex } =
+      const { blindedOutputX, blindedOutputY, nodeIndex, keyShareIndex } =
         evalResult;
 
       acc.push({
@@ -218,7 +218,7 @@ export const validateSeed = async (
           y: BigInt(`0x${blindedOutputY}`),
         }),
         nodeIndex,
-        shareKeyIndex,
+        keyShareIndex,
       });
 
       return acc;

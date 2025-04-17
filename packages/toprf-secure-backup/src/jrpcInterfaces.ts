@@ -115,7 +115,7 @@ export type ToprfEvalResult = {
   blindedOutputY: string;
   nodeIndex: number;
   pubKey: string;
-  shareKeyIndex: number;
+  keyShareIndex: number;
 };
 
 export type ToprfEvalJRPCResponse = JRPCResponse<ToprfEvalResult>;
