@@ -123,9 +123,9 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
   }
 
   /**
-   * This function locally creates an OPRF key without storing it at the key
-   * management service. It returns the OPRF key, derives the corresponding key
-   * seed, authentication key pair and encryption key.
+   * This function locally creates an OPRF and encryption keys without storing them at the
+   * key management service. It returns the OPRF key, derives the corresponding key seed,
+   * authentication key pair and encryption key.
    *
    * @param params - The parameters for creating the encryption key.
    * @param params.password - New password of the user.
