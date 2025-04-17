@@ -19,6 +19,7 @@ import {
   createEthereumSignature,
   mergeEndpointsWithAuthTokens,
   postJRPCRequest,
+  preserveKeyOrder,
 } from './utils';
 
 /**
@@ -128,7 +129,7 @@ export const resetRateLimits = async (params: {
         action: 'reset_ratelimit',
       });
 
-      const jsonData = safeStringify(dataToSign);
+      const jsonData = safeStringify(dataToSign, { cmp: preserveKeyOrder });
       const dataHash = keccak256(jsonData);
       const signature = createEthereumSignature(dataHash, authPrivKey);
 
