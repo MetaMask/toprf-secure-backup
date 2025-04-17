@@ -59,7 +59,7 @@ export type AuthJRPCResponse = JRPCResponse<AuthRequestResult>;
 export type BaseShareImportItem = {
   encryptedAuthToken: string;
   encryptedShare: string;
-  shareKeyIndex: number;
+  keyShareIndex: number;
   nodeIndex: number;
   sssEndpoint: string;
 };
@@ -115,7 +115,7 @@ export type ToprfEvalResult = {
   blindedOutputY: string;
   nodeIndex: number;
   pubKey: string;
-  shareKeyIndex: number;
+  keyShareIndex: number;
 };
 
 export type ToprfEvalJRPCResponse = JRPCResponse<ToprfEvalResult>;

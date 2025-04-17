@@ -33,7 +33,7 @@ describe('toprfEvalRequest', () => {
             blindedOutputX: 'abc',
             blindedOutputY: 'def',
             nodeIndex: 1,
-            shareKeyIndex: 1,
+            keyShareIndex: 1,
             pubKey: 'pubKey',
           },
         }));
@@ -61,7 +61,7 @@ describe('toprfEvalRequest', () => {
             blindedOutputX: 'abc',
             blindedOutputY: 'def',
             nodeIndex: i + 1,
-            shareKeyIndex: 1,
+            keyShareIndex: 1,
             pubKey: `pubKey${i}`,
           },
         }));
@@ -86,7 +86,7 @@ describe('toprfEvalRequest', () => {
             blindedOutputX: 'abc',
             blindedOutputY: 'def',
             nodeIndex: i + 1,
-            shareKeyIndex: 1,
+            keyShareIndex: 1,
             pubKey: 'pubKey',
           },
         }));
@@ -99,7 +99,7 @@ describe('toprfEvalRequest', () => {
           blindedOutputX: undefined as unknown as string,
           blindedOutputY: 'def',
           nodeIndex: 5,
-          shareKeyIndex: 1,
+          keyShareIndex: 1,
           pubKey: 'pubKey',
         },
       };
@@ -229,7 +229,7 @@ describe('toprfEvalRequest', () => {
         verifier,
         verifierId,
         authTokens: authTokensData,
-        shareKeyIndex: 1,
+        keyShareIndex: 1,
         oprfKey,
         authPubKey: authKeyPair.pk,
       });
@@ -248,7 +248,7 @@ describe('toprfEvalRequest', () => {
         });
 
         expect(attemptResult.seed).toBeDefined();
-        expect(attemptResult.shareKeyIndex).toBe(1);
+        expect(attemptResult.keyShareIndex).toBe(1);
 
         const recoveredAuthKeyPair = deriveAuthenticationKeyPair(
           attemptResult.seed,
