@@ -87,7 +87,7 @@ describe('resetRateLimits', () => {
       verifier,
       verifierId,
       authTokens: authTokensData,
-      shareKeyIndex: 1,
+      keyShareIndex: 1,
       oprfKey,
       authPubKey: authKeyPair.pk,
     });
@@ -164,7 +164,7 @@ describe('resetRateLimits', () => {
       verifier,
       verifierId,
       authTokens: authTokensData,
-      shareKeyIndex: 1,
+      keyShareIndex: 1,
       oprfKey,
       authPubKey: authKeyPair.pk,
     });
