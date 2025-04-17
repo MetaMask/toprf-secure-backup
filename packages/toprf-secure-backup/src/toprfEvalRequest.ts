@@ -1,6 +1,5 @@
 import {
   Some,
-  TOPRFError,
   filterCompletedRequests,
   kCombinations,
   lagrangeInterpolationForPoints,
@@ -10,10 +9,8 @@ import type { ProjPointType } from '@noble/curves/abstract/weierstrass';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
-import {
-  EXISTING_USER_AUTHENTICATION_THRESHOLD,
-  JRPC_METHODS,
-} from './constants';
+import { TOPRF_EVAL_THRESHOLD, JRPC_METHODS } from './constants';
+import { TOPRFError } from './errors';
 import type { NodeAuthTokens } from './interfaces';
 import type {
   ToprfEvalJRPCRequest,
@@ -23,7 +20,12 @@ import type {
 } from './jrpcInterfaces';
 import { deriveAuthenticationKeyPair } from './keyDerivation';
 import { OPRF } from './oprf';
-import { mergeEndpointsWithAuthTokens, postJRPCRequest } from './utils';
+import {
+  checkRateLimitErrors,
+  mergeEndpointsWithAuthTokens,
+  postJRPCRequest,
+  getTOPRFError,
+} from './utils';
 
 type BlindedOutputShare = {
   blindedOutput: ProjPointType<bigint>;
@@ -95,7 +97,7 @@ const findMatchingSeedWithAllCombinations = (
 ): { seed: Uint8Array; keyShareIndex: number } | null => {
   const allCombis = kCombinations(
     sortedBlindedOutputs.length,
-    EXISTING_USER_AUTHENTICATION_THRESHOLD,
+    TOPRF_EVAL_THRESHOLD,
   );
 
   for (const currentCombi of allCombis) {
@@ -177,17 +179,23 @@ export const validateSeed = async (
   blindingFactor: bigint,
   resultArr: ToprfEvalJRPCResponse[],
 ): Promise<{ seed: Uint8Array; keyShareIndex: number }> => {
+  // Check for rate limit errors before filtering responses
+  const rateLimitDetails = checkRateLimitErrors(resultArr);
+  if (rateLimitDetails) {
+    throw TOPRFError.rateLimitExceeded(rateLimitDetails);
+  }
+
   const completedRequests =
     filterCompletedRequests<ToprfEvalJRPCResponse>(resultArr);
 
-  if (completedRequests.length < EXISTING_USER_AUTHENTICATION_THRESHOLD) {
+  if (completedRequests.length < TOPRF_EVAL_THRESHOLD) {
     throw TOPRFError.insufficientValidResponses(
-      `Insufficient toprf eval request results, expected ${EXISTING_USER_AUTHENTICATION_THRESHOLD} but got ${completedRequests.length}`,
+      `Insufficient toprf eval request results, expected ${TOPRF_EVAL_THRESHOLD} but got ${completedRequests.length}`,
     );
   }
   const thresholdAuthPubKey = thresholdSame(
     completedRequests.map((res) => res.result?.pubKey),
-    EXISTING_USER_AUTHENTICATION_THRESHOLD,
+    TOPRF_EVAL_THRESHOLD,
   );
 
   if (!thresholdAuthPubKey) {
@@ -218,9 +226,9 @@ export const validateSeed = async (
     [],
   );
 
-  if (blindedOutputShares.length < EXISTING_USER_AUTHENTICATION_THRESHOLD) {
+  if (blindedOutputShares.length < TOPRF_EVAL_THRESHOLD) {
     throw TOPRFError.insufficientValidResponses(
-      `Insufficient valid blinded outputs, expected: ${EXISTING_USER_AUTHENTICATION_THRESHOLD}, received: ${blindedOutputShares.length}`,
+      `Insufficient valid blinded outputs, expected: ${TOPRF_EVAL_THRESHOLD}, received: ${blindedOutputShares.length}`,
     );
   }
 
@@ -259,9 +267,9 @@ export const recoverTOPRFSeed = async (params: {
   const { authTokens, nodeEndpointsMap, verifier, verifierId, userInput } =
     params;
 
-  if (authTokens.length < EXISTING_USER_AUTHENTICATION_THRESHOLD) {
+  if (authTokens.length < TOPRF_EVAL_THRESHOLD) {
     throw TOPRFError.insufficientAuthTokens(
-      `At least ${EXISTING_USER_AUTHENTICATION_THRESHOLD} auth tokens are required.`,
+      `At least ${TOPRF_EVAL_THRESHOLD} auth tokens are required.`,
     );
   }
   const { a, r } = OPRF.blind(userInput);
@@ -284,8 +292,12 @@ export const recoverTOPRFSeed = async (params: {
     },
   );
 
-  return Some<
-    ToprfEvalJRPCResponse,
-    { seed: Uint8Array; keyShareIndex: number }
-  >(promises, async (resultArr) => validateSeed(userInput, r, resultArr));
+  try {
+    return await Some<
+      ToprfEvalJRPCResponse,
+      { seed: Uint8Array; keyShareIndex: number }
+    >(promises, async (resultArr) => validateSeed(userInput, r, resultArr));
+  } catch (error) {
+    throw getTOPRFError(error as Error);
+  }
 };

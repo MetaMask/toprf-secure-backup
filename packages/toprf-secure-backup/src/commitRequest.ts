@@ -1,13 +1,13 @@
 import {
   Some,
   keccak256AndHexify,
-  TOPRFError,
   filterCompletedRequests,
 } from '@metamask/auth-network-utils';
 import { utf8ToBytes } from '@noble/hashes/utils';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
 import { COMMIT_RESPONSE_THRESHOLD, JRPC_METHODS } from './constants';
+import { TOPRFError } from './errors';
 import type {
   CommitmentJRPCRequest,
   CommitmentJRPCRequestParams,

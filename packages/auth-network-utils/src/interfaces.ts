@@ -28,3 +28,5 @@ export type JRPCRequest<T> = {
   method: string;
   params: T;
 };
+
+export type JSONRPCError = NonNullable<JRPCResponse<unknown>['error']>;

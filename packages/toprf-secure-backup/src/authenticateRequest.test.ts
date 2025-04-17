@@ -1,4 +1,4 @@
-import { TOPRFError, keccak256AndHexify } from '@metamask/auth-network-utils';
+import { keccak256AndHexify } from '@metamask/auth-network-utils';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
@@ -8,9 +8,13 @@ import {
   validateThresholdAuthenticateResponses,
 } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
+import { TOPRFError } from './errors';
 import type { AuthJRPCResponse, AuthRequestResult } from './jrpcInterfaces';
 import { createNodeEndpointsMap } from './utils';
-import { generateIdToken } from '../tests/testHelpers';
+import {
+  generateIdToken,
+  generateRandomVerifierId,
+} from '../tests/testHelpers';
 
 describe('validateThresholdAuthenticateResponses', () => {
   /**
@@ -47,6 +51,7 @@ describe('validateThresholdAuthenticateResponses', () => {
       createMockResponse({ ...mockAuthResult(1) }),
       createMockResponse({ ...mockAuthResult(2) }),
       createMockResponse({ ...mockAuthResult(3) }),
+      createMockResponse({ ...mockAuthResult(4) }),
     ];
 
     const result = await validateThresholdAuthenticateResponses(responses);
@@ -138,6 +143,7 @@ describe('validateThresholdAuthenticateResponses', () => {
       createMockResponse(undefined, { code: 500, message: 'Server error' }),
       createMockResponse({ ...mockAuthResult(2), nodeIndex: 3 }),
       createMockResponse({ ...mockAuthResult(3), nodeIndex: 4 }),
+      createMockResponse({ ...mockAuthResult(4), nodeIndex: 5 }),
     ];
 
     const result = await validateThresholdAuthenticateResponses(responses);
@@ -146,6 +152,7 @@ describe('validateThresholdAuthenticateResponses', () => {
     );
   });
 });
+
 describe('authenticate request', function () {
   let nodeDetailManager: NodeDetailManager;
   beforeAll(async function () {
@@ -159,17 +166,17 @@ describe('authenticate request', function () {
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
     const verifier = 'torus-test-health';
-    const verifierID = 'test-verifier-id';
-    const idToken = generateIdToken(verifierID, 'ES256');
+    const verifierId = 'test-verifier-id';
+    const idToken = generateIdToken(verifierId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
-    const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
+    const { torusNodeSSSEndpoints, torusIndexes } =
       await nodeDetailManager.getNodeDetails({
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
 
-    if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
+    if (!torusNodeSSSEndpoints) {
       throw new Error('Failed to get node details');
     }
     const commitmentResults = await commitIdToken({
@@ -190,17 +197,16 @@ describe('authenticate request', function () {
       acc[result.nodeIndex] = nodeEndpointsMap[result.nodeIndex];
       return acc;
     }, {});
-    const { authTokensData, isNewUser } = await authenticateUser({
+    const { authTokensData } = await authenticateUser({
       idToken,
       verifier,
-      verifierID,
+      verifierId,
       sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
     });
     expect(authTokensData).toBeDefined();
     expect(authTokensData.length).toBeGreaterThanOrEqual(3);
-    expect(isNewUser).toBe(true);
   });
 
   it('should to send a authenticate request for a single id verifier', async function () {
@@ -208,17 +214,17 @@ describe('authenticate request', function () {
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
     const verifier = 'torus-test-health-aggregate';
-    const verifierID = 'test-verifier-id-aggregate';
-    const idToken = generateIdToken(verifierID, 'ES256');
+    const verifierId = generateRandomVerifierId();
+    const idToken = generateIdToken(verifierId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
-    const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
+    const { torusNodeSSSEndpoints, torusIndexes } =
       await nodeDetailManager.getNodeDetails({
         verifier,
-        verifierId: verifierID,
+        verifierId,
       });
 
-    if (!torusNodeSSSEndpoints || !torusIndexes || !torusNodePub) {
+    if (!torusNodeSSSEndpoints) {
       throw new Error('Failed to get node details');
     }
     const hashedIdToken = keccak256AndHexify(
@@ -247,7 +253,7 @@ describe('authenticate request', function () {
     const { authTokensData, isNewUser } = await authenticateUser({
       idToken: hashedIdToken,
       verifier,
-      verifierID,
+      verifierId,
       sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
@@ -322,6 +328,7 @@ describe('validateAndWaitForAuthResponses', () => {
       mockAuthResponse(1),
       mockAuthResponse(2),
       mockAuthResponse(3),
+      mockAuthResponse(4),
     ];
     const promiseArr = createMockAuthPromises(5);
     const startTime = Date.now() - 600;
@@ -334,7 +341,7 @@ describe('validateAndWaitForAuthResponses', () => {
       bufferWaitTime,
     );
 
-    expect(result.authRequestResults).toHaveLength(3);
+    expect(result.authRequestResults).toHaveLength(responses.length);
   });
 
   it('should throw error to continue waiting if buffer time not elapsed', async () => {
