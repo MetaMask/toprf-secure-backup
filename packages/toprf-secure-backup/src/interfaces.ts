@@ -73,19 +73,19 @@ export type AuthenticateResult = {
 };
 
 /**
- * CreateLocalEncryptionKeyParams - The parameters for creating an OPRF encryption key locally.
+ * CreateLocalKeyParams - The parameters for creating an OPRF encryption key locally.
  *
  * password - The password of the user.
  *
  * oprfKey - Optional OPRF key to be used for the OPRF evaluation.
  */
-export type CreateLocalEncKeyParams = {
+export type CreateLocalKeyParams = {
   password: string;
   oprfKey?: bigint;
 };
 
 /**
- * CreateLocalEncryptionKeyResult - The result of creating an encryption key.
+ * CreateLocalKeyResult - The result of creating an encryption key.
  *
  * oprfKey - The OPRF key which is used to for local OPRF evaluation.
  *
@@ -95,7 +95,7 @@ export type CreateLocalEncKeyParams = {
  *
  * encKey - The encryption key which is used to encrypt the secret data.
  */
-export type CreateLocalEncKeyResult = {
+export type CreateLocalKeyResult = {
   oprfKey: bigint;
   seed: Uint8Array;
   authKeyPair: KeyPair;
@@ -103,7 +103,7 @@ export type CreateLocalEncKeyResult = {
 };
 
 /**
- * PersistOprfKeyParams - The parameters for persisting an OPRF key's shares to the servers.
+ * PersistLocalKeyParams - The parameters for persisting an OPRF key's shares to the servers.
  *
  * nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
  *
@@ -119,7 +119,7 @@ export type CreateLocalEncKeyResult = {
  *
  * oldAuthKeyPair - Optional authentication key pair to be used for key change flow.
  */
-export type PersistOprfKeyParams = {
+export type PersistLocalKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
   oprfKey: bigint;
   authPubKey: SEC1EncodedPublicKey;
@@ -286,22 +286,20 @@ export type IToprfSecureBackup = {
   authenticate: (params: AuthenticateParams) => Promise<AuthenticateResult>;
 
   /**
-   * This function locally creates an OPRF key without storing it at the key
+   * This function locally creates an OPRF and encryption key without storing it at the key
    * management service. It returns the OPRF key, derives the corresponding key
    * seed, authentication key pair and encryption key.
    *
    * @param params - The parameters for creating the encryption key.
    * @param params.password - New password of the user.
-   * @param params.blindingFactor - Optional blinding factor to be used for the OPRF evaluation.
+   * @param params.oprfKey - Optional OPRF key to be used for the OPRF evaluation.
    *
    * @returns A promise that resolves with the encryption key.
    */
-  createLocalEncKey: (
-    params: CreateLocalEncKeyParams,
-  ) => CreateLocalEncKeyResult;
+  createLocalKey: (params: CreateLocalKeyParams) => CreateLocalKeyResult;
 
   /**
-   * This function persists an OPRF key's shares to the servers.
+   * This function persists an locally created OPRF key's shares to the servers.
    *
    * @param params - The parameters for persisting an OPRF key's shares.
    * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
@@ -313,9 +311,9 @@ export type IToprfSecureBackup = {
    * @param params.oldAuthKeyPair - The old authentication key pair of the user. Required only during key change, not needed for first-time storage.
    * @returns A promise that resolves when the OPRF key's shares are persisted.
    */
-  persistOprfKey: (params: PersistOprfKeyParams) => Promise<void>;
+  persistLocalKey: (params: PersistLocalKeyParams) => Promise<void>;
 
-  createEncKey: (
+  createAndPersistEncKey: (
     params: CreateEncryptionKeyParams,
   ) => Promise<CreateEncryptionKeyResult>;
 

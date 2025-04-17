@@ -20,13 +20,13 @@ import type {
   RecoverEncryptionKeyParams,
   RecoverEncryptionKeyResult,
   AddSecretDataItemParams,
-  CreateLocalEncKeyResult,
-  CreateLocalEncKeyParams,
-  PersistOprfKeyParams,
   ChangeEncryptionKeyParams,
   ChangeEncryptionKeyResult,
   FetchAuthPubKeyParams,
   FetchAuthPubKeyResult,
+  PersistLocalKeyParams,
+  CreateLocalKeyParams,
+  CreateLocalKeyResult,
   BatchAddSecretDataItemParams,
 } from './interfaces';
 import {
@@ -123,9 +123,9 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
   }
 
   /**
-   * This function locally creates an OPRF key without storing it at the key
-   * management service. It returns the OPRF key, derives the corresponding key
-   * seed, authentication key pair and encryption key.
+   * This function locally creates an OPRF and encryption keys without storing them at the
+   * key management service. It returns the OPRF key, derives the corresponding key seed,
+   * authentication key pair and encryption key.
    *
    * @param params - The parameters for creating the encryption key.
    * @param params.password - New password of the user.
@@ -133,7 +133,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    *
    * @returns The OPRF key, seed, and derived keys.
    */
-  createLocalEncKey(params: CreateLocalEncKeyParams): CreateLocalEncKeyResult {
+  createLocalKey(params: CreateLocalKeyParams): CreateLocalKeyResult {
     const { password, oprfKey = generateRandomScalar() } = params;
     const pwBytes = utf8ToBytes(password);
     const seed = OPRF.localEval(oprfKey, pwBytes);
@@ -163,7 +163,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * @param params.keyShareIndex - The key share index to be persisted. Required only during key change, defaults to FIRST_KEY_INDEX for first-time storage.
    * @param params.oldAuthKeyPair - The old authentication key pair of the user. Required only during key change, not needed for first-time storage.
    */
-  async persistOprfKey(params: PersistOprfKeyParams): Promise<void> {
+  async persistLocalKey(params: PersistLocalKeyParams): Promise<void> {
     const {
       nodeAuthTokens,
       oprfKey,
@@ -216,15 +216,15 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    *
    * @returns The encryption key.
    */
-  async createEncKey(
+  async createAndPersistEncKey(
     params: CreateEncryptionKeyParams,
   ): Promise<CreateEncryptionKeyResult> {
     const { nodeAuthTokens, password, verifier, verifierId } = params;
-    const { oprfKey, authKeyPair, encKey } = this.createLocalEncKey({
+    const { oprfKey, authKeyPair, encKey } = this.createLocalKey({
       password,
     });
 
-    await this.persistOprfKey({
+    await this.persistLocalKey({
       nodeAuthTokens,
       oprfKey,
       authPubKey: authKeyPair.pk,
@@ -324,7 +324,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       newKeyShareIndex,
     } = params;
 
-    const { oprfKey, authKeyPair, encKey } = this.createLocalEncKey({
+    const { oprfKey, authKeyPair, encKey } = this.createLocalKey({
       password: newPassword,
     });
 
@@ -356,7 +356,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         authKeyPair,
       });
 
-      await this.persistOprfKey({
+      await this.persistLocalKey({
         nodeAuthTokens,
         oprfKey,
         authPubKey: authKeyPair.pk,

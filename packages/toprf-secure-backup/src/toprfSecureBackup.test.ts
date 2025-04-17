@@ -120,11 +120,11 @@ describe('toprf secret backup', function () {
     });
   });
 
-  describe('createEncKey', function () {
+  describe('createAndPersistEncKey', function () {
     it('should be able to create local enc key', async function () {
       const { toprfSecureBackup } = setup();
       const password = generateRandomPassword();
-      const encKey = toprfSecureBackup.createLocalEncKey({
+      const encKey = toprfSecureBackup.createLocalKey({
         password,
       });
       expect(encKey).toBeDefined();
@@ -133,7 +133,7 @@ describe('toprf secret backup', function () {
       expect(encKey.authKeyPair.pk).toBeDefined();
       expect(encKey.encKey).toBeDefined();
 
-      const encKey2 = toprfSecureBackup.createLocalEncKey({
+      const encKey2 = toprfSecureBackup.createLocalKey({
         password,
         oprfKey: encKey.oprfKey,
       });
@@ -147,7 +147,7 @@ describe('toprf secret backup', function () {
       expect(encKey2.authKeyPair.sk).toStrictEqual(encKey.authKeyPair.sk);
       expect(encKey2.encKey).toStrictEqual(encKey.encKey);
 
-      const encKey3 = toprfSecureBackup.createLocalEncKey({
+      const encKey3 = toprfSecureBackup.createLocalKey({
         password,
       });
       expect(encKey3).toBeDefined();
@@ -159,7 +159,7 @@ describe('toprf secret backup', function () {
       expect(encKey3.authKeyPair.sk).not.toStrictEqual(encKey.authKeyPair.sk);
       expect(encKey3.encKey).not.toStrictEqual(encKey.encKey);
 
-      const encKey4 = toprfSecureBackup.createLocalEncKey({
+      const encKey4 = toprfSecureBackup.createLocalKey({
         password: generateRandomPassword(),
         oprfKey: encKey3.oprfKey,
       });
@@ -182,7 +182,7 @@ describe('toprf secret backup', function () {
         verifierId,
       });
       expect(result.isNewUser).toBe(true);
-      const encKey = await toprfSecureBackup.createEncKey({
+      const encKey = await toprfSecureBackup.createAndPersistEncKey({
         nodeAuthTokens: result.nodeAuthTokens,
         password: generateRandomPassword(),
         verifier,
@@ -199,7 +199,7 @@ describe('toprf secret backup', function () {
       const { verifier, verifierId, toprfSecureBackup } = setup();
 
       await expect(
-        toprfSecureBackup.createEncKey({
+        toprfSecureBackup.createAndPersistEncKey({
           nodeAuthTokens: [],
           password: generateRandomPassword(),
           verifier,
@@ -238,7 +238,7 @@ describe('toprf secret backup', function () {
       ];
 
       await expect(
-        toprfSecureBackup.createEncKey({
+        toprfSecureBackup.createAndPersistEncKey({
           nodeAuthTokens: INVALID_NODE_AUTH_TOKENS,
           password: generateRandomPassword(),
           verifier,
@@ -259,7 +259,7 @@ describe('toprf secret backup', function () {
       });
 
       const password = generateRandomPassword();
-      const encKey = await toprfSecureBackup.createEncKey({
+      const encKey = await toprfSecureBackup.createAndPersistEncKey({
         nodeAuthTokens: result.nodeAuthTokens,
         password,
         verifier,
@@ -306,7 +306,7 @@ describe('toprf secret backup', function () {
         });
 
         const password = generateRandomPassword();
-        const encKey = await toprfSecureBackup.createEncKey({
+        const encKey = await toprfSecureBackup.createAndPersistEncKey({
           nodeAuthTokens: result.nodeAuthTokens,
           password,
           verifier,
@@ -350,7 +350,7 @@ describe('toprf secret backup', function () {
       });
 
       const password = generateRandomPassword();
-      await toprfSecureBackup.createEncKey({
+      await toprfSecureBackup.createAndPersistEncKey({
         nodeAuthTokens: result.nodeAuthTokens,
         password,
         verifier,
@@ -382,12 +382,13 @@ describe('toprf secret backup', function () {
       expect(result.nodeAuthTokens.length).toBeGreaterThan(0);
 
       const originalPassword = generateRandomPassword();
-      const originalEncKeyResult = await toprfSecureBackup.createEncKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        password: originalPassword,
-        verifier,
-        verifierId,
-      });
+      const originalEncKeyResult =
+        await toprfSecureBackup.createAndPersistEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          password: originalPassword,
+          verifier,
+          verifierId,
+        });
 
       await toprfSecureBackup.addSecretDataItem({
         encKey: originalEncKeyResult.encKey,
@@ -484,12 +485,13 @@ describe('toprf secret backup', function () {
       });
 
       const originalPassword = generateRandomPassword();
-      const originalEncKeyResult = await toprfSecureBackup.createEncKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        password: originalPassword,
-        verifier,
-        verifierId,
-      });
+      const originalEncKeyResult =
+        await toprfSecureBackup.createAndPersistEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          password: originalPassword,
+          verifier,
+          verifierId,
+        });
 
       await toprfSecureBackup.addSecretDataItem({
         encKey: originalEncKeyResult.encKey,
@@ -538,12 +540,13 @@ describe('toprf secret backup', function () {
 
       // Creating keys but intentionally not storing any secret data
       const originalPassword = generateRandomPassword();
-      const originalEncKeyResult = await toprfSecureBackup.createEncKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        password: originalPassword,
-        verifier,
-        verifierId,
-      });
+      const originalEncKeyResult =
+        await toprfSecureBackup.createAndPersistEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          password: originalPassword,
+          verifier,
+          verifierId,
+        });
 
       const newPassword = generateRandomPassword();
 
@@ -572,12 +575,13 @@ describe('toprf secret backup', function () {
       });
 
       const originalPassword = generateRandomPassword();
-      const originalEncKeyResult = await toprfSecureBackup.createEncKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        password: originalPassword,
-        verifier,
-        verifierId,
-      });
+      const originalEncKeyResult =
+        await toprfSecureBackup.createAndPersistEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          password: originalPassword,
+          verifier,
+          verifierId,
+        });
 
       await toprfSecureBackup.addSecretDataItem({
         encKey: originalEncKeyResult.encKey,
@@ -643,12 +647,13 @@ describe('toprf secret backup', function () {
       });
 
       const originalPassword = generateRandomPassword();
-      const originalEncKeyResult = await toprfSecureBackup.createEncKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        password: originalPassword,
-        verifier,
-        verifierId,
-      });
+      const originalEncKeyResult =
+        await toprfSecureBackup.createAndPersistEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          password: originalPassword,
+          verifier,
+          verifierId,
+        });
 
       await toprfSecureBackup.addSecretDataItem({
         encKey: originalEncKeyResult.encKey,
@@ -665,7 +670,7 @@ describe('toprf secret backup', function () {
 
       // Generate incorrect authKeyPair
       const differentPassword = generateRandomPassword();
-      const incorrectKeyResult = toprfSecureBackup.createLocalEncKey({
+      const incorrectKeyResult = toprfSecureBackup.createLocalKey({
         password: differentPassword,
       });
 
@@ -695,12 +700,13 @@ describe('toprf secret backup', function () {
       });
 
       const originalPassword = generateRandomPassword();
-      const originalEncKeyResult = await toprfSecureBackup.createEncKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        password: originalPassword,
-        verifier,
-        verifierId,
-      });
+      const originalEncKeyResult =
+        await toprfSecureBackup.createAndPersistEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          password: originalPassword,
+          verifier,
+          verifierId,
+        });
 
       await toprfSecureBackup.addSecretDataItem({
         encKey: originalEncKeyResult.encKey,
@@ -717,7 +723,7 @@ describe('toprf secret backup', function () {
 
       // Generate incorrect encryption key
       const differentPassword = generateRandomPassword();
-      const incorrectKeyResult = toprfSecureBackup.createLocalEncKey({
+      const incorrectKeyResult = toprfSecureBackup.createLocalKey({
         password: differentPassword,
       });
 
@@ -749,7 +755,7 @@ describe('toprf secret backup', function () {
         verifier,
         verifierId,
       });
-      const encKeyResult = await toprfSecureBackup.createEncKey({
+      const encKeyResult = await toprfSecureBackup.createAndPersistEncKey({
         nodeAuthTokens: result.nodeAuthTokens,
         password: generateRandomPassword(),
         verifier,
@@ -800,7 +806,7 @@ describe('toprf secret backup', function () {
         verifierId,
       });
 
-      const encKeyResult = await toprfSecureBackup.createEncKey({
+      const encKeyResult = await toprfSecureBackup.createAndPersistEncKey({
         nodeAuthTokens: result.nodeAuthTokens,
         password,
         verifier,
@@ -897,7 +903,7 @@ describe('toprf secret backup', function () {
       verifier,
       verifierId,
     });
-    const encKey = await toprfSecureBackup.createEncKey({
+    const encKey = await toprfSecureBackup.createAndPersistEncKey({
       nodeAuthTokens: result.nodeAuthTokens,
       password: generateRandomPassword(),
       verifier,
@@ -910,7 +916,7 @@ describe('toprf secret backup', function () {
     expect(encKey.encKey).toBeDefined();
 
     await expect(
-      toprfSecureBackup.createEncKey({
+      toprfSecureBackup.createAndPersistEncKey({
         nodeAuthTokens: result.nodeAuthTokens.slice(0, 2),
         password: generateRandomPassword(),
         verifier,
@@ -929,7 +935,7 @@ describe('toprf secret backup', function () {
     });
 
     const password = generateRandomPassword();
-    const encKeyResult = await toprfSecureBackup.createEncKey({
+    const encKeyResult = await toprfSecureBackup.createAndPersistEncKey({
       nodeAuthTokens: result.nodeAuthTokens,
       password,
       verifier,
@@ -956,7 +962,7 @@ describe('toprf secret backup', function () {
     });
 
     const correctPassword = generateRandomPassword();
-    const encKeyResult = await toprfSecureBackup.createEncKey({
+    const encKeyResult = await toprfSecureBackup.createAndPersistEncKey({
       nodeAuthTokens: result.nodeAuthTokens,
       password: correctPassword,
       verifier,
