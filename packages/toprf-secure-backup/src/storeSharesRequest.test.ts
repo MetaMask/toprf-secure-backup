@@ -85,7 +85,7 @@ describe('secure backup operations', function () {
       verifier,
       verifierId,
       authTokens: authTokensData,
-      shareKeyIndex: 1,
+      keyShareIndex: 1,
       oprfKey,
       authPubKey: authKeyPair.pk,
     });
@@ -158,7 +158,7 @@ describe('secure backup operations', function () {
       verifier,
       verifierId,
       authTokens: authTokensData,
-      shareKeyIndex: 1,
+      keyShareIndex: 1,
       oprfKey,
       authPubKey: authKeyPair.pk,
     });
@@ -232,7 +232,7 @@ describe('secure backup operations', function () {
       verifier,
       verifierId,
       authTokens: authTokensData,
-      shareKeyIndex: 1,
+      keyShareIndex: 1,
       oprfKey,
       authPubKey: originalAuthKeyPair.pk,
     });
@@ -249,7 +249,7 @@ describe('secure backup operations', function () {
     // Verify that the original password works
     const {
       seed: originalRecoveredSeed,
-      shareKeyIndex: originalShareKeyIndex,
+      keyShareIndex: originalKeyShareIndex,
     } = await recoverTOPRFSeed({
       authTokens: authTokensData,
       nodeEndpointsMap: selectedEndpointsMap,
@@ -260,8 +260,8 @@ describe('secure backup operations', function () {
 
     expect(originalRecoveredSeed).toBeDefined();
     expect(originalRecoveredSeed.length).toBeGreaterThan(0);
-    expect(originalShareKeyIndex).toBeDefined();
-    expect(originalShareKeyIndex).toBeGreaterThan(0);
+    expect(originalKeyShareIndex).toBeDefined();
+    expect(originalKeyShareIndex).toBeGreaterThan(0);
 
     // Verify that the new password doesn't work
     await expect(
@@ -289,7 +289,7 @@ describe('secure backup operations', function () {
       verifierId,
       authTokens: authTokensData,
       oldAuthPrivKey: originalAuthKeyPair.sk,
-      shareKeyIndex: 2,
+      keyShareIndex: 2,
       newOprfKey,
       newAuthPubKey: newAuthKeyPair.pk,
     });
@@ -309,7 +309,7 @@ describe('secure backup operations', function () {
     ).rejects.toThrow('Could not derive encryption key');
 
     // Verify that the new password works
-    const { seed: newRecoveredSeed, shareKeyIndex: newShareKeyIndex } =
+    const { seed: newRecoveredSeed, keyShareIndex: newKeyShareIndex } =
       await recoverTOPRFSeed({
         authTokens: authTokensData,
         nodeEndpointsMap: selectedEndpointsMap,
@@ -320,8 +320,8 @@ describe('secure backup operations', function () {
 
     expect(newRecoveredSeed).toBeDefined();
     expect(newRecoveredSeed.length).toBeGreaterThan(0);
-    expect(newShareKeyIndex).toBeDefined();
-    expect(newShareKeyIndex).toBeGreaterThan(0);
+    expect(newKeyShareIndex).toBeDefined();
+    expect(newKeyShareIndex).toBeGreaterThan(0);
   });
 
   it('should fail when trying to change key before storing shares', async function () {
@@ -393,7 +393,7 @@ describe('secure backup operations', function () {
         verifierId,
         authTokens: authTokensData,
         oldAuthPrivKey: originalAuthKeyPair.sk,
-        shareKeyIndex: 2,
+        keyShareIndex: 2,
         newOprfKey,
         newAuthPubKey: newAuthKeyPair.pk,
       }),
@@ -468,7 +468,7 @@ describe('secure backup operations', function () {
       verifier,
       verifierId,
       authTokens: authTokensData,
-      shareKeyIndex: initialKeyIndex,
+      keyShareIndex: initialKeyIndex,
       oprfKey,
       authPubKey: originalAuthKeyPair.pk,
     });
@@ -490,13 +490,13 @@ describe('secure backup operations', function () {
         verifier,
         verifierId,
         authTokens: authTokensData,
-        shareKeyIndex: lowerKeyIndex,
+        keyShareIndex: lowerKeyIndex,
         newOprfKey,
         newAuthPubKey: newAuthKeyPair.pk,
         oldAuthPrivKey: originalAuthKeyPair.sk,
       }),
     ).rejects.toThrow(
-      TOPRFError.jsonRpcError('Failed to validate share key index'),
+      TOPRFError.jsonRpcError('Failed to validate key share index'),
     );
   });
 });

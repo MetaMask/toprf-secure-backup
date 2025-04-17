@@ -22,7 +22,7 @@ import {
 export type CreateStoreKeySharesRequestParamsInput = {
   nodeEndpointsMap: Record<number, string>;
   authTokens: NodeAuthTokens;
-  shareKeyIndex: number;
+  keyShareIndex: number;
   verifier: string;
   verifierId: string;
   oprfKey: bigint;
@@ -37,7 +37,7 @@ export type StoreKeySharesRequestParams =
  * @param params - The parameters for the store key shares request.
  * @param params.nodeEndpointsMap - The map of node indexes to endpoints.
  * @param params.authTokens - The authTokens to be used for the store key shares request.
- * @param params.shareKeyIndex - The share key index to be used for the store key shares request.
+ * @param params.keyShareIndex - The key share index to be used for the store key shares request.
  * It should be 1 for the first key registration and derived from response of authenticate request for subsequent key registrations.
  * @param params.oprfKey - The oprfKey to be used for the store key shares request.
  * @param params.authPubKey - The auth pubkey associated with the authentication key pair derived from the seed and input.
@@ -50,7 +50,7 @@ export const createStoreKeySharesRequestParams = async (
   const {
     nodeEndpointsMap,
     authTokens,
-    shareKeyIndex,
+    keyShareIndex,
     oprfKey,
     authPubKey,
     verifier,
@@ -60,7 +60,7 @@ export const createStoreKeySharesRequestParams = async (
     nodeEndpointsMap,
     authTokens,
     oprfKey,
-    shareKeyIndex,
+    keyShareIndex,
   );
   return {
     pubKey: uint8ArrayToHex(authPubKey),
@@ -97,7 +97,7 @@ export const sendStoreKeySharesRequest = async (
  * @param params.verifier - The verifier to be used for the store key shares request.
  * @param params.verifierId - The verifierId to be used for the store key shares request.
  * @param params.authTokens - The authTokens issued by the nodes on authenticating the user.
- * @param params.shareKeyIndex - The share key index to be used for the store key shares request.
+ * @param params.keyShareIndex - The key share index to be used for the store key shares request.
  * It should be 1 for the first key registration and derived from response of authenticate request for subsequent key registrations.
  *
  * @param params.oprfKey - The oprfKey to be used for the store key shares request.
@@ -111,7 +111,7 @@ export const storeKeyShares = async (
   const {
     nodeEndpointsMap,
     authTokens,
-    shareKeyIndex,
+    keyShareIndex,
     oprfKey,
     verifier,
     verifierId,
@@ -120,7 +120,7 @@ export const storeKeyShares = async (
   const requestParams = await createStoreKeySharesRequestParams({
     nodeEndpointsMap,
     authTokens,
-    shareKeyIndex,
+    keyShareIndex,
     authPubKey,
     oprfKey,
     verifier,
@@ -148,7 +148,7 @@ export const storeKeyShares = async (
 export type CreateKeyChangeRequestParamsInput = {
   nodeEndpointsMap: Record<number, string>;
   authTokens: NodeAuthTokens;
-  shareKeyIndex: number;
+  keyShareIndex: number;
   verifier: string;
   verifierId: string;
   newOprfKey: bigint;
@@ -164,7 +164,7 @@ export type KeyChangeRequestParams = CreateKeyChangeRequestParamsInput;
  * @param params - The parameters for the key change request.
  * @param params.nodeEndpointsMap - The map of node indexes to endpoints.
  * @param params.authTokens - The authTokens to be used for the key change request.
- * @param params.shareKeyIndex - The share key index to be used for the key change request.
+ * @param params.keyShareIndex - The key share index to be used for the key change request.
  * @param params.newOprfKey - The new oprfKey to be used for the key change request.
  * @param params.newAuthPubKey - The new auth pubkey for the updated authentication.
  * @param params.oldAuthPrivKey - The old auth private key used to sign the key change request.
@@ -177,7 +177,7 @@ export const createKeyChangeRequestParams = async (
   const {
     nodeEndpointsMap,
     authTokens,
-    shareKeyIndex,
+    keyShareIndex,
     newOprfKey,
     newAuthPubKey,
     oldAuthPrivKey,
@@ -190,7 +190,7 @@ export const createKeyChangeRequestParams = async (
     nodeEndpointsMap,
     authTokens,
     newOprfKey,
-    shareKeyIndex,
+    keyShareIndex,
     oldAuthPrivKey,
   );
 
@@ -210,7 +210,7 @@ export const createKeyChangeRequestParams = async (
  * @param params.verifier - The verifier to be used for the key change request.
  * @param params.verifierId - The verifierId to be used for the key change request.
  * @param params.authTokens - The authTokens issued by the nodes on authenticating the user.
- * @param params.shareKeyIndex - The share key index to be used for the key change request.
+ * @param params.keyShareIndex - The key share index to be used for the key change request.
  * @param params.newOprfKey - The new oprfKey to be used for the key change request.
  * @param params.newAuthPubKey - The new auth pubkey for the updated authentication.
  * @param params.oldAuthPrivKey - The old auth private key used to sign the key change request.
@@ -223,7 +223,7 @@ export const changeKeyShares = async (
   const {
     nodeEndpointsMap,
     authTokens,
-    shareKeyIndex,
+    keyShareIndex,
     newOprfKey,
     newAuthPubKey,
     oldAuthPrivKey,
@@ -234,7 +234,7 @@ export const changeKeyShares = async (
   const requestParams = await createKeyChangeRequestParams({
     nodeEndpointsMap,
     authTokens,
-    shareKeyIndex,
+    keyShareIndex,
     newOprfKey,
     newAuthPubKey,
     oldAuthPrivKey,
