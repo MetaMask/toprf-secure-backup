@@ -998,7 +998,6 @@ describe('toprf secret backup', function () {
         rateLimitDetails: {
           message: expect.any(String),
           remainingTime: expect.any(Number),
-          isPermanent: expect.any(Boolean),
         },
       },
     });

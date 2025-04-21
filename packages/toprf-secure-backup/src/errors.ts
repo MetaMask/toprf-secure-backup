@@ -4,7 +4,6 @@
 export type RateLimitErrorData = {
   message: string;
   remainingTime: number;
-  isPermanent: boolean;
 };
 
 export type ITOPRFError = Error & {
@@ -216,7 +215,6 @@ export class TOPRFError extends Error implements ITOPRFError {
    * @param details - Details about the rate limit from the server
    * @param details.message - The error message from the server
    * @param details.remainingTime - Remaining time in seconds before retrying is allowed
-   * @param details.isPermanent - Whether the rate limit is permanent
    * @param extraMessage - Additional message to include in the error
    * @returns - The error instance for rate limit exceeded
    */
