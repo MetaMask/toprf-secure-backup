@@ -275,6 +275,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         nodeEndpointsMap,
         verifier,
         verifierId,
+        authPrivKey: authKeyPair.sk,
       })
         .then(() => {
           return resolve();

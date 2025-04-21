@@ -22,10 +22,14 @@ export function keccak256AndHexify(buffer: Uint8Array): `0x${string}` {
  * Stringifies a JSON object and persists the key orders of the object
  *
  * @param json - The JSON object to stringify
+ * @param options - The options to pass to the stringify function
  * @returns The stringified JSON object
  */
-export function safeStringify(json: unknown): string {
-  const stringified = JsonStringify(json);
+export function safeStringify(
+  json: unknown,
+  options?: Parameters<typeof JsonStringify>[1],
+): string {
+  const stringified = JsonStringify(json, options);
   if (!stringified) {
     throw new Error('Failed to stringify');
   }

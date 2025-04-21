@@ -1,4 +1,10 @@
-import { filterCompletedRequests, Some } from '@metamask/auth-network-utils';
+import {
+  filterCompletedRequests,
+  safeStringify,
+  Some,
+  toSnakeCaseKeys,
+} from '@metamask/auth-network-utils';
+import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
 import { JRPC_METHODS } from './constants';
@@ -9,7 +15,12 @@ import type {
   ResetRateLimitJRPCRequestParams,
   ResetRateLimitJRPCResponse,
 } from './jrpcInterfaces';
-import { mergeEndpointsWithAuthTokens, postJRPCRequest } from './utils';
+import {
+  createEthereumSignature,
+  mergeEndpointsWithAuthTokens,
+  postJRPCRequest,
+  preserveKeyOrder,
+} from './utils';
 
 /**
  * Creates the parameters for the reset rate limit request
@@ -91,6 +102,7 @@ export const validateThresholdResetRateLimitResponses = (
  * @param params.verifier - The verifier name used for authentication.
  * @param params.verifierId - The verifierId issued to user after authentication.
  * @param params.nodeEndpointsMap - Map of node index to endpoint to be used for the reset rate limit request.
+ * @param params.authPrivKey - The user's authentication private key as bigint for signing the request.
  *
  * @returns - A promise that resolves when the rate limit is reset successfully.
  */
@@ -99,16 +111,10 @@ export const resetRateLimits = async (params: {
   nodeEndpointsMap: Record<number, string>;
   verifier: string;
   verifierId: string;
+  authPrivKey: bigint;
 }): Promise<boolean> => {
-  const { authTokens, nodeEndpointsMap, verifier, verifierId } = params;
-
-  // TODO: get signature and signedData from the user authentication key.
-  const signature = '0x';
-  const signedData = JSON.stringify({
-    node_index: 0,
-    timestamp: Date.now().toString(),
-    action: 'reset_ratelimit',
-  });
+  const { authTokens, nodeEndpointsMap, verifier, verifierId, authPrivKey } =
+    params;
 
   const endpointsWithAuthTokens = mergeEndpointsWithAuthTokens(
     authTokens,
@@ -117,10 +123,20 @@ export const resetRateLimits = async (params: {
 
   const promises = endpointsWithAuthTokens.map(
     async ({ endpoint, authToken }) => {
+      const dataToSign = toSnakeCaseKeys({
+        timestamp: Math.floor(Date.now() / 1000),
+        nodeIndex: authToken.nodeIndex,
+        action: 'reset_ratelimit',
+      });
+
+      const jsonData = safeStringify(dataToSign, { cmp: preserveKeyOrder });
+      const dataHash = keccak256(jsonData);
+      const signature = createEthereumSignature(dataHash, authPrivKey);
+
       const requestParams = createResetRateLimitRequestParams(
         authToken.authToken,
         signature,
-        signedData,
+        jsonData,
         verifier,
         verifierId,
       );

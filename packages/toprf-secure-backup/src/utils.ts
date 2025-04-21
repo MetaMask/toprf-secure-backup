@@ -203,7 +203,7 @@ const formatShareForSigning = (shareValue: BN): string => {
  * @param privateKeyBigInt - Private key as bigint
  * @returns Signature as r+s+v hex string
  */
-const createEthereumSignature = (
+export const createEthereumSignature = (
   dataHash: Uint8Array,
   privateKeyBigInt: bigint,
 ): string => {
@@ -581,4 +581,22 @@ export function getTOPRFError(error: Error): Error {
   }
 
   return error;
+}
+
+/**
+ * Preserves the key order of the object
+ *
+ * @param _a - The first object
+ * @param _a.key - The key of the first object
+ * @param _a.value - The value of the first object
+ * @param _b - The second object
+ * @param _b.key - The key of the second object
+ * @param _b.value - The value of the second object
+ * @returns 0
+ */
+export function preserveKeyOrder(
+  _a: { key: string; value: unknown },
+  _b: { key: string; value: unknown },
+): number {
+  return 0;
 }
