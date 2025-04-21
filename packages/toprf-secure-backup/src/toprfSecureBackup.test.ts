@@ -893,9 +893,7 @@ describe('toprf secret backup', function () {
     });
   });
 
-  // TODO: somehow this test fails, need to check backend logs,.
-  // eslint-disable-next-line jest/no-disabled-tests
-  it.skip('should throw error if user is not authenticated by enough nodes while creating enc key', async function () {
+  it('should throw error if user is not authenticated by enough nodes while creating enc key', async function () {
     const { verifier, verifierId, idToken, toprfSecureBackup } = setup();
 
     const result = await toprfSecureBackup.authenticate({
@@ -917,7 +915,7 @@ describe('toprf secret backup', function () {
 
     await expect(
       toprfSecureBackup.createAndPersistEncKey({
-        nodeAuthTokens: result.nodeAuthTokens.slice(0, 2),
+        nodeAuthTokens: result.nodeAuthTokens.slice(0, 2), // only 2 nodes are authenticated
         password: generateRandomPassword(),
         verifier,
         verifierId,
