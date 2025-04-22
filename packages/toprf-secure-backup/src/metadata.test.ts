@@ -76,7 +76,7 @@ describe('MetadataStore', () => {
     const metadataStore = await createMetadataStore();
 
     await metadataStore.addSecretDataItem({
-      secretData,
+      secretData: { data: secretData },
       encKey,
       authKeyPair,
     });
@@ -94,7 +94,7 @@ describe('MetadataStore', () => {
     const metadataStore2 = await createMetadataStore();
 
     await metadataStore1.addSecretDataItem({
-      secretData,
+      secretData: { data: secretData },
       encKey,
       authKeyPair,
     });
@@ -195,7 +195,7 @@ describe('MetadataStore', () => {
     const metadataStore = await createMetadataStore();
 
     await metadataStore.addSecretDataItem({
-      secretData,
+      secretData: { data: secretData },
       encKey,
       authKeyPair,
     });
@@ -237,8 +237,8 @@ describe('MetadataStore', () => {
         if (!dataBeforeBatchAdd) {
           return false;
         }
-        return Buffer.from(dataAfterBatch).equals(
-          Buffer.from(dataBeforeBatchAdd),
+        return Buffer.from(dataAfterBatch.data).equals(
+          Buffer.from(dataBeforeBatchAdd.data),
         );
       },
     );
@@ -313,7 +313,7 @@ describe('MetadataStore', () => {
 
     await expect(
       metadataStore.addSecretDataItem({
-        secretData: utf8ToBytes('SECRET_DATA'),
+        secretData: { data: utf8ToBytes('SECRET_DATA') },
         encKey,
         authKeyPair,
       }),
@@ -329,7 +329,7 @@ describe('MetadataStore', () => {
 
     await expect(
       metadataStore.batchAddSecretData({
-        secretData: [utf8ToBytes('SECRET_DATA')],
+        secretData: [{ data: utf8ToBytes('SECRET_DATA') }],
         encKey,
         authKeyPair,
       }),
@@ -355,7 +355,7 @@ describe('MetadataStore', () => {
 
     await expect(
       metadataStore.addSecretDataItem({
-        secretData: utf8ToBytes('SECRET_DATA'),
+        secretData: { data: utf8ToBytes('SECRET_DATA') },
         encKey,
         authKeyPair,
       }),
@@ -367,7 +367,7 @@ describe('MetadataStore', () => {
 
     await expect(
       metadataStore.batchAddSecretData({
-        secretData: [utf8ToBytes('SECRET_DATA')],
+        secretData: [{ data: utf8ToBytes('SECRET_DATA') }],
         encKey,
         authKeyPair,
       }),

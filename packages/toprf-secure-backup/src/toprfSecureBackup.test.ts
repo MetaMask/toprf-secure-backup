@@ -423,6 +423,7 @@ describe('toprf secret backup', function () {
         verifierId,
         oldEncKey: originalEncKeyResult.encKey,
         oldAuthKeyPair: originalEncKeyResult.authKeyPair,
+        oldPassword: originalPassword,
         newPassword,
         newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 1,
       });
@@ -519,6 +520,7 @@ describe('toprf secret backup', function () {
         verifierId,
         oldEncKey: originalEncKeyResult.encKey,
         oldAuthKeyPair: originalEncKeyResult.authKeyPair,
+        oldPassword: originalPassword,
         newPassword,
         newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 1,
       });
@@ -557,6 +559,7 @@ describe('toprf secret backup', function () {
           verifierId,
           oldEncKey: originalEncKeyResult.encKey,
           oldAuthKeyPair: originalEncKeyResult.authKeyPair,
+          oldPassword: originalPassword,
           newPassword,
           newKeyShareIndex: FIRST_KEY_INDEX + 1,
         }),
@@ -615,6 +618,7 @@ describe('toprf secret backup', function () {
             verifierId,
             oldEncKey: originalEncKeyResult.encKey,
             oldAuthKeyPair: originalEncKeyResult.authKeyPair,
+            oldPassword: originalPassword,
             newPassword,
             newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 1,
           }),
@@ -683,6 +687,7 @@ describe('toprf secret backup', function () {
           verifierId,
           oldEncKey: originalEncKeyResult.encKey,
           oldAuthKeyPair: incorrectKeyResult.authKeyPair, // Using incorrect authKeyPair
+          oldPassword: originalPassword,
           newPassword,
           newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 1,
         }),
@@ -736,6 +741,7 @@ describe('toprf secret backup', function () {
           verifierId,
           oldEncKey: incorrectKeyResult.encKey, // Using incorrect encKey
           oldAuthKeyPair: originalEncKeyResult.authKeyPair,
+          oldPassword: originalPassword,
           newPassword,
           newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 1,
         }),

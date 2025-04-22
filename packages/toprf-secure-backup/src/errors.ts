@@ -26,6 +26,7 @@ export enum TORPFErrorCode {
   InvalidAuthTokens = 1010,
   // AuthTokenExpired = 1011,
   JsonRpcError = 1012,
+  CouldNotFetchPassword = 1013,
 }
 
 /**
@@ -56,6 +57,7 @@ export class TOPRFError extends Error implements ITOPRFError {
     [TORPFErrorCode.InvalidAuthTokens]: 'Invalid auth tokens.',
     // [TORPFErrorCode.AuthTokenExpired]: 'Auth token expired.', // need to wait for the backend to update the error code
     [TORPFErrorCode.JsonRpcError]: 'Json rpc error.', // should/must specify error description in `error.data` field from the server response
+    [TORPFErrorCode.CouldNotFetchPassword]: 'Could not fetch password.',
   };
 
   /**
@@ -249,6 +251,18 @@ export class TOPRFError extends Error implements ITOPRFError {
    */
   public static jsonRpcError(extraMessage: string): ITOPRFError {
     return TOPRFError.fromCode(TORPFErrorCode.JsonRpcError, extraMessage);
+  }
+
+  /**
+   *
+   * @param extraMessage - The extra message of the error.
+   * @returns - The error instance for could not fetch password.
+   */
+  public static couldNotFetchPassword(extraMessage = ''): ITOPRFError {
+    return TOPRFError.fromCode(
+      TORPFErrorCode.CouldNotFetchPassword,
+      extraMessage,
+    );
   }
 
   /**
