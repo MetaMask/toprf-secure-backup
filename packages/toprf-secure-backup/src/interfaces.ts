@@ -285,13 +285,13 @@ export type FetchAuthPubKeyResult = {
   authPubKey: SEC1EncodedPublicKey;
 };
 
-export type FetchPasswordParams = {
+export type RecoverPasswordParams = {
   targetPwPubKey: SEC1EncodedPublicKey;
   curEncKey: Uint8Array;
   curAuthKeyPair: KeyPair;
 };
 
-export type FetchPasswordResult = {
+export type RecoverPasswordResult = {
   password: string;
 };
 

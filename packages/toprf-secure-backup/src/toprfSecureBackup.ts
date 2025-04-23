@@ -1,4 +1,4 @@
-import { bytesToUtf8 } from '@noble/ciphers/utils';
+import { bytesToUtf8, equalBytes } from '@noble/ciphers/utils';
 import { utf8ToBytes } from '@noble/curves/abstract/utils';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
@@ -35,9 +35,9 @@ import type {
   CreateLocalKeyParams,
   CreateLocalKeyResult,
   BatchAddSecretDataItemParams,
-  FetchPasswordParams,
-  FetchPasswordResult,
+  RecoverPasswordParams,
   KeyPair,
+  RecoverPasswordResult,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -532,9 +532,9 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    *
    * @returns The password.
    */
-  async fetchPassword(
-    params: FetchPasswordParams,
-  ): Promise<FetchPasswordResult> {
+  async recoverPassword(
+    params: RecoverPasswordParams,
+  ): Promise<RecoverPasswordResult> {
     const { targetPwPubKey, curEncKey, curAuthKeyPair } = params;
 
     let pwAndKeys = {
@@ -549,7 +549,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
           encKey: pwAndKeys.encKey,
           authKeyPair: pwAndKeys.authKeyPair,
         });
-        if (pwAndKeys.authKeyPair.pk === targetPwPubKey) {
+        if (equalBytes(pwAndKeys.authKeyPair.pk, targetPwPubKey)) {
           return { password: pwAndKeys.password };
         }
       } catch (error) {

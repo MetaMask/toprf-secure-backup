@@ -469,6 +469,14 @@ describe('toprf secret backup', function () {
       expect(recoveredNewKey.encKey).not.toStrictEqual(
         originalEncKeyResult.encKey,
       );
+
+      // Verify that we can recover old pw.
+      const recoveredPassword = await toprfSecureBackup.recoverPassword({
+        targetPwPubKey: originalEncKeyResult.authKeyPair.pk,
+        curEncKey: newEncKeyResult.encKey,
+        curAuthKeyPair: newEncKeyResult.authKeyPair,
+      });
+      expect(recoveredPassword.password).toBe(originalPassword);
     });
 
     // The metadata lock has a 90 second expiry time and will auto-release after that period,
