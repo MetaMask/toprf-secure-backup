@@ -1,3 +1,4 @@
+import { bytesToHex } from '@noble/hashes/utils';
 import type { Ecies } from '@toruslabs/eccrypto';
 import type BN from 'bn.js';
 import type { curve } from 'elliptic';
@@ -39,9 +40,9 @@ export function encryptedParamsBufToHex(
   encParams: Ecies,
 ): Omit<EciesHex, 'ciphertext'> {
   return {
-    iv: Buffer.from(encParams.iv).toString('hex'),
-    ephemPublicKey: Buffer.from(encParams.ephemPublicKey).toString('hex'),
-    mac: Buffer.from(encParams.mac).toString('hex'),
+    iv: bytesToHex(encParams.iv),
+    ephemPublicKey: bytesToHex(encParams.ephemPublicKey),
+    mac: bytesToHex(encParams.mac),
     mode: 'AES256',
   };
 }

@@ -18,6 +18,7 @@ import {
 } from '@metamask/auth-network-utils';
 import { secp256k1 as secp256k1Noble } from '@noble/curves/secp256k1';
 import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
+import { bytesToHex } from '@noble/hashes/utils';
 import { decrypt, encrypt } from '@toruslabs/eccrypto';
 import { post } from '@toruslabs/http-helpers';
 import BN from 'bn.js';
@@ -140,6 +141,36 @@ const generateShares = (
 };
 
 /**
+ * Pads a string to a length that is a multiple of 4.
+ *
+ * @param input - The base64 encoded string to pad
+ * @returns The padded base string.
+ */
+const padBase64String = (input: string): string => {
+  const segmentLength = 4;
+  const stringLength = input.length;
+  const diff = stringLength % segmentLength;
+
+  if (!diff) {
+    return input;
+  }
+
+  let position = stringLength;
+  let padLength = segmentLength - diff;
+  const paddedStringLength = stringLength + padLength;
+  const buffer = Buffer.alloc(paddedStringLength);
+
+  buffer.write(input);
+
+  while (padLength > 0) {
+    buffer.write('=', (position += 1));
+    padLength -= 1;
+  }
+
+  return buffer.toString();
+};
+
+/**
  * Encrypts given data using pub key.
  *
  * @param data - Data to be encrypted in buffer format.
@@ -153,7 +184,7 @@ const encryptData = async (
   const encryptedData = await encrypt(pubKey, data);
   const encryptedDataHex = encryptedParamsBufToHex(encryptedData);
   return {
-    data: Buffer.from(encryptedData.ciphertext).toString('hex'),
+    data: bytesToHex(encryptedData.ciphertext),
     metadata: {
       ...encryptedDataHex,
     },
@@ -283,7 +314,7 @@ export const createNewUserShareImportItems = async (
 
       // Encrypt the auth token
       const encryptedAuthToken = await encryptData(
-        Buffer.from(authToken, 'base64'),
+        Buffer.from(padBase64String(authToken), 'base64'),
         Buffer.from(nodePubKey, 'hex'),
       );
 
