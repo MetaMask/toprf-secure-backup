@@ -693,7 +693,7 @@ function serializePwBackup(
       pw,
       encKey: bytesToHex(encKey),
       authKeyPair: {
-        sk: authKeyPair.sk,
+        sk: authKeyPair.sk.toString(),
         pk: bytesToHex(authKeyPair.pk),
       },
     }),
@@ -716,7 +716,7 @@ function deserializePwBackup(data: Uint8Array): {
     pw: json.pw,
     encKey: hexToBytes(json.encKey),
     authKeyPair: {
-      sk: json.authKeyPair.sk,
+      sk: BigInt(json.authKeyPair.sk),
       pk: hexToBytes(json.authKeyPair.pk),
     },
   };
