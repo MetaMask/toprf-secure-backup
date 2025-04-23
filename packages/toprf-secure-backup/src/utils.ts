@@ -449,8 +449,7 @@ function extractRateLimitDetails(
 
   if (
     typeof data?.message !== 'string' ||
-    typeof data?.remainingTime !== 'number' ||
-    typeof data?.isPermanent !== 'boolean'
+    typeof data?.remainingTime !== 'number'
   ) {
     return undefined;
   }
@@ -458,14 +457,12 @@ function extractRateLimitDetails(
   return {
     message: data.message,
     remainingTime: data.remainingTime,
-    isPermanent: data.isPermanent,
   };
 }
 
 /**
  * Checks responses for rate limit errors and returns details if found.
  * Examines all responses and returns the rate limit with the longest remaining time.
- * Prioritizes permanent rate limits over temporary ones.
  *
  * @param resultArr - The result array to check for rate limit errors.
  * @returns Rate limit details if found, undefined otherwise.
@@ -485,14 +482,12 @@ export function checkRateLimitErrors<Type>(
 
     const noMaxYet = !maxRateLimit;
 
-    const { isPermanent, remainingTime } = rateLimitDetails;
+    const { remainingTime } = rateLimitDetails;
 
-    const maxIsNotPermanent = !maxRateLimit?.isPermanent;
-    const isPermanentRateLimit = maxIsNotPermanent && isPermanent;
     const currentMaxTime = maxRateLimit?.remainingTime ?? 0;
-    const hasLongerTime = maxIsNotPermanent && remainingTime > currentMaxTime;
+    const hasLongerTime = remainingTime > currentMaxTime;
 
-    if (noMaxYet || isPermanentRateLimit || hasLongerTime) {
+    if (noMaxYet || hasLongerTime) {
       maxRateLimit = rateLimitDetails;
     }
   }

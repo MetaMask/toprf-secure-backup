@@ -31,7 +31,6 @@ describe('checkRateLimitErrors', () => {
           data: {
             message: 123, // Wrong type - should be string
             remaining_time: 300,
-            is_permanent: false,
           },
         },
       },
@@ -42,18 +41,6 @@ describe('checkRateLimitErrors', () => {
           data: {
             message: 'Too many requests',
             remaining_time: '300', // Wrong type - should be number
-            is_permanent: false,
-          },
-        },
-      },
-      {
-        error: {
-          code: -32602,
-          message: 'Rate limit exceeded',
-          data: {
-            message: 'Too many requests',
-            remaining_time: 300,
-            is_permanent: 'false', // Wrong type - should be boolean
           },
         },
       },
@@ -72,7 +59,6 @@ describe('checkRateLimitErrors', () => {
           data: {
             message: 'Too many requests',
             remaining_time: 300,
-            is_permanent: false,
           },
         },
       },
@@ -81,7 +67,6 @@ describe('checkRateLimitErrors', () => {
     const expected = {
       message: 'Too many requests',
       remainingTime: 300,
-      isPermanent: false,
     };
 
     expect(checkRateLimitErrors(results)).toStrictEqual(expected);
@@ -96,7 +81,6 @@ describe('checkRateLimitErrors', () => {
           data: {
             message: 'Too many requests',
             remaining_time: 300,
-            is_permanent: false,
           },
         },
       },
@@ -107,7 +91,6 @@ describe('checkRateLimitErrors', () => {
           data: {
             message: 'Too many requests',
             remaining_time: 600, // Longer time
-            is_permanent: false,
           },
         },
       },
@@ -116,42 +99,6 @@ describe('checkRateLimitErrors', () => {
     const expected = {
       message: 'Too many requests',
       remainingTime: 600,
-      isPermanent: false,
-    };
-
-    expect(checkRateLimitErrors(results)).toStrictEqual(expected);
-  });
-
-  it('should prioritize permanent rate limits over temporary ones', () => {
-    const results = [
-      {
-        error: {
-          code: -32602,
-          message: 'Rate limit exceeded',
-          data: {
-            message: 'Too many requests',
-            remaining_time: 1000, // Longer time but not permanent
-            is_permanent: false,
-          },
-        },
-      },
-      {
-        error: {
-          code: -32602,
-          message: 'Rate limit exceeded',
-          data: {
-            message: 'Account suspended',
-            remaining_time: 100, // Shorter time but permanent
-            is_permanent: true,
-          },
-        },
-      },
-    ];
-
-    const expected = {
-      message: 'Account suspended',
-      remainingTime: 100,
-      isPermanent: true,
     };
 
     expect(checkRateLimitErrors(results)).toStrictEqual(expected);
@@ -168,7 +115,6 @@ describe('checkRateLimitErrors', () => {
           data: {
             message: 'Too many requests',
             remaining_time: 300,
-            is_permanent: false,
           },
         },
       },
@@ -177,7 +123,6 @@ describe('checkRateLimitErrors', () => {
     const expected = {
       message: 'Too many requests',
       remainingTime: 300,
-      isPermanent: false,
     };
 
     expect(checkRateLimitErrors(results)).toStrictEqual(expected);
