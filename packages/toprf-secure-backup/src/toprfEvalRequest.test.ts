@@ -273,7 +273,6 @@ describe('toprfEvalRequest', () => {
           rateLimitDetails: {
             message: expect.any(String),
             remainingTime: expect.any(Number),
-            isPermanent: expect.any(Boolean),
           },
         },
       });
