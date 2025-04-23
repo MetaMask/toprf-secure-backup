@@ -415,6 +415,19 @@ describe('toprf secret backup', function () {
 
       expect(recoveredOriginalKey.keyShareIndex).toBe(FIRST_KEY_INDEX);
 
+      // Fetching password should fail, because password was not backed up yet.
+      await expect(
+        toprfSecureBackup.recoverPassword({
+          targetPwPubKey: recoveredOriginalKey.authKeyPair.pk,
+          curEncKey: originalEncKeyResult.encKey,
+          curAuthKeyPair: originalEncKeyResult.authKeyPair,
+        }),
+      ).rejects.toThrow(
+        TOPRFError.couldNotFetchPassword(
+          'Failed to get previous password and keys',
+        ),
+      );
+
       // Change to a new encryption key
       const newPassword = generateRandomPassword();
       const newEncKeyResult = await toprfSecureBackup.changeEncKey({
@@ -498,6 +511,28 @@ describe('toprf secret backup', function () {
         curAuthKeyPair: newEncKeyResult2.authKeyPair,
       });
       expect(recoveredPassword2.password).toBe(originalPassword);
+
+      // Verify that we can recover new pw.
+      const recoveredPassword3 = await toprfSecureBackup.recoverPassword({
+        targetPwPubKey: newEncKeyResult.authKeyPair.pk,
+        curEncKey: newEncKeyResult2.encKey,
+        curAuthKeyPair: newEncKeyResult2.authKeyPair,
+      });
+      expect(recoveredPassword3.password).toBe(newPassword);
+
+      // Password recovery should fail when we limit the password chain length
+      await expect(
+        toprfSecureBackup.recoverPassword({
+          targetPwPubKey: originalEncKeyResult.authKeyPair.pk,
+          curEncKey: newEncKeyResult2.encKey,
+          curAuthKeyPair: newEncKeyResult2.authKeyPair,
+          maxPwChainLength: 1,
+        }),
+      ).rejects.toThrow(
+        TOPRFError.couldNotFetchPassword(
+          'Exceeded maximum password chain length',
+        ),
+      );
     });
 
     // The metadata lock has a 90 second expiry time and will auto-release after that period,

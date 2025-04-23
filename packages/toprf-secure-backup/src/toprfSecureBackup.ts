@@ -535,7 +535,12 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
   async recoverPassword(
     params: RecoverPasswordParams,
   ): Promise<RecoverPasswordResult> {
-    const { targetPwPubKey, curEncKey, curAuthKeyPair } = params;
+    const {
+      targetPwPubKey,
+      curEncKey,
+      curAuthKeyPair,
+      maxPwChainLength = MAX_PASSWORD_CHAIN_LENGTH,
+    } = params;
 
     let pwAndKeys = {
       password: '',
@@ -543,7 +548,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       authKeyPair: curAuthKeyPair,
     };
 
-    for (let i = 0; i < MAX_PASSWORD_CHAIN_LENGTH; i++) {
+    for (let i = 0; i < maxPwChainLength; i++) {
       try {
         pwAndKeys = await this.#getPrevPasswordAndKeys({
           encKey: pwAndKeys.encKey,

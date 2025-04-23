@@ -289,6 +289,7 @@ export type RecoverPasswordParams = {
   targetPwPubKey: SEC1EncodedPublicKey;
   curEncKey: Uint8Array;
   curAuthKeyPair: KeyPair;
+  maxPwChainLength?: number;
 };
 
 export type RecoverPasswordResult = {
