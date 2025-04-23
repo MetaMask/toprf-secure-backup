@@ -369,7 +369,7 @@ describe('toprf secret backup', function () {
   });
 
   describe('changeEncKey', function () {
-    it('should be able to change encryption key', async function () {
+    it('should be able to change encryption key and recover password', async function () {
       const secretData = utf8ToBytes('test-secret-data-for-key-change');
       const { verifier, verifierId, idToken, toprfSecureBackup } = setup();
 
@@ -477,6 +477,27 @@ describe('toprf secret backup', function () {
         curAuthKeyPair: newEncKeyResult.authKeyPair,
       });
       expect(recoveredPassword.password).toBe(originalPassword);
+
+      // Change password again.
+      const newPassword2 = generateRandomPassword();
+      const newEncKeyResult2 = await toprfSecureBackup.changeEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        verifier,
+        verifierId,
+        oldEncKey: newEncKeyResult.encKey,
+        oldAuthKeyPair: newEncKeyResult.authKeyPair,
+        oldPassword: newPassword,
+        newPassword: newPassword2,
+        newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 2,
+      });
+
+      // Verify that we can recover old pw.
+      const recoveredPassword2 = await toprfSecureBackup.recoverPassword({
+        targetPwPubKey: originalEncKeyResult.authKeyPair.pk,
+        curEncKey: newEncKeyResult2.encKey,
+        curAuthKeyPair: newEncKeyResult2.authKeyPair,
+      });
+      expect(recoveredPassword2.password).toBe(originalPassword);
     });
 
     // The metadata lock has a 90 second expiry time and will auto-release after that period,
