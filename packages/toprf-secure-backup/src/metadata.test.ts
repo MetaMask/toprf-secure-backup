@@ -86,7 +86,7 @@ describe('MetadataStore', () => {
       authKeyPair,
     );
     expect(result).not.toBeNull();
-    expect(result?.[0]).toStrictEqual(secretData);
+    expect(result?.[0].data).toStrictEqual(secretData);
   });
 
   it('should be able to store/fetch data with different instances', async () => {
@@ -104,7 +104,7 @@ describe('MetadataStore', () => {
       authKeyPair,
     );
     expect(result).not.toBeNull();
-    expect(result?.[0]).toStrictEqual(secretData);
+    expect(result?.[0].data).toStrictEqual(secretData);
   });
 
   it('should be able to acquire and release metadata lock', async () => {
@@ -384,5 +384,26 @@ describe('MetadataStore', () => {
     expect(fetchSpy).toHaveBeenCalled();
 
     jest.restoreAllMocks();
+  });
+
+  it('should be able to store and retrieve pw backup item', async () => {
+    const metadataStore = await createMetadataStore();
+
+    await metadataStore.addSecretDataItem({
+      secretData: { data: secretData, itemId: 'PW_BACKUP' },
+      encKey,
+      authKeyPair,
+    });
+
+    const result = await metadataStore.fetchAllSecretDataItems(
+      encKey,
+      authKeyPair,
+      'PW_BACKUP',
+    );
+
+    expect(result).not.toBeNull();
+    expect(result?.length).toBe(1);
+    expect(result?.[0].data).toStrictEqual(secretData);
+    expect(result?.[0].itemId).toBe('PW_BACKUP');
   });
 });
