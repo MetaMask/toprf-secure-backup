@@ -12,6 +12,7 @@ import {
   generateIdToken,
   generateRandomPassword,
   generateRandomVerifierId,
+  sleep,
 } from '../tests/testHelpers';
 
 const EXISTING_USER_VERIFIER_ID = 'test-verifier-id-existing-user';
@@ -366,6 +367,82 @@ describe('toprf secret backup', function () {
         }),
       ).rejects.toThrow(TOPRFError.couldNotDeriveEncryptionKey());
     });
+
+    it('should trigger rate limiting after multiple incorrect password attempts but allow correct password', async function () {
+      const { verifier, verifierId, idToken, toprfSecureBackup } = setup();
+
+      const authResult = await toprfSecureBackup.authenticate({
+        idTokens: [idToken],
+        verifier,
+        verifierId,
+      });
+
+      const correctPassword = generateRandomPassword();
+      await toprfSecureBackup.createAndPersistEncKey({
+        nodeAuthTokens: authResult.nodeAuthTokens,
+        password: correctPassword,
+        verifier,
+        verifierId,
+      });
+
+      const incorrectPassword = generateRandomPassword();
+
+      // First 3 attempts with incorrect password should fail normally
+      for (let i = 0; i < 3; i++) {
+        await expect(
+          toprfSecureBackup.recoverEncKey({
+            nodeAuthTokens: authResult.nodeAuthTokens,
+            password: incorrectPassword,
+            verifier,
+            verifierId,
+          }),
+        ).rejects.toThrow(TOPRFError.couldNotDeriveEncryptionKey());
+      }
+
+      // 4th attempt with incorrect password should trigger rate limiting
+      await expect(
+        toprfSecureBackup.recoverEncKey({
+          nodeAuthTokens: authResult.nodeAuthTokens,
+          password: incorrectPassword,
+          verifier,
+          verifierId,
+        }),
+      ).rejects.toMatchObject({
+        code: TORPFErrorCode.RateLimitExceeded,
+        message: expect.stringContaining('Rate limit error from server'),
+        meta: {
+          rateLimitDetails: {
+            message: expect.any(String),
+            remainingTime: expect.any(Number),
+          },
+        },
+      });
+
+      // Wait for the rate limit period
+      await sleep(30000);
+
+      // Attempt with the correct password should succeed and reset rate limit
+      const recoveredKey = await toprfSecureBackup.recoverEncKey({
+        nodeAuthTokens: authResult.nodeAuthTokens,
+        password: correctPassword,
+        verifier,
+        verifierId,
+      });
+      expect(recoveredKey).toBeDefined();
+      expect(recoveredKey.authKeyPair).toBeDefined();
+      expect(recoveredKey.encKey).toBeDefined();
+      expect(await recoveredKey.rateLimitResetResult).toBeUndefined();
+
+      // Subsequent attempt with incorrect password should fail normally again
+      await expect(
+        toprfSecureBackup.recoverEncKey({
+          nodeAuthTokens: authResult.nodeAuthTokens,
+          password: incorrectPassword,
+          verifier,
+          verifierId,
+        }),
+      ).rejects.toThrow(TOPRFError.couldNotDeriveEncryptionKey());
+    }, 40000);
   });
 
   describe('changeEncKey', function () {
