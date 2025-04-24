@@ -1,5 +1,7 @@
+import { bytesToUtf8, equalBytes } from '@noble/ciphers/utils';
 import { utf8ToBytes } from '@noble/curves/abstract/utils';
 import { secp256k1 } from '@noble/curves/secp256k1';
+import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
 import type {
   INodePub,
   TORUS_SAPPHIRE_NETWORK_TYPE,
@@ -8,7 +10,12 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
-import { FIRST_KEY_INDEX } from './constants';
+import {
+  FIRST_KEY_INDEX,
+  MAX_PASSWORD_CHAIN_LENGTH,
+  PW_BACKUP_ITEM_ID,
+} from './constants';
+import { TOPRFError } from './errors';
 import { getPubKey } from './getPubKeyRequest';
 import type {
   AuthenticateParams,
@@ -28,11 +35,15 @@ import type {
   CreateLocalKeyParams,
   CreateLocalKeyResult,
   BatchAddSecretDataItemParams,
+  RecoverPasswordParams,
+  KeyPair,
+  RecoverPasswordResult,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
   deriveEncryptionKey,
 } from './keyDerivation';
+import type { SecretDataItem } from './metadata';
 import { MetadataStore } from './metadata';
 import { OPRF, generateRandomScalar } from './oprf';
 import { resetRateLimits } from './resetRateLimits';
@@ -321,6 +332,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       verifierId,
       oldEncKey,
       oldAuthKeyPair,
+      oldPassword,
       newPassword,
       newKeyShareIndex,
     } = params;
@@ -341,18 +353,30 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         metadataStore.acquireMetadataLock(authKeyPair),
       ]);
 
-      const existingData = await metadataStore.fetchAllSecretDataItems(
-        oldEncKey,
-        oldAuthKeyPair,
-      );
+      const existingData = (
+        await metadataStore.fetchAllSecretDataItems(oldEncKey, oldAuthKeyPair)
+      )
+        // filter out special items
+        .filter(
+          (dataItem: SecretDataItem) => dataItem.itemId !== PW_BACKUP_ITEM_ID,
+        )
+        // Remove itemId
+        .map((dataItem: SecretDataItem) => ({
+          data: dataItem.data,
+        }));
 
       // Validate that this is actually a key change scenario
       if (!existingData || existingData.length === 0) {
         throw new Error('No existing data found to change key');
       }
 
+      const pwBackup: SecretDataItem = {
+        data: serializePwBackup(oldPassword, oldEncKey, oldAuthKeyPair),
+        itemId: PW_BACKUP_ITEM_ID,
+      };
+
       await metadataStore.batchAddSecretData({
-        secretData: existingData,
+        secretData: [pwBackup, ...existingData],
         encKey,
         authKeyPair,
       });
@@ -395,7 +419,12 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    */
   async addSecretDataItem(params: AddSecretDataItemParams): Promise<void> {
     const metadataStore = await this.#createMetadataStore();
-    await metadataStore.addSecretDataItem(params);
+    await metadataStore.addSecretDataItem({
+      ...params,
+      secretData: {
+        data: params.secretData,
+      },
+    });
   }
 
   /**
@@ -419,7 +448,12 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         params.authKeyPair,
       );
 
-      await metadataStore.batchAddSecretData(params);
+      await metadataStore.batchAddSecretData({
+        ...params,
+        secretData: params.secretData.map((data) => ({
+          data,
+        })),
+      });
     } finally {
       // release metadata lock
       if (metadataLockId) {
@@ -449,9 +483,18 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     params: FetchAllSecretDataParams,
   ): Promise<Uint8Array[]> {
     const metadataStore = await this.#createMetadataStore();
-    return metadataStore.fetchAllSecretDataItems(
-      params.decKey,
-      params.authKeyPair,
+    return (
+      (
+        await metadataStore.fetchAllSecretDataItems(
+          params.decKey,
+          params.authKeyPair,
+        )
+      )
+        // filter out special items
+        .filter(
+          (dataItem: SecretDataItem) => dataItem.itemId !== PW_BACKUP_ITEM_ID,
+        )
+        .map((dataItem: SecretDataItem) => dataItem.data)
     );
   }
 
@@ -477,6 +520,51 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       verifierId,
     });
     return { authPubKey };
+  }
+
+  /**
+   * This function fetches the password.
+   *
+   * @param params - The parameters for getting the password.
+   * @param params.nodeAuthTokens - The auth tokens issued by the nodes on authenticating the user.
+   * @param params.verifier - The verifier name used for authentication.
+   * @param params.verifierId - The verifierId issued to user after authentication.
+   *
+   * @returns The password.
+   */
+  async recoverPassword(
+    params: RecoverPasswordParams,
+  ): Promise<RecoverPasswordResult> {
+    const {
+      targetPwPubKey,
+      curEncKey,
+      curAuthKeyPair,
+      maxPwChainLength = MAX_PASSWORD_CHAIN_LENGTH,
+    } = params;
+
+    let pwAndKeys = {
+      password: '',
+      encKey: curEncKey,
+      authKeyPair: curAuthKeyPair,
+    };
+
+    for (let i = 0; i < maxPwChainLength; i++) {
+      try {
+        pwAndKeys = await this.#getPrevPasswordAndKeys({
+          encKey: pwAndKeys.encKey,
+          authKeyPair: pwAndKeys.authKeyPair,
+        });
+        if (equalBytes(pwAndKeys.authKeyPair.pk, targetPwPubKey)) {
+          return { password: pwAndKeys.password };
+        }
+      } catch (error) {
+        throw TOPRFError.couldNotFetchPassword((error as Error).message);
+      }
+    }
+
+    throw TOPRFError.couldNotFetchPassword(
+      'Exceeded maximum password chain length',
+    );
   }
 
   /**
@@ -551,4 +639,90 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     });
     return metadataEndpointsMap;
   }
+
+  /**
+   * Gets the previous password and keys.
+   *
+   * @param params - The parameters for getting the previous password and keys.
+   * @param params.encKey - The encryption key to be used for decrypting the secret data.
+   * @param params.authKeyPair - The authentication key pair to be used for authenticating the secret data.
+   *
+   * @returns The previous password and keys.
+   */
+  async #getPrevPasswordAndKeys(params: {
+    encKey: Uint8Array;
+    authKeyPair: KeyPair;
+  }): Promise<{
+    password: string;
+    encKey: Uint8Array;
+    authKeyPair: KeyPair;
+  }> {
+    const metadataStore = await this.#createMetadataStore();
+
+    const pwBackupData = await metadataStore.fetchAllSecretDataItems(
+      params.encKey,
+      params.authKeyPair,
+      PW_BACKUP_ITEM_ID,
+    );
+
+    if (pwBackupData.length === 0) {
+      throw new Error('Failed to get previous password and keys');
+    }
+
+    // Parse JSON object.
+    const pwBackupDataJson = deserializePwBackup(pwBackupData[0].data);
+
+    return {
+      password: pwBackupDataJson.pw,
+      encKey: pwBackupDataJson.encKey,
+      authKeyPair: pwBackupDataJson.authKeyPair,
+    };
+  }
+}
+
+/**
+ * Serializes the password, encryption key, and authentication key pair into a JSON string.
+ *
+ * @param pw - The password.
+ * @param encKey - The encryption key.
+ * @param authKeyPair - The authentication key pair.
+ * @returns The serialized JSON string.
+ */
+function serializePwBackup(
+  pw: string,
+  encKey: Uint8Array,
+  authKeyPair: KeyPair,
+): Uint8Array {
+  return utf8ToBytes(
+    JSON.stringify({
+      pw,
+      encKey: bytesToHex(encKey),
+      authKeyPair: {
+        sk: authKeyPair.sk.toString(),
+        pk: bytesToHex(authKeyPair.pk),
+      },
+    }),
+  );
+}
+
+/**
+ * Deserializes the password, encryption key, and authentication key pair from a JSON string.
+ *
+ * @param data - The serialized JSON string.
+ * @returns The password, encryption key, and authentication key pair.
+ */
+function deserializePwBackup(data: Uint8Array): {
+  pw: string;
+  encKey: Uint8Array;
+  authKeyPair: KeyPair;
+} {
+  const json = JSON.parse(bytesToUtf8(data));
+  return {
+    pw: json.pw,
+    encKey: hexToBytes(json.encKey),
+    authKeyPair: {
+      sk: BigInt(json.authKeyPair.sk),
+      pk: hexToBytes(json.authKeyPair.pk),
+    },
+  };
 }

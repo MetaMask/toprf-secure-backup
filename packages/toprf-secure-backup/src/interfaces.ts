@@ -6,9 +6,9 @@ export type SEC1EncodedPublicKey = Uint8Array;
 /**
  * KeyPair - The encryption/decryption private and public key pair.
  *
- * privKey - The decryption private key in bigint format.
+ * sk - The decryption private key in bigint format.
  *
- * pubKey - The encryption public key in SEC1 encoded format.
+ * pk - The encryption public key in SEC1 encoded format.
  */
 export type KeyPair = {
   sk: bigint;
@@ -181,7 +181,7 @@ export type BaseAddSecretDataItemParams<SecretDataType> = {
  *
  * authKeyPair - The authentication key to be used to provide valid signature for storing the secret data.
  *
- * secretData - The secret data to be registered.
+ * secretData - The secret data to be stored.
  */
 export type AddSecretDataItemParams = BaseAddSecretDataItemParams<Uint8Array>;
 
@@ -225,6 +225,8 @@ export type RecoverEncryptionKeyResult = {
  *
  * oldAuthKeyPair - The old authentication key pair of the user.
  *
+ * oldPassword - The old password of the user.
+ *
  * newPassword - The new password of the user.
  *
  * newKeyShareIndex - The key share index to be used for the new key.
@@ -235,6 +237,7 @@ export type ChangeEncryptionKeyParams = {
   verifierId: string;
   oldEncKey: Uint8Array;
   oldAuthKeyPair: KeyPair;
+  oldPassword: string;
   newPassword: string;
   newKeyShareIndex: number;
 };
@@ -280,6 +283,17 @@ export type FetchAuthPubKeyParams = {
 
 export type FetchAuthPubKeyResult = {
   authPubKey: SEC1EncodedPublicKey;
+};
+
+export type RecoverPasswordParams = {
+  targetPwPubKey: SEC1EncodedPublicKey;
+  curEncKey: Uint8Array;
+  curAuthKeyPair: KeyPair;
+  maxPwChainLength?: number;
+};
+
+export type RecoverPasswordResult = {
+  password: string;
 };
 
 export type IToprfSecureBackup = {
@@ -417,7 +431,7 @@ export type IBaseAddSecretDataRequestBody<DataType> =
     /**
      * The authentication token of the user issued by the SSS services
      */
-    authToken: string;
+    authToken?: string;
     /**
      * The secret data to be stored.
      *
@@ -456,6 +470,10 @@ export type IAddSecretDataRequestBody =
      * The version of the secret data
      */
     version?: string;
+    /**
+     * The item id to be used for storing the secret data.
+     */
+    itemId?: string;
   };
 
 /**
@@ -474,6 +492,10 @@ export type IGetSecretDataRequestBody = IBaseMetadataRequestBody & {
    * Sample signature: sign(keccak256(feature, authToken, timestamp))
    */
   signature: string;
+  /**
+   * The item id to be used for fetching the secret data.
+   */
+  itemId?: string;
 };
 
 /**

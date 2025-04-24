@@ -369,7 +369,7 @@ describe('toprf secret backup', function () {
   });
 
   describe('changeEncKey', function () {
-    it('should be able to change encryption key', async function () {
+    it('should be able to change encryption key and recover password', async function () {
       const secretData = utf8ToBytes('test-secret-data-for-key-change');
       const { verifier, verifierId, idToken, toprfSecureBackup } = setup();
 
@@ -415,6 +415,19 @@ describe('toprf secret backup', function () {
 
       expect(recoveredOriginalKey.keyShareIndex).toBe(FIRST_KEY_INDEX);
 
+      // Fetching password should fail, because password was not backed up yet.
+      await expect(
+        toprfSecureBackup.recoverPassword({
+          targetPwPubKey: recoveredOriginalKey.authKeyPair.pk,
+          curEncKey: originalEncKeyResult.encKey,
+          curAuthKeyPair: originalEncKeyResult.authKeyPair,
+        }),
+      ).rejects.toThrow(
+        TOPRFError.couldNotFetchPassword(
+          'Failed to get previous password and keys',
+        ),
+      );
+
       // Change to a new encryption key
       const newPassword = generateRandomPassword();
       const newEncKeyResult = await toprfSecureBackup.changeEncKey({
@@ -423,6 +436,7 @@ describe('toprf secret backup', function () {
         verifierId,
         oldEncKey: originalEncKeyResult.encKey,
         oldAuthKeyPair: originalEncKeyResult.authKeyPair,
+        oldPassword: originalPassword,
         newPassword,
         newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 1,
       });
@@ -467,6 +481,57 @@ describe('toprf secret backup', function () {
       );
       expect(recoveredNewKey.encKey).not.toStrictEqual(
         originalEncKeyResult.encKey,
+      );
+
+      // Verify that we can recover old pw.
+      const recoveredPassword = await toprfSecureBackup.recoverPassword({
+        targetPwPubKey: originalEncKeyResult.authKeyPair.pk,
+        curEncKey: newEncKeyResult.encKey,
+        curAuthKeyPair: newEncKeyResult.authKeyPair,
+      });
+      expect(recoveredPassword.password).toBe(originalPassword);
+
+      // Change password again.
+      const newPassword2 = generateRandomPassword();
+      const newEncKeyResult2 = await toprfSecureBackup.changeEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        verifier,
+        verifierId,
+        oldEncKey: newEncKeyResult.encKey,
+        oldAuthKeyPair: newEncKeyResult.authKeyPair,
+        oldPassword: newPassword,
+        newPassword: newPassword2,
+        newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 2,
+      });
+
+      // Verify that we can recover old pw.
+      const recoveredPassword2 = await toprfSecureBackup.recoverPassword({
+        targetPwPubKey: originalEncKeyResult.authKeyPair.pk,
+        curEncKey: newEncKeyResult2.encKey,
+        curAuthKeyPair: newEncKeyResult2.authKeyPair,
+      });
+      expect(recoveredPassword2.password).toBe(originalPassword);
+
+      // Verify that we can recover new pw.
+      const recoveredPassword3 = await toprfSecureBackup.recoverPassword({
+        targetPwPubKey: newEncKeyResult.authKeyPair.pk,
+        curEncKey: newEncKeyResult2.encKey,
+        curAuthKeyPair: newEncKeyResult2.authKeyPair,
+      });
+      expect(recoveredPassword3.password).toBe(newPassword);
+
+      // Password recovery should fail when we limit the password chain length
+      await expect(
+        toprfSecureBackup.recoverPassword({
+          targetPwPubKey: originalEncKeyResult.authKeyPair.pk,
+          curEncKey: newEncKeyResult2.encKey,
+          curAuthKeyPair: newEncKeyResult2.authKeyPair,
+          maxPwChainLength: 1,
+        }),
+      ).rejects.toThrow(
+        TOPRFError.couldNotFetchPassword(
+          'Exceeded maximum password chain length',
+        ),
       );
     });
 
@@ -519,6 +584,7 @@ describe('toprf secret backup', function () {
         verifierId,
         oldEncKey: originalEncKeyResult.encKey,
         oldAuthKeyPair: originalEncKeyResult.authKeyPair,
+        oldPassword: originalPassword,
         newPassword,
         newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 1,
       });
@@ -557,6 +623,7 @@ describe('toprf secret backup', function () {
           verifierId,
           oldEncKey: originalEncKeyResult.encKey,
           oldAuthKeyPair: originalEncKeyResult.authKeyPair,
+          oldPassword: originalPassword,
           newPassword,
           newKeyShareIndex: FIRST_KEY_INDEX + 1,
         }),
@@ -615,6 +682,7 @@ describe('toprf secret backup', function () {
             verifierId,
             oldEncKey: originalEncKeyResult.encKey,
             oldAuthKeyPair: originalEncKeyResult.authKeyPair,
+            oldPassword: originalPassword,
             newPassword,
             newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 1,
           }),
@@ -683,6 +751,7 @@ describe('toprf secret backup', function () {
           verifierId,
           oldEncKey: originalEncKeyResult.encKey,
           oldAuthKeyPair: incorrectKeyResult.authKeyPair, // Using incorrect authKeyPair
+          oldPassword: originalPassword,
           newPassword,
           newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 1,
         }),
@@ -736,6 +805,7 @@ describe('toprf secret backup', function () {
           verifierId,
           oldEncKey: incorrectKeyResult.encKey, // Using incorrect encKey
           oldAuthKeyPair: originalEncKeyResult.authKeyPair,
+          oldPassword: originalPassword,
           newPassword,
           newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 1,
         }),

@@ -70,6 +70,12 @@ describe('TOPRFError', () => {
     expect(TOPRFError.insufficientAuthTokens().code).toBe(
       TORPFErrorCode.InsufficientAuthTokens,
     );
+    expect(TOPRFError.invalidAuthTokens().code).toBe(
+      TORPFErrorCode.InvalidAuthTokens,
+    );
+    expect(TOPRFError.couldNotFetchPassword().code).toBe(
+      TORPFErrorCode.CouldNotFetchPassword,
+    );
   });
 
   it('should create a rate limit error with details', () => {

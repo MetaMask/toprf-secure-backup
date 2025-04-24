@@ -8,12 +8,11 @@ import { bytesToHex } from '@noble/hashes/utils';
 import type {
   IGetSecretDataRequestBody,
   KeyPair,
-  AddSecretDataItemParams,
   IAddSecretDataRequestBody,
   IBatchAddSecretDataRequestBody,
-  BatchAddSecretDataItemParams,
   IMetadataLockRequestBody,
   NodeAuthToken,
+  BaseAddSecretDataItemParams,
 } from './interfaces';
 
 type MetadataStoreOptions = {
@@ -35,6 +34,18 @@ export type AuthTokenToMetadataEndpointsMap = {
 };
 
 export type LockAcquiredResponse = { status: MetadataLockStatus; id?: string };
+
+export type SecretDataItem = {
+  itemId?: string;
+  data: Uint8Array;
+};
+
+export type MetadataAddSecretDataItemParams =
+  BaseAddSecretDataItemParams<SecretDataItem>;
+
+export type MetadataBatchAddSecretDataItemParams = BaseAddSecretDataItemParams<
+  SecretDataItem[]
+>;
 
 /**
  * Error class for metadata store.
@@ -81,7 +92,9 @@ export class MetadataStore {
    * @param params.encKey - The encryption key to be used for encrypting the secret data.
    * @returns A promise that resolves when the secret data is stored.
    */
-  async addSecretDataItem(params: AddSecretDataItemParams): Promise<void> {
+  async addSecretDataItem(
+    params: MetadataAddSecretDataItemParams,
+  ): Promise<void> {
     try {
       const { secretData, encKey, authKeyPair } = params;
 
@@ -108,7 +121,7 @@ export class MetadataStore {
    * @returns A promise that resolves when the secret data is stored.
    */
   async batchAddSecretData(
-    params: BatchAddSecretDataItemParams,
+    params: MetadataBatchAddSecretDataItemParams,
   ): Promise<void> {
     try {
       const { secretData, encKey, authKeyPair } = params;
@@ -131,17 +144,20 @@ export class MetadataStore {
    *
    * @param encKey - The encryption key to be used for decrypting the secret data.
    * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
+   * @param itemId - The item id to be used for fetching the secret data.
    * @returns A promise that resolves with the decrypted secret data.
    */
   async fetchAllSecretDataItems(
     encKey: Uint8Array,
     authKeyPair: KeyPair,
-  ): Promise<Uint8Array[]> {
+    itemId?: string,
+  ): Promise<SecretDataItem[]> {
     try {
       const result = await this.#getAllDataItems({
         encKey,
         authKeyPair,
         metadataEndpoint: this.#metadataEndpoint,
+        itemId,
       });
       return result;
     } catch (error) {
@@ -211,19 +227,24 @@ export class MetadataStore {
    * @returns A promise that resolves when the secret data is stored.
    */
   async #addData(params: {
-    secretData: Uint8Array;
+    secretData: SecretDataItem;
     encKey: Uint8Array;
     authKeyPair: KeyPair;
     metadataEndpoint: string;
   }): Promise<boolean> {
     try {
       const url = `${params.metadataEndpoint}/enc_account_data/set`;
-      const encryptedData = this.#encryptData(params.secretData, params.encKey);
-      const payload =
-        this.#generatePayloadForSetOrBatchSetSecretDataRequest<Uint8Array>(
-          encryptedData,
-          params.authKeyPair,
-        );
+      const encryptedData = this.#encryptData(
+        params.secretData.data,
+        params.encKey,
+      );
+      const payload = this.#generatePayloadForSetOrBatchSetSecretDataRequest(
+        {
+          itemId: params.secretData.itemId,
+          data: encryptedData,
+        },
+        params.authKeyPair,
+      );
       const requestBody = JSON.stringify(payload);
 
       const response = await fetch(url, {
@@ -260,7 +281,7 @@ export class MetadataStore {
    * @returns A promise that resolves when the secret data is stored.
    */
   async #batchAddData(params: {
-    secretData: Uint8Array[];
+    secretData: SecretDataItem[];
     encKey: Uint8Array;
     authKeyPair: KeyPair;
     metadataEndpoint: string;
@@ -268,11 +289,13 @@ export class MetadataStore {
     try {
       const url = `${params.metadataEndpoint}/enc_account_data/batch_set`;
       const encryptedDataArray = params.secretData.map((secret) => ({
-        data: this.#encryptData(secret, params.encKey),
+        data: this.#encryptData(secret.data, params.encKey),
+        itemId: secret.itemId,
       }));
-      const payload = this.#generatePayloadForSetOrBatchSetSecretDataRequest<
-        { data: Uint8Array }[]
-      >(encryptedDataArray, params.authKeyPair);
+      const payload = this.#generatePayloadForSetOrBatchSetSecretDataRequest(
+        encryptedDataArray,
+        params.authKeyPair,
+      );
 
       const response = await fetch(url, {
         headers: {
@@ -304,17 +327,20 @@ export class MetadataStore {
    * @param params.encKey - The encryption key to be used for decrypting the secret data.
    * @param params.authKeyPair - The authentication key pair to be used for authenticating the secret data.
    * @param params.metadataEndpoint - The metadata server endpoint to be used for fetching the secret data.
+   * @param params.itemId - The item id to be used for fetching the secret data.
    * @returns A promise that resolves with the decrypted secret data.
    */
   async #getAllDataItems(params: {
     encKey: Uint8Array;
     authKeyPair: KeyPair;
     metadataEndpoint: string;
-  }): Promise<Uint8Array[]> {
+    itemId?: string;
+  }): Promise<SecretDataItem[]> {
     try {
       const url = `${params.metadataEndpoint}/enc_account_data/get`;
       const payload = this.#generatePayloadForGetSecretDataRequest(
         params.authKeyPair,
+        params.itemId,
       );
 
       const response = await fetch(url, {
@@ -331,15 +357,23 @@ export class MetadataStore {
         throw new Error(`HTTP error message: ${responseBody.error}`);
       }
 
-      const jsonData = await response.json();
+      const jsonData = (await response.json()) as {
+        data: string[];
+        ids: string[];
+      };
       if (!jsonData.data) {
         throw new MetadataStoreError('Failed to fetch metadata');
       }
 
-      const secretData = jsonData.data.map((data: string) => {
-        const rawData = new Uint8Array(Buffer.from(data, 'base64'));
-        return this.#decryptData(rawData, params.encKey);
-      });
+      const secretData: SecretDataItem[] = jsonData.data.map(
+        (data: string, index: number) => {
+          const rawData = new Uint8Array(Buffer.from(data, 'base64'));
+          return {
+            itemId: jsonData.ids[index],
+            data: this.#decryptData(rawData, params.encKey),
+          };
+        },
+      );
       return secretData;
     } catch (error) {
       const errorMessage = (error as Error).message || 'Unknown error';
@@ -433,68 +467,68 @@ export class MetadataStore {
   /**
    * Generate the payload for the set or batch set secret data request and get payload signature.
    *
-   * @param rawData - The raw encrypted secret data or batch of encrypted secret data to be stored.
+   * @param inputData - The raw encrypted secret data or batch of encrypted secret data to be stored.
    * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
    * @returns The payload for the batch set secret data request.
    */
-  #generatePayloadForSetOrBatchSetSecretDataRequest<
-    RawDataType extends Uint8Array | { data: Uint8Array }[],
-  >(
-    rawData: RawDataType,
+  #generatePayloadForSetOrBatchSetSecretDataRequest(
+    inputData: SecretDataItem | SecretDataItem[],
     authKeyPair: KeyPair,
-  ): RawDataType extends Uint8Array
-    ? IAddSecretDataRequestBody
-    : IBatchAddSecretDataRequestBody {
+  ): IAddSecretDataRequestBody | IBatchAddSecretDataRequestBody {
     const timestamp = Date.now().toString();
     const feature = this.#feature;
 
-    let base64EncodedData: string | { data: string }[];
+    const sigPayload: Record<string, any> = {
+      timestamp,
+      feature,
+    };
 
-    if (Array.isArray(rawData)) {
-      base64EncodedData = rawData.map((item) => {
+    if (Array.isArray(inputData)) {
+      sigPayload.data = inputData.map((item) => {
         const dataBytes = item.data;
         return {
           data: Buffer.from(dataBytes).toString('base64'),
+          itemId: item.itemId,
         };
       });
     } else {
-      base64EncodedData = Buffer.from(rawData).toString('base64');
+      sigPayload.data = Buffer.from(inputData.data).toString('base64');
+      sigPayload.itemId = inputData.itemId;
     }
 
     const { pk, sk } = authKeyPair;
-    const signature = this.#generatePayloadSignature(
-      { data: base64EncodedData, timestamp, feature },
-      sk,
-    );
+    const signature = this.#generatePayloadSignature(sigPayload, sk);
 
     const pubKey = bytesToHex(pk);
 
-    return {
-      data: base64EncodedData,
+    const payload = {
+      ...sigPayload,
       signature,
-      feature,
-      timestamp,
       pubKey,
-    } as RawDataType extends Uint8Array
-      ? IAddSecretDataRequestBody
-      : IBatchAddSecretDataRequestBody;
+    };
+
+    return payload as
+      | IAddSecretDataRequestBody
+      | IBatchAddSecretDataRequestBody;
   }
 
   /**
    * Generate the payload for the get secret data request and get payload signature.
    *
    * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
+   * @param itemId - The item id to be used for fetching the secret data.
    * @returns The payload for the get secret data request.
    */
   #generatePayloadForGetSecretDataRequest(
     authKeyPair: KeyPair,
+    itemId?: string,
   ): IGetSecretDataRequestBody {
     const timestamp = Date.now().toString();
     const feature = this.#feature;
     const { pk, sk } = authKeyPair;
 
     const signature = this.#generatePayloadSignature(
-      { feature, timestamp },
+      { feature, timestamp, itemId },
       sk,
     );
 
@@ -505,6 +539,7 @@ export class MetadataStore {
       pubKey,
       timestamp,
       signature,
+      itemId,
     };
   }
 
