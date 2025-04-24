@@ -3,7 +3,7 @@ import { utf8ToBytes } from '@noble/ciphers/utils';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import { FIRST_KEY_INDEX } from './constants';
-import { TOPRFError, TORPFErrorCode } from './errors';
+import { TOPRFError, TOPRFErrorCode } from './errors';
 import type { KeyPair } from './interfaces';
 import { MetadataStore } from './metadata';
 import * as resetRateLimitsModule from './resetRateLimits';
@@ -1139,7 +1139,7 @@ describe('toprf secret backup', function () {
         verifierId,
       }),
     ).rejects.toMatchObject({
-      code: TORPFErrorCode.RateLimitExceeded,
+      code: TOPRFErrorCode.RateLimitExceeded,
       message: expect.stringContaining('Rate limit error from server'),
       meta: {
         rateLimitDetails: {
