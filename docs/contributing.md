@@ -3,11 +3,10 @@
 ## Table of contents
 
 - [Setting up your development environment](#setting-up-your-development-environment)
-- [Understanding codeowners](#understanding-codeowners)
-- [Understanding code guidelines](#understanding-code-guidelines)
 - [Writing and running tests](#writing-and-running-tests)
 - [Linting](#linting)
 - [Building](#building)
+- [Updating changelogs](#updating-changelogs)
 - [Creating pull requests](#creating-pull-requests)
 - [Testing changes to packages in another project](#testing-changes-to-packages-in-another-project)
 - [Releasing changes](#releasing-changes)
@@ -22,19 +21,6 @@
    - If you have Yarn installed globally via Homebrew or NPM, you'll need to uninstall it before running this command.
 3. Run `yarn install` to install dependencies and run any required post-install scripts.
 4. Run `yarn simple-git-hooks` to add a [Git hook](https://github.com/toplenboren/simple-git-hooks#what-is-a-git-hook) to your local development environment which will ensure that all files pass linting before you push a branch.
-
-## Understanding codeowners
-
-Although maintenance of this repository is superintended by the Wallet Framework team, the responsibility of maintenance is expected to be shared among multiple teams at MetaMask. In fact, some teams have codeownership over specific packages. The exact allocation is governed by the [`CODEOWNERS`](../.github/CODEOWNERS) file.
-
-**If your team is listed as a codeowner for a package, you may change, approve pull requests, and create releases without consulting the Wallet Framework team.** Alternatively, if you feel that your team should be granted codeownership over a specific package, you can submit a pull request to change `CODEOWNERS`.
-
-## Understanding code guidelines
-
-All code in this repo should not only follow the [MetaMask contributor guidelines](https://github.com/MetaMask/contributor-docs) but also the guidelines contained in this repo:
-
-- [Package guidelines](./package-guidelines.md)
-- [Controller guidelines](./controller-guidelines.md)
 
 ## Writing and running tests
 
@@ -70,6 +56,25 @@ Built files show up in the `dist/` directory in each package. These are the file
 - Run `yarn build` to build all packages in the monorepo.
 - Run `yarn workspace <workspaceName> run build` to build a single package.
 
+## Updating changelogs
+
+Each package in this repo has a file called `CHANGELOG.md` which is used to record consumer-facing changes that have been published over time. This file is useful for other engineers who are upgrading to new versions of packages so that they know how to use new features they are expecting, they know when bugs have been addressed, and they understand how to adapt to breaking changes (if any). All changelogs follow the ["Keep a Changelog"](https://keepachangelog.com/) specification (enforced by `@metamask/auto-changelog`).
+
+As you make changes to packages, make sure to update their changelogs in the same branch.
+
+We will offer more guidance here in the future, but in general:
+
+- Place new entries under the "Unreleased" section.
+- Place changes into categories. Consult the ["Keep a Changelog"](https://keepachangelog.com/en/1.1.0/#how) specification for the list.
+- Highlight breaking changes by prefixing them with `**BREAKING:**`.
+- Omit non-consumer facing changes from the changelog.
+- Do not simply reuse the commit message, but describe exact changes to the API or usable surface area of the project.
+- Use a list nested under a changelog entry to enumerate more details about a change if need be.
+- Include links to pull request(s) that introduced each change. (Most likely, this is the very same pull request in which you are updating the changelog.)
+- Combine like changes from multiple pull requests into a single changelog entry if necessary.
+- Split disparate changes from the same pull request into multiple entries if necessary.
+- Omit reverted changes from the changelog.
+
 ## Creating pull requests
 
 When submitting a pull request for this repo, take some a bit of extra time to fill out its description. Use the provided template as a guide, paying particular attention to two sections:
@@ -79,11 +84,6 @@ When submitting a pull request for this repo, take some a bit of extra time to f
   - Are there any changes in particular whose purpose might not be obvious or whose implementation might be difficult to decipher? How do they work?
   - If your primary goal was to update one package but you found you had to update another one along the way, why did you do so?
   - If you had to upgrade a dependency, why did you do so?
-- **Changelog:** This section is targeted toward consumers — internal developers of the extension or mobile app in addition to external dapp developers — and is intended to be a list of your changes from the perspective of each package in the monorepo. Questions you should seek to answer are:
-  - Which packages are being updated?
-  - What are the _exact_ changes to the API (types, interfaces, functions, methods) that are being changed?
-  - What are the anticipated effects to whichever platform might want to make use of these changes?
-  - If there are breaking changes to the API, what do consumers need to do in order to adapt to those changes upon upgrading to them?
 
 ## Testing changes to packages in another project
 
@@ -183,13 +183,7 @@ To use a preview build for a package within a project, you need to override the 
 
 ## Releasing changes
 
-Have changes that you need to release? There are a few things to understand:
-
-- The responsibility of maintenance is not the only thing shared among multiple teams at MetaMask; releases are as well. That means **if you work on a team that has codeownership over a package, you are free to create a new release without needing the Wallet Framework team to do so.**
-- Unlike clients, releases are not issued on a schedule; **anyone may create a release at any time**. Because of this, you may wish to review the Pull Requests tab on GitHub and ensure that no one else has a release candidate already in progress. If not, then you are free to start the process.
-- The release process is a work in progress. Further improvements to simplify the process are planned, but in the meantime, if you encounter any issues, please reach out to the Wallet Framework team.
-
-Now for the process itself, you have two options: using our interactive UI (recommended for most users) or manual specification.
+Have changes that you need to release? There are two ways to do it:
 
 ### Option A: Interactive Mode (Recommended)
 
@@ -351,10 +345,6 @@ This repository relies on Yarn's [workspaces feature](https://yarnpkg.com/featur
 > - `commandName` in the Yarn documentation is any sub-command that the `yarn` executable would usually take. Pay special attention to the difference between `run` vs `exec`. If you want to run a package script, you would use `run`, e.g., `yarn workspace @metamask/toprf-secure-backup run changelog:validate`; but if you want to run _any_ shell command, you'd use `exec`, e.g. `yarn workspace @metamask/toprf-secure-backup exec cat package.json | jq '.version'`.
 
 ## Adding new packages to the monorepo
-
-> [!NOTE]
-> If you're migrating an existing package to the monorepo, please see [the package migration documentation](./package-migration-process-guide.md).
-> You may be able to make use of `create-package` when migrating your package, but there's a lot more to it.
 
 Manually creating a new monorepo package can be a tedious, even frustrating process. To alleviate that
 problem, we have created a CLI that automates most of the job for us, creatively titled
