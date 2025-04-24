@@ -259,7 +259,7 @@ function handleSomeCallBackFnError<Type>(
     });
   }
 
-  // callback never returned a value and didn't throw an error
+  // no error was thrown and callback never returned a value
   throw new SomeError({
     errors: errorArr,
     responses: resultArr,
