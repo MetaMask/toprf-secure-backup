@@ -1,7 +1,3 @@
 # Lines starting with '#' are comments.
 # Each line is a file pattern followed by one or more owners.
-/.github/                            @MetaMask/wallet-framework-engineers
-
-## Web3Auth platform team
-/packages/auth-network-utils         @MetaMask/web3auth-platform
-/packages/toprf-secure-backup        @MetaMask/web3auth-platform
+*                                    @MetaMask/web3auth-platform
