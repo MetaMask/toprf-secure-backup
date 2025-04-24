@@ -70,7 +70,7 @@
     "@noble/hashes": "^1.7.1",
     "@toruslabs/bs58": "^1.0.0",
     "@toruslabs/constants": "^15.0.0",
-    "@toruslabs/eccrypto": "^6.0.2",
+    "@toruslabs/eccrypto": "^6.1.0",
     "bn.js": "^5.2.1",
     "elliptic": "^6.6.1",
     "json-stable-stringify": "^1.2.1",

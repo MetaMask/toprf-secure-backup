@@ -1290,7 +1290,7 @@ __metadata:
     "@noble/hashes": "npm:^1.7.1"
     "@toruslabs/bs58": "npm:^1.0.0"
     "@toruslabs/constants": "npm:^15.0.0"
-    "@toruslabs/eccrypto": "npm:^6.0.2"
+    "@toruslabs/eccrypto": "npm:^6.1.0"
     "@types/bn.js": "npm:^5.1.6"
     "@types/elliptic": "npm:^6"
     "@types/jest": "npm:^29.5.14"
@@ -1498,7 +1498,7 @@ __metadata:
     "@noble/hashes": "npm:^1.7.1"
     "@sentry/core": "npm:^9.10.0"
     "@toruslabs/constants": "npm:^15.0.0"
-    "@toruslabs/eccrypto": "npm:^6.0.2"
+    "@toruslabs/eccrypto": "npm:^6.1.0"
     "@toruslabs/fetch-node-details": "npm:^15.0.0"
     "@toruslabs/http-helpers": "npm:^8.1.1"
     "@types/bn.js": "npm:^5.1.6"
@@ -1847,12 +1847,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@toruslabs/eccrypto@npm:^6.0.2":
-  version: 6.0.2
-  resolution: "@toruslabs/eccrypto@npm:6.0.2"
+"@toruslabs/eccrypto@npm:^6.1.0":
+  version: 6.1.0
+  resolution: "@toruslabs/eccrypto@npm:6.1.0"
   dependencies:
     elliptic: "npm:^6.6.1"
-  checksum: 10/a9444da5a65186b3b361095df2fbfd66aa09ffe5723610c71636165e2798942cfc74d89a5bf63507aacf2518baee453bcf04ff353c5e2978a32c29db276a2c41
+  checksum: 10/8f79621ec4bd712eb12e70c0385353aa70221fe2b501ee674718c74a4147f82ede3ff38a045254b9da4bc9a5d1f891b87025904b7de8f6b8962791681ee65837
   languageName: node
   linkType: hard
 

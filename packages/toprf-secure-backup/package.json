@@ -53,7 +53,7 @@
     "@noble/hashes": "^1.7.1",
     "@sentry/core": "^9.10.0",
     "@toruslabs/constants": "^15.0.0",
-    "@toruslabs/eccrypto": "^6.0.2",
+    "@toruslabs/eccrypto": "^6.1.0",
     "@toruslabs/fetch-node-details": "^15.0.0",
     "@toruslabs/http-helpers": "^8.1.1",
     "bn.js": "^5.2.1"
