@@ -408,7 +408,7 @@ describe('toprf secret backup', function () {
           verifierId,
         }),
       ).rejects.toMatchObject({
-        code: TORPFErrorCode.RateLimitExceeded,
+        code: TOPRFErrorCode.RateLimitExceeded,
         message: expect.stringContaining('Rate limit error from server'),
         meta: {
           rateLimitDetails: {
