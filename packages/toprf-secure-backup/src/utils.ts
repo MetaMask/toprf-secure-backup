@@ -150,7 +150,7 @@ const encryptData = async (
   data: Buffer,
   pubKey: Buffer,
 ): Promise<EncryptedData> => {
-  const encryptedData = await encrypt(pubKey, data);
+  const encryptedData = await encrypt(pubKey, data, { padding: true });
   const encryptedDataHex = encryptedParamsBufToHex(encryptedData);
   return {
     data: Buffer.from(encryptedData.ciphertext).toString('hex'),
