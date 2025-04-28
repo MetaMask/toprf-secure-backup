@@ -128,67 +128,112 @@ describe('checkRateLimitErrors', () => {
     expect(checkRateLimitErrors(results)).toStrictEqual(expected);
   });
 
-  it('should correctly parse JsonRpcError', () => {
-    const invalidAuthTokenError: JSONRPCError = {
-      code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
-      message: 'Invalid auth tokens',
-    };
-    const error = parseJsonRpcError(invalidAuthTokenError);
-    expect(error).toBeInstanceOf(TOPRFError);
-    expect(error.code).toBe(TOPRFErrorCode.InvalidAuthTokens);
+  describe('parseJsonRpcError', () => {
+    it('should parse "Invalid auth tokens" message correctly', () => {
+      const rpcError: JSONRPCError = {
+        code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
+        message: 'Invalid auth token',
+      };
+      const parsedError = parseJsonRpcError(rpcError);
+      expect(parsedError).toBeInstanceOf(TOPRFError);
+      expect(parsedError.code).toBe(TOPRFErrorCode.InvalidAuthToken);
+      expect(parsedError.message).toContain('Invalid auth token');
+    });
 
-    const invalidParamsErrorWithoutData: JSONRPCError = {
-      code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
-      message: 'Insufficient share import items: got 3, expected 4',
-    };
-    const error2 = parseJsonRpcError(invalidParamsErrorWithoutData);
-    expect(error2).toBeInstanceOf(TOPRFError);
-    expect(error2.code).toBe(TOPRFErrorCode.JsonRpcError);
+    it('should parse "Auth token expired" message correctly', () => {
+      const rpcError: JSONRPCError = {
+        code: JsonRpcErrorCodes.ErrorCodeInvalidParams, // -32602
+        message: 'Auth token expired.',
+      };
+      const expectedError = TOPRFError.authTokenExpired();
+      const parsedError = parseJsonRpcError(rpcError);
+      expect(parsedError).toBeInstanceOf(TOPRFError);
+      expect(parsedError.code).toBe(expectedError.code);
+      expect(parsedError.message).toContain('Auth token expired');
+    });
 
-    const invalidParamsErrorWithData: JSONRPCError = {
-      code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
-      message: 'Invalid params',
-      data: 'Key change request invalid',
-    };
-    const error3 = parseJsonRpcError(invalidParamsErrorWithData);
-    expect(error3).toBeInstanceOf(TOPRFError);
-    expect(error3.code).toBe(TOPRFErrorCode.JsonRpcError);
+    it('should prioritize "Auth token expired" over "Invalid auth token"', () => {
+      const rpcError: JSONRPCError = {
+        code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
+        message: 'Error: Invalid auth token: auth token expired.',
+      };
+      const expectedError = TOPRFError.authTokenExpired(); // Expect expired error
+      const parsedError = parseJsonRpcError(rpcError);
+      expect(parsedError).toBeInstanceOf(TOPRFError);
+      expect(parsedError.code).toBe(expectedError.code);
+      expect(parsedError.message).toContain('Auth token expired');
+    });
 
-    const invalidParamsErrorWithJsonData: JSONRPCError = {
-      code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
-      message: 'Invalid params',
-      data: {
-        details: 'Missing required fields',
-      },
-    };
-    const error4 = parseJsonRpcError(invalidParamsErrorWithJsonData);
-    expect(error4).toBeInstanceOf(TOPRFError);
-    expect(error4.code).toBe(TOPRFErrorCode.JsonRpcError);
+    it('should parse InvalidParams error without data as JsonRpcError', () => {
+      const rpcError: JSONRPCError = {
+        code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
+        message: 'Insufficient share import items: got 3, expected 4',
+      };
+      const parsedError = parseJsonRpcError(rpcError);
+      expect(parsedError).toBeInstanceOf(TOPRFError);
+      expect(parsedError.code).toBe(TOPRFErrorCode.JsonRpcError);
+      expect(parsedError.message).toContain('Insufficient share import items');
+    });
 
-    const internalError: JSONRPCError = {
-      code: JsonRpcErrorCodes.ErrorCodeInternal,
-      message: 'Internal error',
-      data: 'Failed to prepare nodes',
-    };
-    const error5 = parseJsonRpcError(internalError);
-    expect(error5).toBeInstanceOf(TOPRFError);
-    expect(error5.code).toBe(TOPRFErrorCode.JsonRpcError);
+    it('should parse InvalidParams error with string data as JsonRpcError', () => {
+      const rpcError: JSONRPCError = {
+        code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
+        message: 'Invalid params',
+        data: 'Key change request invalid',
+      };
+      const parsedError = parseJsonRpcError(rpcError);
+      expect(parsedError).toBeInstanceOf(TOPRFError);
+      expect(parsedError.code).toBe(TOPRFErrorCode.JsonRpcError);
+      expect(parsedError.message).toContain('Key change request invalid');
+    });
 
-    const internalErrorWithoutData: JSONRPCError = {
-      code: JsonRpcErrorCodes.ErrorCodeInternal,
-      message: 'Internal error',
-    };
-    const error6 = parseJsonRpcError(internalErrorWithoutData);
-    expect(error6).toBeInstanceOf(TOPRFError);
-    expect(error6.code).toBe(TOPRFErrorCode.JsonRpcError);
+    it('should parse InvalidParams error with JSON data as JsonRpcError', () => {
+      const rpcError: JSONRPCError = {
+        code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
+        message: 'Invalid params',
+        data: {
+          details: 'Missing required fields',
+        },
+      };
+      const parsedError = parseJsonRpcError(rpcError);
+      expect(parsedError).toBeInstanceOf(TOPRFError);
+      expect(parsedError.code).toBe(TOPRFErrorCode.JsonRpcError);
+      expect(parsedError.message).toContain('Missing required fields');
+    });
 
-    const unknownError: JSONRPCError = {
-      code: -404,
-      message: 'Unknown error',
-    };
-    const error7 = parseJsonRpcError(unknownError);
-    expect(error7).toBeInstanceOf(TOPRFError);
-    expect(error7.code).toBe(TOPRFErrorCode.Default);
+    it('should parse Internal error with data as JsonRpcError', () => {
+      const rpcError: JSONRPCError = {
+        code: JsonRpcErrorCodes.ErrorCodeInternal,
+        message: 'Internal error',
+        data: 'Failed to prepare nodes',
+      };
+      const parsedError = parseJsonRpcError(rpcError);
+      expect(parsedError).toBeInstanceOf(TOPRFError);
+      expect(parsedError.code).toBe(TOPRFErrorCode.JsonRpcError);
+      expect(parsedError.message).toContain('Failed to prepare nodes');
+    });
+
+    it('should parse Internal error without data as JsonRpcError', () => {
+      const rpcError: JSONRPCError = {
+        code: JsonRpcErrorCodes.ErrorCodeInternal,
+        message: 'Internal error',
+      };
+      const parsedError = parseJsonRpcError(rpcError);
+      expect(parsedError).toBeInstanceOf(TOPRFError);
+      expect(parsedError.code).toBe(TOPRFErrorCode.JsonRpcError);
+      expect(parsedError.message).toContain('Internal error');
+    });
+
+    it('should parse unknown error codes as Default error', () => {
+      const rpcError: JSONRPCError = {
+        code: -404,
+        message: 'Unknown error',
+      };
+      const parsedError = parseJsonRpcError(rpcError);
+      expect(parsedError).toBeInstanceOf(TOPRFError);
+      expect(parsedError.code).toBe(TOPRFErrorCode.Default);
+      expect(parsedError.message).toContain('Unknown error');
+    });
   });
 
   it('should be able to parse TOPRFError from SomeError', () => {

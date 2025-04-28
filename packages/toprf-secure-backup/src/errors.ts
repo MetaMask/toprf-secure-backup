@@ -22,8 +22,8 @@ export enum TOPRFErrorCode {
   EndpointNotFound = 1007,
   InsufficientAuthTokens = 1008,
   RateLimitExceeded = 1009,
-  InvalidAuthTokens = 1010,
-  // AuthTokenExpired = 1011,
+  InvalidAuthToken = 1010,
+  AuthTokenExpired = 1011,
   JsonRpcError = 1012,
   CouldNotFetchPassword = 1013,
 }
@@ -53,9 +53,9 @@ export class TOPRFError extends Error implements ITOPRFError {
     [TOPRFErrorCode.InsufficientAuthTokens]:
       'Insufficient number of auth tokens.',
     [TOPRFErrorCode.RateLimitExceeded]: 'Rate limit error from server.',
-    [TOPRFErrorCode.InvalidAuthTokens]: 'Invalid auth tokens.',
-    // [TOPRFErrorCode.AuthTokenExpired]: 'Auth token expired.', // need to wait for the backend to update the error code
-    [TOPRFErrorCode.JsonRpcError]: 'Json rpc error.', // should/must specify error description in `error.data` field from the server response
+    [TOPRFErrorCode.InvalidAuthToken]: 'Invalid auth token.',
+    [TOPRFErrorCode.AuthTokenExpired]: 'Auth token expired.',
+    [TOPRFErrorCode.JsonRpcError]: 'Json rpc error.',
     [TOPRFErrorCode.CouldNotFetchPassword]: 'Could not fetch password.',
   };
 
@@ -236,10 +236,19 @@ export class TOPRFError extends Error implements ITOPRFError {
   /**
    *
    * @param extraMessage - The extra message of the error.
-   * @returns - The error instance for invalid auth tokens.
+   * @returns - The error instance for invalid auth token.
    */
-  public static invalidAuthTokens(extraMessage = ''): ITOPRFError {
-    return TOPRFError.fromCode(TOPRFErrorCode.InvalidAuthTokens, extraMessage);
+  public static invalidAuthToken(extraMessage = ''): ITOPRFError {
+    return TOPRFError.fromCode(TOPRFErrorCode.InvalidAuthToken, extraMessage);
+  }
+
+  /**
+   *
+   * @param extraMessage - The extra message of the error.
+   * @returns - The error instance for auth token expired.
+   */
+  public static authTokenExpired(extraMessage = ''): ITOPRFError {
+    return TOPRFError.fromCode(TOPRFErrorCode.AuthTokenExpired, extraMessage);
   }
 
   /**
