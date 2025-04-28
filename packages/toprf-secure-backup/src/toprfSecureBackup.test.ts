@@ -245,7 +245,7 @@ describe('toprf secret backup', function () {
           verifier,
           verifierId,
         }),
-      ).rejects.toThrow(TOPRFError.invalidAuthTokens());
+      ).rejects.toThrow(TOPRFError.invalidAuthToken());
     });
   });
 
