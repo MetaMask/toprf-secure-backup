@@ -8,23 +8,20 @@ const jwtPrivateKey = `-----BEGIN PRIVATE KEY-----\nMEECAQAwEwYHKoZIzj0CAQYIKoZI
 // Test audience to be used for generating the auth token
 
 /**
- * Generates the id token for the given verifier id and algorithm.
+ * Generates the id token for the given user id and algorithm.
  *
- * @param verifierId - The verifier id of the user.
+ * @param userId - The user id of the user.
  * @param alg - The algorithm.
  *
  * @returns The id token.
  */
-export const generateIdToken = (
-  verifierId: string,
-  alg: JwtAlgorithm,
-): string => {
+export const generateIdToken = (userId: string, alg: JwtAlgorithm): string => {
   const iat = Math.floor(Date.now() / 1000);
   const payload = {
     iss: 'torus-key-test',
     aud: 'torus-key-test',
-    name: verifierId,
-    email: verifierId,
+    name: userId,
+    email: userId,
     scope: 'email',
     iat,
     eat: iat + 120,
@@ -49,11 +46,11 @@ export function generateRandomPassword(): string {
 }
 
 /**
- * Generates a random verifier ID for testing purposes.
+ * Generates a random user id for testing purposes.
  *
- * @returns A random verifier ID.
+ * @returns A random user id.
  */
-export function generateRandomVerifierId(): string {
+export function generateRandomUserId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 

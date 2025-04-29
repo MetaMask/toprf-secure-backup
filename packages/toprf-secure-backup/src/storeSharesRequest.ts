@@ -22,9 +22,9 @@ import {
 export type CreateStoreKeySharesRequestParamsInput = {
   nodeEndpointsMap: Record<number, string>;
   authTokens: NodeAuthTokens;
+  authConnectionId: string;
+  userId: string;
   keyShareIndex: number;
-  verifier: string;
-  verifierId: string;
   oprfKey: bigint;
   authPubKey: Uint8Array;
 };
@@ -37,6 +37,8 @@ export type StoreKeySharesRequestParams =
  * @param params - The parameters for the store key shares request.
  * @param params.nodeEndpointsMap - The map of node indexes to endpoints.
  * @param params.authTokens - The authTokens to be used for the store key shares request.
+ * @param params.authConnectionId - The verifier name used for authentication.
+ * @param params.userId - The verifier id of the user.
  * @param params.keyShareIndex - The key share index to be used for the store key shares request.
  * It should be 1 for the first key registration and derived from response of authenticate request for subsequent key registrations.
  * @param params.oprfKey - The oprfKey to be used for the store key shares request.
@@ -50,11 +52,11 @@ export const createStoreKeySharesRequestParams = async (
   const {
     nodeEndpointsMap,
     authTokens,
+    authConnectionId,
+    userId,
     keyShareIndex,
     oprfKey,
     authPubKey,
-    verifier,
-    verifierId,
   } = params;
   const shareImportItems = await generateShareImportItems(
     nodeEndpointsMap,
@@ -63,10 +65,10 @@ export const createStoreKeySharesRequestParams = async (
     keyShareIndex,
   );
   return {
+    verifier: authConnectionId,
+    verifierId: userId,
     pubKey: uint8ArrayToHex(authPubKey),
     shareImportItems,
-    verifier,
-    verifierId,
   };
 };
 
@@ -93,10 +95,10 @@ export const sendStoreKeySharesRequest = async (
  * Stores the key shares for the given node endpoints
  *
  * @param params - The parameters for the store key shares request
- * @param params.nodeEndpointsMap - The node endpoints map to be used for the store key shares request.
- * @param params.verifier - The verifier to be used for the store key shares request.
- * @param params.verifierId - The verifierId to be used for the store key shares request.
  * @param params.authTokens - The authTokens issued by the nodes on authenticating the user.
+ * @param params.nodeEndpointsMap - The node endpoints map to be used for the store key shares request.
+ * @param params.authConnectionId - The verifier name used for authentication.
+ * @param params.userId - The verifier id of the user.
  * @param params.keyShareIndex - The key share index to be used for the store key shares request.
  * It should be 1 for the first key registration and derived from response of authenticate request for subsequent key registrations.
  *
@@ -109,27 +111,27 @@ export const storeKeyShares = async (
   params: StoreKeySharesRequestParams,
 ): Promise<StoreKeySharesJRPCResponse> => {
   const {
-    nodeEndpointsMap,
     authTokens,
+    nodeEndpointsMap,
+    authConnectionId,
+    userId,
     keyShareIndex,
     oprfKey,
-    verifier,
-    verifierId,
     authPubKey,
   } = params;
   const requestParams = await createStoreKeySharesRequestParams({
     nodeEndpointsMap,
     authTokens,
+    authConnectionId,
+    userId,
     keyShareIndex,
-    authPubKey,
     oprfKey,
-    verifier,
-    verifierId,
+    authPubKey,
   });
   const proxyNodeEndpointIndex = getProxyCoordinatorNodeIndex(
     authTokens.map((token) => token.nodeIndex),
-    verifier,
-    verifierId,
+    authConnectionId,
+    userId,
   );
   const proxyNodeEndpoint = nodeEndpointsMap[proxyNodeEndpointIndex];
   const storeKeyShareResponse = await sendStoreKeySharesRequest(
@@ -149,8 +151,8 @@ export type CreateKeyChangeRequestParamsInput = {
   nodeEndpointsMap: Record<number, string>;
   authTokens: NodeAuthTokens;
   keyShareIndex: number;
-  verifier: string;
-  verifierId: string;
+  authConnectionId: string;
+  userId: string;
   newOprfKey: bigint;
   newAuthPubKey: Uint8Array;
   oldAuthPrivKey: bigint;
@@ -181,8 +183,8 @@ export const createKeyChangeRequestParams = async (
     newOprfKey,
     newAuthPubKey,
     oldAuthPrivKey,
-    verifier,
-    verifierId,
+    authConnectionId,
+    userId,
   } = params;
 
   // Generate share import items with the old auth private key for signing
@@ -197,8 +199,8 @@ export const createKeyChangeRequestParams = async (
   return {
     pubKey: uint8ArrayToHex(newAuthPubKey),
     shareImportItems,
-    verifier,
-    verifierId,
+    verifier: authConnectionId,
+    verifierId: userId,
   };
 };
 
@@ -207,8 +209,8 @@ export const createKeyChangeRequestParams = async (
  *
  * @param params - The parameters for the key change request
  * @param params.nodeEndpointsMap - The node endpoints map to be used for the key change request.
- * @param params.verifier - The verifier to be used for the key change request.
- * @param params.verifierId - The verifierId to be used for the key change request.
+ * @param params.authConnectionId - The verifier name to be used for the key change request.
+ * @param params.userId - The verifier id of the user to be used for the key change request.
  * @param params.authTokens - The authTokens issued by the nodes on authenticating the user.
  * @param params.keyShareIndex - The key share index to be used for the key change request.
  * @param params.newOprfKey - The new oprfKey to be used for the key change request.
@@ -227,8 +229,8 @@ export const changeKeyShares = async (
     newOprfKey,
     newAuthPubKey,
     oldAuthPrivKey,
-    verifier,
-    verifierId,
+    authConnectionId,
+    userId,
   } = params;
 
   const requestParams = await createKeyChangeRequestParams({
@@ -238,14 +240,14 @@ export const changeKeyShares = async (
     newOprfKey,
     newAuthPubKey,
     oldAuthPrivKey,
-    verifier,
-    verifierId,
+    authConnectionId,
+    userId,
   });
 
   const proxyNodeEndpointIndex = getProxyCoordinatorNodeIndex(
     authTokens.map((token) => token.nodeIndex),
-    verifier,
-    verifierId,
+    authConnectionId,
+    userId,
   );
   const proxyNodeEndpoint = nodeEndpointsMap[proxyNodeEndpointIndex];
 
