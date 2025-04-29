@@ -27,7 +27,7 @@ export type SingleIdVerifierParams = {
  *
  * authConnectionId - The auth connection name to be used for the authenticate request.
  *
- * userId - The verifier id of the user to be used for the authenticate request.
+ * userId - The user id of the user to be used for the authenticate request.
  *
  * singleIdVerifierParams - Optional singleIdVerifierParams to be used for the authenticate request.
  * You can pass this to use aggregate verifier.
@@ -113,7 +113,7 @@ export type CreateLocalKeyResult = {
  *
  * authConnectionId - The auth connection name used for authentication.
  *
- * userId - The verifier id of the user.
+ * userId - The user id of the user issued by authentication service.
  *
  * keyShareIndex - Optional key share index to be persisted.
  *
@@ -134,7 +134,7 @@ export type PersistLocalKeyParams = {
  *
  * authConnectionId - The auth connection name of the user.
  *
- * userId - The verifier id of the user.
+ * userId - The user id of the user issued by authentication service.
  *
  * nodeAuthTokens - The tokens issued by the nodes on verifying the idTokens.
  *
@@ -198,7 +198,7 @@ export type BatchAddSecretDataItemParams = BaseAddSecretDataItemParams<
  *
  * authConnectionId - The auth connection name used for authentication.
  *
- * userId - The verifier id of the user.
+ * userId - The user id of the user issued by authentication service.
  */
 export type RecoverEncryptionKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
@@ -227,7 +227,7 @@ export type RecoverEncryptionKeyResult = {
  *
  * authConnectionId - The auth connection name used for authentication.
  *
- * userId - The verifier id of the user.
+ * userId - The user id of the user issued by authentication service.
  *
  * oldEncKey - The old encryption key of the user.
  *
@@ -290,7 +290,7 @@ export type KeyChangeProof = {
  *
  * authConnectionId - The auth connection name used for authentication.
  *
- * userId - The verifier id of the user.
+ * userId - The user id of the user issued by authentication service.
  */
 export type FetchAuthPubKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
@@ -337,7 +337,7 @@ export type IToprfSecureBackup = {
    * @param params.oprfKey - The OPRF key to be persisted.
    * @param params.authKeyPair - The authentication key pair which is used to authenticate the write request to the metadata store.
    * @param params.authConnectionId - The auth connection name used for authentication.
-   * @param params.userId - The verifier id of the user.
+   * @param params.userId - The user id of the user issued by authentication service.
    * @param params.keyShareIndex - The key share index to be persisted. Required only during key change, defaults to FIRST_KEY_INDEX for first-time storage.
    * @param params.oldAuthKeyPair - The old authentication key pair of the user. Required only during key change, not needed for first-time storage.
    * @returns A promise that resolves when the OPRF key's shares are persisted.
@@ -412,7 +412,7 @@ export type IToprfSecureBackup = {
    * @param params - The parameters for fetching the authentication public key.
    * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
    * @param params.authConnectionId - The auth connection name used for authentication.
-   * @param params.userId - The verifier id of the user.
+   * @param params.userId - The user id of the user issued by authentication service.
    *
    * @returns A promise that resolves with the authentication public key.
    */

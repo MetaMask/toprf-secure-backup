@@ -163,7 +163,7 @@ export const validateAndWaitForAllAuthResponses = async (
  * @param params - The parameters for the authenticate request
  * @param params.idToken - The idToken to be used for the authenticate request
  * @param params.authConnectionId - The auth connection name to be used for the authenticate request
- * @param params.userId - The verifier id of the user to be used for the authenticate request
+ * @param params.userId - The user id of the user to be used for the authenticate request
  * @param params.sessionPrivateKey - The session private key used for commitment request.
  * @param params.nodeEndpointsMap - The map of node indexes to endpoints map to be used for the authenticate request.
  * @param params.commitmentSignatures - The idToken commitment signatures to be used for the authenticate request.

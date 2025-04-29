@@ -21,7 +21,7 @@ import { mergeEndpointsWithAuthTokens, postJRPCRequest } from './utils';
  *
  * @param authToken - The auth issued by node to authenticate the request.
  * @param authConnectionId - The auth connection name.
- * @param userId - The verifier id of the user.
+ * @param userId - The user id of the user issued by authentication service.
  *
  * @returns The parameters for the get pub key jrpc request.
  */
@@ -91,7 +91,7 @@ export const validatePubKey = async (
  * @param params - The parameters for the get pub key request
  * @param params.authTokens - The auth tokens issued by the nodes on authenticating the user.
  * @param params.authConnectionId - The auth connection name used for authentication.
- * @param params.userId - The verifier id of the user.
+ * @param params.userId - The user id of the user issued by authentication service.
  * @param params.nodeEndpointsMap - Map of node index to endpoint to be used for the toprf eval request.
  *
  * @returns - A promise that resolves with the key pair seed successfully.
