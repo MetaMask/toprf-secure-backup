@@ -16,8 +16,8 @@ export type KeyPair = {
 };
 
 export type GroupedAuthConnectionParams = {
-  subVerifierIdTokens: string[];
-  subVerifier: string;
+  idTokens: string[];
+  authConnectionId: string;
 };
 
 /**

@@ -35,14 +35,13 @@ const createAuthenticateRequestParams = (
   groupedAuthConnectionParams?: GroupedAuthConnectionParams,
 ): AuthJRPCRequestParams => {
   const groupedAuthConnectionParamsArr =
-    groupedAuthConnectionParams?.subVerifierIdTokens &&
-    groupedAuthConnectionParams?.subVerifier
+    groupedAuthConnectionParams?.idTokens &&
+    groupedAuthConnectionParams?.authConnectionId
       ? {
           subVerifierAuthParams: [
             {
-              subVerifierIdToken:
-                groupedAuthConnectionParams.subVerifierIdTokens[0],
-              subVerifier: groupedAuthConnectionParams.subVerifier,
+              subVerifierIdToken: groupedAuthConnectionParams.idTokens[0],
+              subVerifier: groupedAuthConnectionParams.authConnectionId,
             },
           ],
         }
