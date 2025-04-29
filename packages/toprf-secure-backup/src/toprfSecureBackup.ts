@@ -77,7 +77,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    *
    * @param params - The authentication parameters.
    * @param params.idTokens - An array of id tokens for authentication.
-   * @param params.authConnectionId - The verifier name to be used for the authenticate request
+   * @param params.authConnectionId - The auth connection name to be used for the authenticate request
    * @param params.userId - The verifier id of the user
    * @param params.singleIdVerifierParams - Optional singleIdVerifierParams to be used for the authenticate request.
    * You can pass this to use aggregate verifier.
@@ -170,7 +170,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
    * @param params.oprfKey - The OPRF key to be persisted.
    * @param params.authPubKey - The authentication public key.
-   * @param params.authConnectionId - The verifier name used for authentication.
+   * @param params.authConnectionId - The auth connection name used for authentication.
    * @param params.userId - The verifier id of the user.
    * @param params.keyShareIndex - The key share index to be persisted. Required only during key change, defaults to FIRST_KEY_INDEX for first-time storage.
    * @param params.oldAuthKeyPair - The old authentication key pair of the user. Required only during key change, not needed for first-time storage.
@@ -259,7 +259,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * @param params - The parameters for recovering the encryption key.
    * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
    * @param params.password - The password of the user.
-   * @param params.authConnectionId - The verifier name used for authentication.
+   * @param params.authConnectionId - The auth connection name used for authentication.
    * @param params.userId - The user id of the user.
    *
    * @returns The encryption key result with auth key pair, encryption key and key share index.
@@ -315,7 +315,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    *
    * @param params - The parameters for changing the encryption key.
    * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
-   * @param params.authConnectionId - The verifier name used for authentication.
+   * @param params.authConnectionId - The auth connection name used for authentication.
    * @param params.userId - The user id of the user.
    * @param params.oldEncKey - The old encryption key of the user.
    * @param params.oldAuthKeyPair - The old authentication key pair of the user.
@@ -504,7 +504,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    *
    * @param params - The parameters for getting the authentication public key.
    * @param params.authTokens - The auth tokens issued by the nodes on authenticating the user.
-   * @param params.authConnectionId - The verifier name used for authentication.
+   * @param params.authConnectionId - The auth connection name used for authentication.
    * @param params.userId - The user id of the user.
    *
    * @returns The authentication public key.
@@ -528,7 +528,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    *
    * @param params - The parameters for getting the password.
    * @param params.nodeAuthTokens - The auth tokens issued by the nodes on authenticating the user.
-   * @param params.authConnectionId - The verifier name used for authentication.
+   * @param params.authConnectionId - The auth connection name used for authentication.
    * @param params.userId - The user id of the user.
    *
    * @returns The password.

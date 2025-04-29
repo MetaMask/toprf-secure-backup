@@ -28,7 +28,7 @@ import {
  * @param authToken - The auth token issued by node to authenticate the request.
  * @param signature - The signature of the signedData using user's authentication key.
  * @param signedData - The data that is signed for to validate if user has access to authentication key.
- * @param authConnectionId - The verifier name.
+ * @param authConnectionId - The auth connection name.
  * @param userId - The verifier id of the user.
  *
  * @returns The parameters for the reset rate limit jrpc request.
@@ -99,7 +99,7 @@ export const validateThresholdResetRateLimitResponses = (
  *
  * @param params - The parameters for the reset rate limit request
  * @param params.authTokens - The auth tokens issued by the nodes on authenticating the user.
- * @param params.authConnectionId - The verifier name used for authentication.
+ * @param params.authConnectionId - The auth connection name used for authentication.
  * @param params.userId - The verifier id of the user.
  * @param params.nodeEndpointsMap - Map of node index to endpoint to be used for the reset rate limit request.
  * @param params.authPrivKey - The user's authentication private key as bigint for signing the request.

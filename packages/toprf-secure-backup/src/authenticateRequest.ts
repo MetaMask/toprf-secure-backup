@@ -21,7 +21,7 @@ import { decryptAuthToken, postJRPCRequest } from './utils';
  * Creates the parameters for the authenticate request
  *
  * @param idToken - The idToken to be used for the authenticate request
- * @param authConnectionId - The verifier name to be used for the authenticate request
+ * @param authConnectionId - The auth connection name to be used for the authenticate request
  * @param userId - The userId to be used for the authenticate request
  * @param commitmentSignatures - The idToken commitment signatures to be used for the authenticate request.
  * @param singleIdVerifierParams - Optional singleIdVerifierParams to be used for the authenticate request.
@@ -162,7 +162,7 @@ export const validateAndWaitForAllAuthResponses = async (
  *
  * @param params - The parameters for the authenticate request
  * @param params.idToken - The idToken to be used for the authenticate request
- * @param params.authConnectionId - The verifier name to be used for the authenticate request
+ * @param params.authConnectionId - The auth connection name to be used for the authenticate request
  * @param params.userId - The verifier id of the user to be used for the authenticate request
  * @param params.sessionPrivateKey - The session private key used for commitment request.
  * @param params.nodeEndpointsMap - The map of node indexes to endpoints map to be used for the authenticate request.

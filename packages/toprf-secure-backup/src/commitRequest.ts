@@ -20,7 +20,7 @@ import { postJRPCRequest } from './utils';
  * Creates the parameters for the commitment request.
  *
  * @param tokenCommitment - The token commitment, hash of the idToken (without 0x prefix).
- * @param authConnectionId - The verifier name to be used for the commitment request.
+ * @param authConnectionId - The auth connection name to be used for the commitment request.
  * @param sessionPubKeyX - The public key x to be used for the commitment request session.
  * @param sessionPubKeyY - The public key y to be used for the commitment request session.
  * @returns The parameters for the commitment JRPC request.
@@ -125,7 +125,7 @@ export const validateAndWaitForCommitResponses = async (
  *
  * @param params - The parameters for the commitment request
  * @param params.idToken - The idToken to be used for the commitment request
- * @param params.authConnectionId - The verifier to be used for the commitment request
+ * @param params.authConnectionId - The auth connection name to be used for the commitment request
  * @param params.sessionPubKeyX - The public key x to be used for the commitment request session.
  * @param params.sessionPubKeyY - The public key y to be used for the commitment request session.
  * @param params.endpoints - The endpoints to be used for the commitment request

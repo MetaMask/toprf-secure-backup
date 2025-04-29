@@ -25,7 +25,7 @@ export type SingleIdVerifierParams = {
  *
  * idTokens - The idTokens to be used for the authenticate request.
  *
- * authConnectionId - The verifier name to be used for the authenticate request.
+ * authConnectionId - The auth connection name to be used for the authenticate request.
  *
  * userId - The verifier id of the user to be used for the authenticate request.
  *
@@ -111,7 +111,7 @@ export type CreateLocalKeyResult = {
  *
  * authPubKey - The authentication public key which is used to authenticate the write request to the metadata store.
  *
- * authConnectionId - The verifier name used for authentication.
+ * authConnectionId - The auth connection name used for authentication.
  *
  * userId - The verifier id of the user.
  *
@@ -132,7 +132,7 @@ export type PersistLocalKeyParams = {
 /**
  * CreateEncryptionKeyParams - The parameters for creating an encryption key.
  *
- * authConnectionId - The verifier name of the user.
+ * authConnectionId - The auth connection name of the user.
  *
  * userId - The verifier id of the user.
  *
@@ -196,7 +196,7 @@ export type BatchAddSecretDataItemParams = BaseAddSecretDataItemParams<
  *
  * password - The password of the user.
  *
- * authConnectionId - The verifier name used for authentication.
+ * authConnectionId - The auth connection name used for authentication.
  *
  * userId - The verifier id of the user.
  */
@@ -225,7 +225,7 @@ export type RecoverEncryptionKeyResult = {
  *
  * nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
  *
- * authConnectionId - The verifier name used for authentication.
+ * authConnectionId - The auth connection name used for authentication.
  *
  * userId - The verifier id of the user.
  *
@@ -288,7 +288,7 @@ export type KeyChangeProof = {
  *
  * nodeAuthTokens - Auth tokens issued by nodes.
  *
- * authConnectionId - The verifier name used for authentication.
+ * authConnectionId - The auth connection name used for authentication.
  *
  * userId - The verifier id of the user.
  */
@@ -336,7 +336,7 @@ export type IToprfSecureBackup = {
    * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
    * @param params.oprfKey - The OPRF key to be persisted.
    * @param params.authKeyPair - The authentication key pair which is used to authenticate the write request to the metadata store.
-   * @param params.authConnectionId - The verifier name used for authentication.
+   * @param params.authConnectionId - The auth connection name used for authentication.
    * @param params.userId - The verifier id of the user.
    * @param params.keyShareIndex - The key share index to be persisted. Required only during key change, defaults to FIRST_KEY_INDEX for first-time storage.
    * @param params.oldAuthKeyPair - The old authentication key pair of the user. Required only during key change, not needed for first-time storage.
@@ -411,7 +411,7 @@ export type IToprfSecureBackup = {
    *
    * @param params - The parameters for fetching the authentication public key.
    * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
-   * @param params.authConnectionId - The verifier name used for authentication.
+   * @param params.authConnectionId - The auth connection name used for authentication.
    * @param params.userId - The verifier id of the user.
    *
    * @returns A promise that resolves with the authentication public key.

@@ -38,7 +38,7 @@ type BlindedOutputShare = {
  * @param authToken - The auth token issued by node to authenticate the request.
  * @param blindedInputX - The blinded input x coordinate to be used for the toprf eval request.
  * @param blindedInputY - The blinded input y coordinate to be used for the toprf eval request.
- * @param authConnectionId - The verifier name.
+ * @param authConnectionId - The auth connection name.
  * @param userId - The verifier id of the user.
  *
  * @returns The parameters for the toprf eval jrpc request.
@@ -251,7 +251,7 @@ export const validateSeed = async (
  * @param params - The parameters for the toprf eval request
  * @param params.authTokens - The auth tokens issued by the nodes on authenticating the user.
  * @param params.nodeEndpointsMap - Map of node index to endpoint to be used for the toprf eval request.
- * @param params.authConnectionId - The verifier name used for authentication.
+ * @param params.authConnectionId - The auth connection name used for authentication.
  * @param params.userId - The userId issued to user after authentication.
  * @param params.userInput - The user input to be used for the toprf eval request.
  *
