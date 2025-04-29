@@ -7,7 +7,7 @@ import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
 import { AUTHENTICATION_THRESHOLD, JRPC_METHODS } from './constants';
 import { TOPRFError } from './errors';
-import type { SingleIdVerifierParams } from './interfaces';
+import type { GroupedAuthConnectionParams } from './interfaces';
 import type {
   AuthJRPCRequest,
   AuthJRPCResponse,
@@ -24,7 +24,7 @@ import { decryptAuthToken, postJRPCRequest } from './utils';
  * @param authConnectionId - The auth connection name to be used for the authenticate request
  * @param userId - The userId to be used for the authenticate request
  * @param commitmentSignatures - The idToken commitment signatures to be used for the authenticate request.
- * @param singleIdVerifierParams - Optional singleIdVerifierParams to be used for the authenticate request.
+ * @param groupedAuthConnectionParams - Optional groupedAuthConnectionParams to be used for the authenticate request.
  * @returns The parameters for the authenticate JRPC request.
  */
 const createAuthenticateRequestParams = (
@@ -32,16 +32,17 @@ const createAuthenticateRequestParams = (
   authConnectionId: string,
   userId: string,
   commitmentSignatures: CommitmentRequestResult[],
-  singleIdVerifierParams?: SingleIdVerifierParams,
+  groupedAuthConnectionParams?: GroupedAuthConnectionParams,
 ): AuthJRPCRequestParams => {
-  const singleIdVerifierParamsArr =
-    singleIdVerifierParams?.subVerifierIdTokens &&
-    singleIdVerifierParams?.subVerifier
+  const groupedAuthConnectionParamsArr =
+    groupedAuthConnectionParams?.subVerifierIdTokens &&
+    groupedAuthConnectionParams?.subVerifier
       ? {
           subVerifierAuthParams: [
             {
-              subVerifierIdToken: singleIdVerifierParams.subVerifierIdTokens[0],
-              subVerifier: singleIdVerifierParams.subVerifier,
+              subVerifierIdToken:
+                groupedAuthConnectionParams.subVerifierIdTokens[0],
+              subVerifier: groupedAuthConnectionParams.subVerifier,
             },
           ],
         }
@@ -53,7 +54,7 @@ const createAuthenticateRequestParams = (
         verifier: authConnectionId,
         verifierId: userId,
       },
-      singleIdVerifierParams: singleIdVerifierParamsArr,
+      singleIdVerifierParams: groupedAuthConnectionParamsArr,
     },
     commitmentSignatures,
     clientTime: Math.floor(Date.now() / 1000).toString(),
@@ -167,7 +168,7 @@ export const validateAndWaitForAllAuthResponses = async (
  * @param params.sessionPrivateKey - The session private key used for commitment request.
  * @param params.nodeEndpointsMap - The map of node indexes to endpoints map to be used for the authenticate request.
  * @param params.commitmentSignatures - The idToken commitment signatures to be used for the authenticate request.
- * @param params.singleIdVerifierParams - Optional singleIdVerifierParams to be used for the authenticate request.
+ * @param params.groupedAuthConnectionParams - Optional groupedAuthConnectionParams to be used for the authenticate request.
  * You can pass this to use aggregate verifier.
  *
  * @returns resultArr - The authenticate request result, where each element is
@@ -180,7 +181,7 @@ export const authenticateUser = async (params: {
   sessionPrivateKey: Uint8Array;
   nodeEndpointsMap: Record<number, string>;
   commitmentSignatures: CommitmentRequestResult[];
-  singleIdVerifierParams?: SingleIdVerifierParams;
+  groupedAuthConnectionParams?: GroupedAuthConnectionParams;
 }): Promise<{
   authTokensData: AuthRequestResult[];
   isNewUser: boolean;
@@ -192,14 +193,14 @@ export const authenticateUser = async (params: {
     userId,
     commitmentSignatures,
     sessionPrivateKey,
-    singleIdVerifierParams,
+    groupedAuthConnectionParams,
   } = params;
   const requestParams = createAuthenticateRequestParams(
     idToken,
     authConnectionId,
     userId,
     commitmentSignatures,
-    singleIdVerifierParams,
+    groupedAuthConnectionParams,
   );
   // start with half the nodes count optimistically.
   const promiseArr = Object.values(nodeEndpointsMap).map(async (endpoint) =>

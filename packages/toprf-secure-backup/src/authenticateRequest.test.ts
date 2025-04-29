@@ -254,7 +254,7 @@ describe('authenticate request', function () {
       sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
-      singleIdVerifierParams: {
+      groupedAuthConnectionParams: {
         subVerifier: 'torus-test-health',
         subVerifierIdTokens: [idToken],
       },

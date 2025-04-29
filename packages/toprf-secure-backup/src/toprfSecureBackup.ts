@@ -79,7 +79,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * @param params.idTokens - An array of id tokens for authentication.
    * @param params.authConnectionId - The auth connection name to be used for the authenticate request
    * @param params.userId - The user id of the user issued by authentication service
-   * @param params.singleIdVerifierParams - Optional singleIdVerifierParams to be used for the authenticate request.
+   * @param params.groupedAuthConnectionParams - Optional groupedAuthConnectionParams to be used for the authenticate request.
    * You can pass this to use aggregate verifier.
    *
    * @returns - The authentication result containing the authentication tokens and a boolean indicating if the user is new or not.
@@ -121,7 +121,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       sessionPrivateKey: sessionPrivKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
-      singleIdVerifierParams: params.singleIdVerifierParams,
+      groupedAuthConnectionParams: params.groupedAuthConnectionParams,
     });
 
     return {

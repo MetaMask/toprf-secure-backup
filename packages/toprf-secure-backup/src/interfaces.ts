@@ -15,7 +15,7 @@ export type KeyPair = {
   pk: SEC1EncodedPublicKey;
 };
 
-export type SingleIdVerifierParams = {
+export type GroupedAuthConnectionParams = {
   subVerifierIdTokens: string[];
   subVerifier: string;
 };
@@ -29,7 +29,7 @@ export type SingleIdVerifierParams = {
  *
  * userId - The user id of the user to be used for the authenticate request.
  *
- * singleIdVerifierParams - Optional singleIdVerifierParams to be used for the authenticate request.
+ * groupedAuthConnectionParams - Optional groupedAuthConnectionParams to be used for the authenticate request.
  * You can pass this to use aggregate verifier.
  */
 export type AuthenticateParams = {
@@ -38,7 +38,7 @@ export type AuthenticateParams = {
   idTokens: string[];
   authConnectionId: string;
   userId: string;
-  singleIdVerifierParams?: SingleIdVerifierParams;
+  groupedAuthConnectionParams?: GroupedAuthConnectionParams;
 };
 
 /**

@@ -68,7 +68,7 @@ describe('toprf secret backup', function () {
         idTokens: [hashedIdToken],
         authConnectionId,
         userId,
-        singleIdVerifierParams: {
+        groupedAuthConnectionParams: {
           subVerifier: 'torus-test-health',
           subVerifierIdTokens: [idToken],
         },
