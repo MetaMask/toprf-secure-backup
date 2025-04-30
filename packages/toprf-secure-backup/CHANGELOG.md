@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0]
+
 ### Uncategorized
 
 - Refactor: Rename verifier/verifierId to authConnectionId/userId ([#93](https://github.com/MetaMask/toprf-secure-backup.git/pull/93))
@@ -253,4 +255,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - update package name
 - update package name
 
-[Unreleased]: https://github.com/MetaMask/toprf-secure-backup.git/
+[Unreleased]: https://github.com/MetaMask/toprf-secure-backup.git/compare/@metamask/toprf-secure-backup@0.1.0...HEAD
+[0.1.0]: https://github.com/MetaMask/toprf-secure-backup.git/releases/tag/@metamask/toprf-secure-backup@0.1.0
