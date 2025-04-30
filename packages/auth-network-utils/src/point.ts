@@ -56,7 +56,7 @@ class Point {
           },
           'hex',
         );
-        return Buffer.from(key.getPublic(true, 'hex'));
+        return Buffer.from(key.getPublic(true, 'hex'), 'hex');
       }
       default:
         throw new Error("encoding doesn't exist in Point");
