@@ -11,10 +11,7 @@ import { AUTHENTICATION_THRESHOLD } from './constants';
 import { TOPRFError } from './errors';
 import type { AuthJRPCResponse } from './jrpcInterfaces';
 import { createNodeEndpointsMap } from './utils';
-import {
-  generateIdToken,
-  generateRandomVerifierId,
-} from '../tests/testHelpers';
+import { generateIdToken, generateRandomUserId } from '../tests/testHelpers';
 
 describe('authenticate request', function () {
   let nodeDetailManager: NodeDetailManager;
@@ -28,15 +25,15 @@ describe('authenticate request', function () {
     const privKey = secp256k1.utils.randomPrivateKey();
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
-    const verifier = 'torus-test-health';
-    const verifierId = 'test-verifier-id';
-    const idToken = generateIdToken(verifierId, 'ES256');
+    const authConnectionId = 'torus-test-health';
+    const userId = 'test-user-id';
+    const idToken = generateIdToken(userId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
     const { torusNodeSSSEndpoints, torusIndexes } =
       await nodeDetailManager.getNodeDetails({
-        verifier,
-        verifierId,
+        verifier: authConnectionId,
+        verifierId: userId,
       });
 
     if (!torusNodeSSSEndpoints) {
@@ -44,7 +41,7 @@ describe('authenticate request', function () {
     }
     const commitmentResults = await commitIdToken({
       idToken,
-      verifier,
+      authConnectionId,
       sessionPubKeyX,
       sessionPubKeyY,
       endpoints: torusNodeSSSEndpoints,
@@ -62,8 +59,8 @@ describe('authenticate request', function () {
     }, {});
     const { authTokensData } = await authenticateUser({
       idToken,
-      verifier,
-      verifierId,
+      authConnectionId,
+      userId,
       sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
@@ -76,15 +73,15 @@ describe('authenticate request', function () {
     const privKey = secp256k1.utils.randomPrivateKey();
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
-    const verifier = 'torus-test-health-aggregate';
-    const verifierId = generateRandomVerifierId();
-    const idToken = generateIdToken(verifierId, 'ES256');
+    const authConnectionId = 'torus-test-health-aggregate';
+    const userId = generateRandomUserId();
+    const idToken = generateIdToken(userId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
     const { torusNodeSSSEndpoints, torusIndexes } =
       await nodeDetailManager.getNodeDetails({
-        verifier,
-        verifierId,
+        verifier: authConnectionId,
+        verifierId: userId,
       });
 
     if (!torusNodeSSSEndpoints) {
@@ -96,7 +93,7 @@ describe('authenticate request', function () {
 
     const commitmentResults = await commitIdToken({
       idToken: hashedIdToken,
-      verifier,
+      authConnectionId,
       sessionPubKeyX,
       sessionPubKeyY,
       endpoints: torusNodeSSSEndpoints,
@@ -115,14 +112,14 @@ describe('authenticate request', function () {
 
     const { authTokensData, isNewUser } = await authenticateUser({
       idToken: hashedIdToken,
-      verifier,
-      verifierId,
+      authConnectionId,
+      userId,
       sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
-      singleIdVerifierParams: {
-        subVerifier: 'torus-test-health',
-        subVerifierIdTokens: [idToken],
+      groupedAuthConnectionParams: {
+        authConnectionId: 'torus-test-health',
+        idTokens: [idToken],
       },
     });
     expect(authTokensData).toBeDefined();

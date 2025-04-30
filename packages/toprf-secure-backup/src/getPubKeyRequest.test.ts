@@ -9,8 +9,8 @@ describe('getPubKey', () => {
       getPubKey({
         authTokens: [],
         nodeEndpointsMap: {},
-        verifier: 'torus-test-health',
-        verifierId: 'dummy-id',
+        authConnectionId: 'torus-test-health',
+        userId: 'dummy-id',
       }),
     ).rejects.toThrow(
       TOPRFError.insufficientAuthTokens(`At least 3 auth tokens are required.`),

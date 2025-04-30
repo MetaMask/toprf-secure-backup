@@ -101,23 +101,23 @@ export function* kCombinations(
 }
 
 /**
- * Calculates the index of the proxy coordinator endpoint based on verifier details
+ * Calculates the index of the proxy coordinator endpoint based on auth connection id details
  *
  * @param indexes - The indexes to choose from.
- * @param verifier - The verifier to use to generate the index
- * @param verifierId - The verifier id to use to generate the index
+ * @param authConnectionId - The auth connection id to use to generate the index
+ * @param userId - The user id to use to generate the index
  * @returns The node index of the proxy coordinator endpoint.
  */
 export const getProxyCoordinatorNodeIndex = (
   indexes: number[],
-  verifier: string,
-  verifierId: string,
+  authConnectionId: string,
+  userId: string,
 ): number => {
-  const verifierIdStr = `${verifier}${verifierId}`;
-  const hashedVerifierId = keccak256AndHexify(
-    Buffer.from(verifierIdStr, 'utf8'),
+  const authConnectionIdStr = `${authConnectionId}${userId}`;
+  const hashedAuthConnectionId = keccak256AndHexify(
+    Buffer.from(authConnectionIdStr, 'utf8'),
   ).slice(2);
-  const proxyEndpointNum = new BN(hashedVerifierId, 'hex')
+  const proxyEndpointNum = new BN(hashedAuthConnectionId, 'hex')
     .mod(new BN(indexes.length))
     .toNumber();
   return indexes[proxyEndpointNum];

@@ -20,20 +20,20 @@ import { postJRPCRequest } from './utils';
  * Creates the parameters for the commitment request.
  *
  * @param tokenCommitment - The token commitment, hash of the idToken (without 0x prefix).
- * @param verifier - The verifier
+ * @param authConnectionId - The auth connection name to be used for the commitment request.
  * @param sessionPubKeyX - The public key x to be used for the commitment request session.
  * @param sessionPubKeyY - The public key y to be used for the commitment request session.
  * @returns The parameters for the commitment JRPC request.
  */
 const createCommitmentRequestParams = (
   tokenCommitment: string,
-  verifier: string,
+  authConnectionId: string,
   sessionPubKeyX: string,
   sessionPubKeyY: string,
 ): CommitmentJRPCRequestParams => {
   return {
     tokenCommitment,
-    verifier,
+    verifier: authConnectionId,
     tempPubKeyX: sessionPubKeyX,
     tempPubKeyY: sessionPubKeyY,
   };
@@ -110,7 +110,7 @@ export const createHandleCommitmentResponses = (
  *
  * @param params - The parameters for the commitment request
  * @param params.idToken - The idToken to be used for the commitment request
- * @param params.verifier - The verifier to be used for the commitment request
+ * @param params.authConnectionId - The auth connection name to be used for the commitment request
  * @param params.sessionPubKeyX - The public key x to be used for the commitment request session.
  * @param params.sessionPubKeyY - The public key y to be used for the commitment request session.
  * @param params.endpoints - The endpoints to be used for the commitment request
@@ -120,21 +120,27 @@ export const createHandleCommitmentResponses = (
  */
 export const commitIdToken = async (params: {
   idToken: string;
-  verifier: string;
+  authConnectionId: string;
   sessionPubKeyX: string;
   sessionPubKeyY: string;
   endpoints: string[];
 }): Promise<CommitmentRequestResult[]> => {
-  const { idToken, endpoints, verifier, sessionPubKeyX, sessionPubKeyY } =
-    params;
+  const {
+    idToken,
+    endpoints,
+    authConnectionId,
+    sessionPubKeyX,
+    sessionPubKeyY,
+  } = params;
   const tokenCommitment = keccak256AndHexify(utf8ToBytes(idToken)).slice(2);
 
   const requestParams = createCommitmentRequestParams(
     tokenCommitment,
-    verifier,
+    authConnectionId,
     sessionPubKeyX,
     sessionPubKeyY,
   );
+
   const promiseArr = endpoints.map(async (endpoint) =>
     sendCommitmentRequest(endpoint, requestParams),
   );

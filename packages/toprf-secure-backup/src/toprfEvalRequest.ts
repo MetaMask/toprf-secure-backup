@@ -35,11 +35,11 @@ type BlindedOutputShare = {
 /**
  * Creates the parameters for the toprf eval request
  *
- * @param authToken - The auth issued by node to authenticate the request.
- * @param blindedInputX - The blinded input x.
- * @param blindedInputY - The blinded input y.
- * @param verifier - The verifier name.
- * @param verifierId - The verifier id of the user.
+ * @param authToken - The auth token issued by node to authenticate the request.
+ * @param blindedInputX - The blinded input x coordinate to be used for the toprf eval request.
+ * @param blindedInputY - The blinded input y coordinate to be used for the toprf eval request.
+ * @param authConnectionId - The auth connection name.
+ * @param userId - The user id of the user issued by authentication service.
  *
  * @returns The parameters for the toprf eval jrpc request.
  */
@@ -47,16 +47,16 @@ const createToprfEvalRequestParams = (
   authToken: string,
   blindedInputX: string,
   blindedInputY: string,
-  verifier: string,
-  verifierId: string,
+  authConnectionId: string,
+  userId: string,
 ): ToprfEvalJRPCRequestParams => {
   return {
     authToken,
     shareCoefficient: '1', // We apply share coefficient after evaluation so that we can select the share subset after we have responses.
     blindedInputX,
     blindedInputY,
-    verifier,
-    verifierId,
+    verifier: authConnectionId,
+    verifierId: userId,
   };
 };
 
@@ -250,21 +250,21 @@ export const validateSeed = async (
  *
  * @param params - The parameters for the toprf eval request
  * @param params.authTokens - The auth tokens issued by the nodes on authenticating the user.
- * @param params.verifier - The verifier name used for authentication.
- * @param params.verifierId - The verifierId issued to user after authentication.
  * @param params.nodeEndpointsMap - Map of node index to endpoint to be used for the toprf eval request.
- * @param params.userInput - The user input i.e. the password.
+ * @param params.authConnectionId - The auth connection name used for authentication.
+ * @param params.userId - The user id of the user issued by authentication service.
+ * @param params.userInput - The user input to be used for the toprf eval request.
  *
  * @returns - A promise that resolves with the key pair seed and key share index.
  */
 export const recoverTOPRFSeed = async (params: {
   authTokens: NodeAuthTokens;
   nodeEndpointsMap: Record<number, string>;
-  verifier: string;
-  verifierId: string;
+  authConnectionId: string;
+  userId: string;
   userInput: Uint8Array;
 }): Promise<{ seed: Uint8Array; keyShareIndex: number }> => {
-  const { authTokens, nodeEndpointsMap, verifier, verifierId, userInput } =
+  const { authTokens, nodeEndpointsMap, authConnectionId, userId, userInput } =
     params;
 
   if (authTokens.length < TOPRF_EVAL_THRESHOLD) {
@@ -285,8 +285,8 @@ export const recoverTOPRFSeed = async (params: {
         authToken.authToken,
         a.x.toString(16),
         a.y.toString(16),
-        verifier,
-        verifierId,
+        authConnectionId,
+        userId,
       );
       return sendToprfEvalRequest(endpoint, requestParams);
     },
