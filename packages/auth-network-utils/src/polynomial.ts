@@ -124,7 +124,7 @@ class Polynomial {
    * @param shareIndexes - indexes to generate shares for on the polynomial.
    * @returns - map of sharesIndexes to shares.
    */
-  generateShares(shareIndexes: (BNString | bigint)[]): ShareMap {
+  generateShares(shareIndexes: (BNString | bigint | number | BN)[]): ShareMap {
     const newShareIndexes = shareIndexes.map((index) => {
       if (typeof index === 'bigint') {
         return new BN(index.toString());
@@ -138,7 +138,7 @@ class Polynomial {
       if (typeof index === 'string') {
         return new BN(index, 'hex');
       }
-      return index;
+      throw new Error('Invalid share index');
     });
 
     const shares: ShareMap = {};
