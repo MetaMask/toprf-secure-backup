@@ -26,14 +26,14 @@ describe('commitment request', function () {
     const privKey = secp256k1.utils.randomPrivateKey();
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
-    const verifier = 'torus-test-health';
-    const verifierId = 'test-verifier-id';
-    const idToken = generateIdToken(verifierId, 'ES256');
+    const authConnectionId = 'torus-test-health';
+    const userId = 'test-user-id';
+    const idToken = generateIdToken(userId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
     const { torusNodeSSSEndpoints } = await nodeDetailManager.getNodeDetails({
-      verifier,
-      verifierId,
+      verifier: authConnectionId,
+      verifierId: userId,
     });
 
     if (!torusNodeSSSEndpoints) {
@@ -41,7 +41,7 @@ describe('commitment request', function () {
     }
     const commitmentResults = await commitIdToken({
       idToken,
-      verifier,
+      authConnectionId,
       sessionPubKeyX,
       sessionPubKeyY,
       endpoints: torusNodeSSSEndpoints,
@@ -59,14 +59,14 @@ describe('commitment request', function () {
     const privKey = secp256k1.utils.randomPrivateKey();
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
-    const verifier = 'torus-test-health';
-    const verifierId = 'test-verifier-id';
-    const idToken = generateIdToken(verifierId, 'ES256');
+    const authConnectionId = 'torus-test-health';
+    const userId = 'test-user-id';
+    const idToken = generateIdToken(userId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
     const { torusNodeSSSEndpoints } = await nodeDetailManager.getNodeDetails({
-      verifier,
-      verifierId,
+      verifier: authConnectionId,
+      verifierId: userId,
     });
 
     if (!torusNodeSSSEndpoints) {
@@ -78,7 +78,7 @@ describe('commitment request', function () {
 
     const commitmentResults = await commitIdToken({
       idToken,
-      verifier,
+      authConnectionId,
       sessionPubKeyX,
       sessionPubKeyY,
       endpoints,
@@ -96,14 +96,14 @@ describe('commitment request', function () {
     const privKey = secp256k1.utils.randomPrivateKey();
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
-    const verifier = 'torus-test-health';
-    const verifierId = 'test-verifier-id';
-    const idToken = generateIdToken(verifierId, 'ES256');
+    const authConnectionId = 'torus-test-health';
+    const userId = 'test-user-id';
+    const idToken = generateIdToken(userId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
     const { torusNodeSSSEndpoints } = await nodeDetailManager.getNodeDetails({
-      verifier,
-      verifierId,
+      verifier: authConnectionId,
+      verifierId: userId,
     });
 
     if (!torusNodeSSSEndpoints) {
@@ -120,7 +120,7 @@ describe('commitment request', function () {
     await expect(
       commitIdToken({
         idToken,
-        verifier,
+        authConnectionId,
         sessionPubKeyX,
         sessionPubKeyY,
         endpoints,

@@ -76,10 +76,10 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * getting the authentication tokens from the nodes in return.
    *
    * @param params - The authentication parameters.
-   * @param params.idTokens - An array of ID tokens for authentication.
-   * @param params.verifier - The verifier who issued the idToken.
-   * @param params.verifierId - The verifierId/userID assigned to the user by the verifier.
-   * @param params.singleIdVerifierParams - Optional singleIdVerifierParams to be used for the authenticate request.
+   * @param params.idTokens - An array of id tokens for authentication.
+   * @param params.authConnectionId - The auth connection name to be used for the authenticate request
+   * @param params.userId - The user id of the user issued by authentication service
+   * @param params.groupedAuthConnectionParams - Optional groupedAuthConnectionParams to be used for the authenticate request.
    * You can pass this to use aggregate verifier.
    *
    * @returns - The authentication result containing the authentication tokens and a boolean indicating if the user is new or not.
@@ -99,7 +99,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     // commit idToken to nodes
     const commitmentResults = await commitIdToken({
       idToken: params.idTokens[0],
-      verifier: params.verifier,
+      authConnectionId: params.authConnectionId,
       sessionPubKeyX,
       sessionPubKeyY,
       endpoints: nodeEndpoints,
@@ -116,13 +116,14 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     // get auth tokens from nodes
     const { authTokensData, isNewUser } = await authenticateUser({
       idToken: params.idTokens[0],
-      verifier: params.verifier,
-      verifierId: params.verifierId,
+      authConnectionId: params.authConnectionId,
+      userId: params.userId,
       sessionPrivateKey: sessionPrivKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
-      singleIdVerifierParams: params.singleIdVerifierParams,
+      groupedAuthConnectionParams: params.groupedAuthConnectionParams,
     });
+
     return {
       nodeAuthTokens: authTokensData.map((tokenData) => ({
         authToken: tokenData.authToken,
@@ -169,8 +170,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
    * @param params.oprfKey - The OPRF key to be persisted.
    * @param params.authPubKey - The authentication public key.
-   * @param params.verifier - The verifier name used for authentication.
-   * @param params.verifierId - The verifierId/userID of the user.
+   * @param params.authConnectionId - The auth connection name used for authentication.
+   * @param params.userId - The user id of the user issued by authentication service.
    * @param params.keyShareIndex - The key share index to be persisted. Required only during key change, defaults to FIRST_KEY_INDEX for first-time storage.
    * @param params.oldAuthKeyPair - The old authentication key pair of the user. Required only during key change, not needed for first-time storage.
    */
@@ -179,8 +180,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       nodeAuthTokens,
       oprfKey,
       authPubKey,
-      verifier,
-      verifierId,
+      authConnectionId,
+      userId,
       keyShareIndex = FIRST_KEY_INDEX,
       oldAuthKeyPair,
     } = params;
@@ -197,8 +198,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     if (oldAuthKeyPair) {
       await changeKeyShares({
         nodeEndpointsMap: selectedEndpointsMap,
-        verifier,
-        verifierId,
+        authConnectionId,
+        userId,
         authTokens: nodeAuthTokens,
         keyShareIndex,
         newOprfKey: oprfKey,
@@ -208,8 +209,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     } else {
       await storeKeyShares({
         nodeEndpointsMap: selectedEndpointsMap,
-        verifier,
-        verifierId,
+        authConnectionId,
+        userId,
         authTokens: nodeAuthTokens,
         keyShareIndex,
         oprfKey,
@@ -230,7 +231,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
   async createAndPersistEncKey(
     params: CreateEncryptionKeyParams,
   ): Promise<CreateEncryptionKeyResult> {
-    const { nodeAuthTokens, password, verifier, verifierId } = params;
+    const { nodeAuthTokens, password, authConnectionId, userId } = params;
     const { oprfKey, authKeyPair, encKey } = this.createLocalKey({
       password,
     });
@@ -239,8 +240,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       nodeAuthTokens,
       oprfKey,
       authPubKey: authKeyPair.pk,
-      verifier,
-      verifierId,
+      authConnectionId,
+      userId,
     });
 
     return {
@@ -258,23 +259,23 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * @param params - The parameters for recovering the encryption key.
    * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
    * @param params.password - The password of the user.
-   * @param params.verifier - The verifier name used for authentication.
-   * @param params.verifierId - The verifierId/userID of the user.
+   * @param params.authConnectionId - The auth connection name used for authentication.
+   * @param params.userId - The user id of the user.
    *
    * @returns The encryption key result with auth key pair, encryption key and key share index.
    */
   async recoverEncKey(
     params: RecoverEncryptionKeyParams,
   ): Promise<RecoverEncryptionKeyResult> {
-    const { nodeAuthTokens, password, verifier, verifierId } = params;
+    const { nodeAuthTokens, password, authConnectionId, userId } = params;
     const { nodeEndpointsMap } = await this.#getNodeDetails();
     const pwBytes = utf8ToBytes(password);
 
     const { seed, keyShareIndex } = await recoverTOPRFSeed({
       authTokens: nodeAuthTokens,
       nodeEndpointsMap,
-      verifier,
-      verifierId,
+      authConnectionId,
+      userId,
       userInput: pwBytes,
     });
 
@@ -284,8 +285,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       resetRateLimits({
         authTokens: nodeAuthTokens,
         nodeEndpointsMap,
-        verifier,
-        verifierId,
+        authConnectionId,
+        userId,
         authPrivKey: authKeyPair.sk,
       })
         .then(() => {
@@ -314,8 +315,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    *
    * @param params - The parameters for changing the encryption key.
    * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
-   * @param params.verifier - The verifier name used for authentication.
-   * @param params.verifierId - The verifierId/userID of the user.
+   * @param params.authConnectionId - The auth connection name used for authentication.
+   * @param params.userId - The user id of the user.
    * @param params.oldEncKey - The old encryption key of the user.
    * @param params.oldAuthKeyPair - The old authentication key pair of the user.
    * @param params.newPassword - The new password of the user.
@@ -328,8 +329,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
   ): Promise<ChangeEncryptionKeyResult> {
     const {
       nodeAuthTokens,
-      verifier,
-      verifierId,
+      authConnectionId,
+      userId,
       oldEncKey,
       oldAuthKeyPair,
       oldPassword,
@@ -385,8 +386,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         nodeAuthTokens,
         oprfKey,
         authPubKey: authKeyPair.pk,
-        verifier,
-        verifierId,
+        authConnectionId,
+        userId,
         keyShareIndex: newKeyShareIndex,
         oldAuthKeyPair,
       });
@@ -503,21 +504,21 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    *
    * @param params - The parameters for getting the authentication public key.
    * @param params.authTokens - The auth tokens issued by the nodes on authenticating the user.
-   * @param params.verifier - The verifier name used for authentication.
-   * @param params.verifierId - The verifierId issued to user after authentication.
+   * @param params.authConnectionId - The auth connection name used for authentication.
+   * @param params.userId - The user id of the user.
    *
    * @returns The authentication public key.
    */
   async fetchAuthPubKey(
     params: FetchAuthPubKeyParams,
   ): Promise<FetchAuthPubKeyResult> {
-    const { nodeAuthTokens, verifier, verifierId } = params;
+    const { nodeAuthTokens, authConnectionId, userId } = params;
     const { nodeEndpointsMap } = await this.#getNodeDetails();
     const authPubKey = await getPubKey({
       authTokens: nodeAuthTokens,
       nodeEndpointsMap,
-      verifier,
-      verifierId,
+      authConnectionId,
+      userId,
     });
     return { authPubKey };
   }
@@ -527,8 +528,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    *
    * @param params - The parameters for getting the password.
    * @param params.nodeAuthTokens - The auth tokens issued by the nodes on authenticating the user.
-   * @param params.verifier - The verifier name used for authentication.
-   * @param params.verifierId - The verifierId issued to user after authentication.
+   * @param params.authConnectionId - The auth connection name used for authentication.
+   * @param params.userId - The user id of the user.
    *
    * @returns The password.
    */
@@ -580,8 +581,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
   }> {
     const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
       await this.#nodeDetailManager.getNodeDetails({
-        verifier: 'DEFAULT_VERIFIER',
-        verifierId: 'DEFAULT_VERIFIER_ID',
+        verifier: 'auth-connection-id',
+        verifierId: 'user-id',
       });
 
     if (!torusNodeSSSEndpoints) {

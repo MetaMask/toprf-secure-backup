@@ -27,8 +27,8 @@ async function getNodeEndpointsMap(
   });
   const { torusNodeSSSEndpoints, torusIndexes } =
     await nodeDetailManager.getNodeDetails({
-      verifier: 'DEFAULT_VERIFIER',
-      verifierId: 'DEFAULT_VERIFIER_ID',
+      verifier: 'auth-connection-id',
+      verifierId: 'user-id',
     });
   if (!torusNodeSSSEndpoints || !torusIndexes) {
     throw new Error('Failed to get node details');

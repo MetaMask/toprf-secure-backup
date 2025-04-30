@@ -13,10 +13,7 @@ import { OPRF, generateRandomScalar } from './oprf';
 import { storeKeyShares } from './storeSharesRequest';
 import { recoverTOPRFSeed, validateSeed } from './toprfEvalRequest';
 import { createNodeEndpointsMap } from './utils';
-import {
-  generateIdToken,
-  generateRandomVerifierId,
-} from '../tests/testHelpers';
+import { generateIdToken, generateRandomUserId } from '../tests/testHelpers';
 
 describe('toprfEvalRequest', () => {
   describe('validateSeed', () => {
@@ -128,8 +125,8 @@ describe('toprfEvalRequest', () => {
         recoverTOPRFSeed({
           authTokens: insufficientAuthTokens,
           nodeEndpointsMap: { 1: 'endpoint1', 2: 'endpoint2' },
-          verifier: 'test-verifier',
-          verifierId: 'test-verifier-id',
+          authConnectionId: 'test-auth-connection-id',
+          userId: 'test-user-id',
           userInput: toBytes('test-password'),
         }),
       ).rejects.toThrow('At least 3 auth tokens are required');
@@ -154,8 +151,8 @@ describe('toprfEvalRequest', () => {
         recoverTOPRFSeed({
           authTokens,
           nodeEndpointsMap,
-          verifier: 'test-verifier',
-          verifierId: 'test-verifier-id',
+          authConnectionId: 'test-auth-connection-id',
+          userId: 'test-user-id',
           userInput: toBytes('test-password'),
         }),
       ).rejects.toThrow('Endpoint not found for node index 4');
@@ -170,12 +167,12 @@ describe('toprfEvalRequest', () => {
         network: 'sapphire_devnet',
       });
 
-      const verifier = 'torus-test-health';
-      const verifierId = generateRandomVerifierId();
+      const authConnectionId = 'torus-test-health';
+      const userId = generateRandomUserId();
       const { torusNodeSSSEndpoints, torusIndexes } =
         await nodeDetailManager.getNodeDetails({
-          verifier,
-          verifierId,
+          verifier: authConnectionId,
+          verifierId: userId,
         });
 
       if (!torusNodeSSSEndpoints || !torusIndexes) {
@@ -188,13 +185,13 @@ describe('toprfEvalRequest', () => {
         torusIndexes,
       );
 
-      const idToken = generateIdToken(verifierId, 'ES256');
+      const idToken = generateIdToken(userId, 'ES256');
       const sessionPubKeyX = pubKey.x.toString(16);
       const sessionPubKeyY = pubKey.y.toString(16);
 
       const commitmentResults = await commitIdToken({
         idToken,
-        verifier,
+        authConnectionId,
         sessionPubKeyX,
         sessionPubKeyY,
         endpoints: torusNodeSSSEndpoints,
@@ -209,8 +206,8 @@ describe('toprfEvalRequest', () => {
 
       const { authTokensData } = await authenticateUser({
         idToken,
-        verifier,
-        verifierId,
+        authConnectionId,
+        userId,
         sessionPrivateKey: privKey,
         nodeEndpointsMap: selectedEndpointsMap,
         commitmentSignatures: commitmentResults,
@@ -226,8 +223,8 @@ describe('toprfEvalRequest', () => {
 
       const storeSharesResponse = await storeKeyShares({
         nodeEndpointsMap: selectedEndpointsMap,
-        verifier,
-        verifierId,
+        authConnectionId,
+        userId,
         authTokens: authTokensData,
         keyShareIndex: 1,
         oprfKey,
@@ -242,8 +239,8 @@ describe('toprfEvalRequest', () => {
         const attemptResult = await recoverTOPRFSeed({
           authTokens: authTokensData,
           nodeEndpointsMap: selectedEndpointsMap,
-          verifier,
-          verifierId,
+          authConnectionId,
+          userId,
           userInput: passwordBytes,
         });
 
@@ -262,8 +259,8 @@ describe('toprfEvalRequest', () => {
         return recoverTOPRFSeed({
           authTokens: authTokensData,
           nodeEndpointsMap: selectedEndpointsMap,
-          verifier,
-          verifierId,
+          authConnectionId,
+          userId,
           userInput: passwordBytes,
         });
       }).rejects.toMatchObject({
