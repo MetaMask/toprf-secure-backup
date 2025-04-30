@@ -160,10 +160,12 @@ export function generateRandomPolynomial(
     );
   });
   for (let i = 0; i < degree - deterministicShares.length; i += 1) {
-    let shareIndex = generatePrivateExcludingIndexes([new BN(0)], ecCurve);
-    while (points[shareIndex.toString('hex', 64)] !== undefined) {
-      shareIndex = generatePrivateExcludingIndexes([new BN(0)], ecCurve);
-    }
+    const excludeIndexes = [new BN(0)];
+    Object.keys(points).forEach((indexHex) => {
+      excludeIndexes.push(new BN(indexHex, 'hex'));
+    });
+
+    const shareIndex = generatePrivateExcludingIndexes(excludeIndexes, ecCurve);
     points[shareIndex.toString('hex', 64)] = new Point(
       shareIndex,
       generatePrivateKey(ecCurve),

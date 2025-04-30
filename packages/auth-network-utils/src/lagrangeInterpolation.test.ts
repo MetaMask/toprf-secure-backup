@@ -1,17 +1,21 @@
 import BN from 'bn.js';
+import type { ec as EC } from 'elliptic';
 
-import { getSecp256K1Curve } from './cryptoUtils';
+import * as cryptoUtils from './cryptoUtils'; // Import all for mocking
 import {
   generateRandomPolynomial,
   lagrangeInterpolatePolynomial,
   lagrangeInterpolation,
 } from './lagrangeInterpolation';
+// import type { StringifiedType } from './interfaces'; // Unused
 import Point from './point';
+import Share from './share';
 
 describe('lagrange interpolation', function () {
+  const curve = cryptoUtils.getSecp256K1Curve();
+
   it('should generate random polynomial', function () {
     const degree = 5;
-    const curve = getSecp256K1Curve();
 
     const result = generateRandomPolynomial(curve, degree);
     // number of polynomials should be equal to the degree + 1 (inital secret)
@@ -20,7 +24,6 @@ describe('lagrange interpolation', function () {
 
   it('should generate random polynomial with secret', function () {
     const degree = 5;
-    const curve = getSecp256K1Curve();
     const secret = new BN(100);
 
     const result = generateRandomPolynomial(curve, degree, secret);
@@ -33,7 +36,6 @@ describe('lagrange interpolation', function () {
   it('should reconstruct secret from shares using lagrangeInterpolation', function () {
     const degree = 5;
     const sharesRequired = degree + 1;
-    const curve = getSecp256K1Curve();
     const secret = new BN(1234567890);
 
     const polynomial = generateRandomPolynomial(curve, degree, secret);
@@ -57,7 +59,6 @@ describe('lagrange interpolation', function () {
   it('should reconstruct secret from shares using lagrangeInterpolatePolynomial', function () {
     const degree = 5;
     const sharesRequired = degree + 1;
-    const curve = getSecp256K1Curve();
     const secret = new BN(1234567890);
 
     const polynomial = generateRandomPolynomial(curve, degree, secret);
@@ -81,8 +82,6 @@ describe('lagrange interpolation', function () {
   });
 
   it('should correctly interpolate polynomial through all points', function () {
-    const curve = getSecp256K1Curve();
-
     // Points representing y = x^3 - x^2 + 2x + 1
     const x0 = new BN(0);
     const x1 = new BN(1);
@@ -111,8 +110,6 @@ describe('lagrange interpolation', function () {
   });
 
   it('should handle points in any order', function () {
-    const curve = getSecp256K1Curve();
-
     // Points representing y = 2x + 1
     const x0 = new BN(0);
     const x1 = new BN(1);
@@ -147,7 +144,6 @@ describe('lagrange interpolation', function () {
   });
 
   it('should interpolate constant polynomial when given single point', function () {
-    const curve = getSecp256K1Curve();
     const xCoordinate = new BN(1);
     const yCoordinate = new BN(2);
     const point = new Point(xCoordinate, yCoordinate, curve);
@@ -160,8 +156,6 @@ describe('lagrange interpolation', function () {
   });
 
   it('should interpolate linear polynomial when given two points', function () {
-    const curve = getSecp256K1Curve();
-
     // Points representing y = x + 1
     const x0 = new BN(0);
     const x1 = new BN(1);
@@ -181,5 +175,104 @@ describe('lagrange interpolation', function () {
       const evaluated = interpolatedPoly.polyEval(point.xCoordinate);
       expect(evaluated.eq(point.yCoordinate)).toBe(true);
     }
+  });
+
+  it('should retry if generated key clashes with existing index', () => {
+    const degree = 1;
+    const firstPrivateKey = new BN(50);
+    const secondPrivateKey = new BN(60);
+
+    // Mock implementation: first return the clashing key, then the valid one
+    const mockGeneratePrivateKey = jest.spyOn(
+      cryptoUtils,
+      'generatePrivateKey',
+    );
+    mockGeneratePrivateKey.mockImplementationOnce(() => {
+      return firstPrivateKey;
+    });
+    mockGeneratePrivateKey.mockImplementationOnce(() => {
+      return secondPrivateKey;
+    });
+
+    // We pass firstPrivateKey as the secret (poly[0]) so the first coefficient generation clashes
+    const polynomial = generateRandomPolynomial(curve, degree, firstPrivateKey);
+
+    // Verify retry behavior and final polynomial value
+    expect(mockGeneratePrivateKey).toHaveBeenCalledTimes(2);
+    expect(polynomial.polynomial[1].eq(secondPrivateKey)).toBe(true);
+
+    mockGeneratePrivateKey.mockRestore();
+  });
+
+  it('should throw if curve order n is missing', () => {
+    const mockCurve = { n: undefined } as EC;
+    const points = [new Point(new BN(1), new BN(1), curve)];
+    expect(() => lagrangeInterpolatePolynomial(mockCurve, points)).toThrow(
+      'Curve is not set',
+    );
+  });
+
+  it('should throw if shares and nodeIndex arrays differ in length', () => {
+    const shares = [new BN(1), new BN(2)];
+    const nodeIndex = [new BN(1)]; // Different length
+    expect(() => lagrangeInterpolation(curve, shares, nodeIndex)).toThrow(
+      'shares not equal to nodeIndex length in lagrangeInterpolation',
+    );
+  });
+
+  describe('generateRandomPolynomial with deterministicShares', () => {
+    const degree = 3;
+    const share1Index = new BN(1);
+    const share1Value = new BN(101);
+    const share2Index = new BN(5);
+    const share2Value = new BN(505);
+    const deterministicShares = [
+      new Share(share1Index.toString('hex'), share1Value.toString('hex')),
+      new Share(share2Index.toString('hex'), share2Value.toString('hex')),
+    ];
+
+    it('should generate a polynomial incorporating deterministic shares', () => {
+      const localSecret = new BN(99);
+
+      const polynomial = generateRandomPolynomial(
+        curve,
+        degree,
+        localSecret,
+        deterministicShares,
+      );
+
+      expect(polynomial.polynomial).toHaveLength(degree + 1);
+      expect(polynomial.polynomial[0].eq(localSecret)).toBe(true);
+
+      const eval1 = polynomial.polyEval(share1Index);
+      const eval2 = polynomial.polyEval(share2Index);
+      expect(eval1.eq(share1Value)).toBe(true);
+      expect(eval2.eq(share2Value)).toBe(true);
+    });
+
+    it('should throw if deterministicShares is not an array', () => {
+      expect(() => {
+        generateRandomPolynomial(curve, degree, undefined, {
+          not: 'an array',
+        } as any);
+      }).toThrow(
+        'deterministic shares in generateRandomPolynomial should be an array',
+      );
+    });
+
+    it('should throw if too many deterministicShares are provided', () => {
+      const tooManyShares = [
+        ...deterministicShares,
+        new Share('3', '303'),
+        new Share('4', '404'),
+      ];
+      expect(tooManyShares.length > degree).toBe(true);
+
+      expect(() => {
+        generateRandomPolynomial(curve, degree, undefined, tooManyShares);
+      }).toThrow(
+        'deterministicShares in generateRandomPolynomial should be less or equal than degree',
+      );
+    });
   });
 });
