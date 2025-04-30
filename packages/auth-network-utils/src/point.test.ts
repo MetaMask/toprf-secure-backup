@@ -31,15 +31,12 @@ describe('point', () => {
     let point: Point;
 
     beforeEach(() => {
-      // Use curve's generator point for simplicity in encoding tests
-      const G = ec.g;
-      point = new Point(G.getX().toString('hex'), G.getY().toString('hex'), ec);
-      // keyFromPublic requires hex strings for coordinates
-      // Use the same padding as the encode method uses internally
-      // keyPair = ec.keyFromPublic({ // No longer needed
-      //   x: point.xCoordinate.toString('hex', 64),
-      //   y: point.yCoordinate.toString('hex', 64),
-      // });
+      const basePoint = ec.g;
+      point = new Point(
+        basePoint.getX().toString('hex'),
+        basePoint.getY().toString('hex'),
+        ec,
+      );
     });
 
     it('should encode the point in uncompressed format with enc="arr"', () => {
