@@ -192,20 +192,20 @@ describe('common utils', function () {
   describe('getProxyCoordinatorNodeIndex', () => {
     it('should return a deterministic index within the bounds', () => {
       const indexes = [1, 2, 3, 4, 5];
-      const verifier = 'google';
-      const verifierId = 'test@example.com';
+      const authConnectionId = 'google';
+      const userId = 'test@example.com';
 
       const index1 = getProxyCoordinatorNodeIndex(
         indexes,
-        verifier,
-        verifierId,
+        authConnectionId,
+        userId,
       );
       expect(indexes).toContain(index1);
 
       const index2 = getProxyCoordinatorNodeIndex(
         indexes,
-        verifier,
-        verifierId,
+        authConnectionId,
+        userId,
       );
       expect(index2).toBe(index1);
 
@@ -219,9 +219,13 @@ describe('common utils', function () {
 
     it('should handle single element index array', () => {
       const indexes = [10];
-      const verifier = 'google';
-      const verifierId = 'test@example.com';
-      const index = getProxyCoordinatorNodeIndex(indexes, verifier, verifierId);
+      const authConnectionId = 'google';
+      const userId = 'test@example.com';
+      const index = getProxyCoordinatorNodeIndex(
+        indexes,
+        authConnectionId,
+        userId,
+      );
       expect(index).toBe(10);
     });
   });
