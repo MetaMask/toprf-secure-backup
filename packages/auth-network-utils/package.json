@@ -1,6 +1,6 @@
 {
   "name": "@metamask/auth-network-utils",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "common utilities to access and format responses from auth network",
   "keywords": [
     "MetaMask",
