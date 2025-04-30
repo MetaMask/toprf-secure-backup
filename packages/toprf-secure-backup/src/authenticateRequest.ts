@@ -7,7 +7,7 @@ import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
 import { AUTHENTICATION_THRESHOLD, JRPC_METHODS } from './constants';
 import { TOPRFError } from './errors';
-import type { SingleIdVerifierParams } from './interfaces';
+import type { GroupedAuthConnectionParams } from './interfaces';
 import type {
   AuthJRPCRequest,
   AuthJRPCResponse,
@@ -21,28 +21,27 @@ import { decryptAuthToken, postJRPCRequest } from './utils';
  * Creates the parameters for the authenticate request
  *
  * @param idToken - The idToken to be used for the authenticate request
- * @param verifier - The verifier
- * to be used for the authenticate request
- * @param verifierId - The verifierId to be used for the authenticate request
+ * @param authConnectionId - The auth connection name to be used for the authenticate request
+ * @param userId - The userId to be used for the authenticate request
  * @param commitmentSignatures - The idToken commitment signatures to be used for the authenticate request.
- * @param singleIdVerifierParams - Optional singleIdVerifierParams to be used for the authenticate request.
+ * @param groupedAuthConnectionParams - Optional groupedAuthConnectionParams to be used for the authenticate request.
  * @returns The parameters for the authenticate JRPC request.
  */
 const createAuthenticateRequestParams = (
   idToken: string,
-  verifier: string,
-  verifierId: string,
+  authConnectionId: string,
+  userId: string,
   commitmentSignatures: CommitmentRequestResult[],
-  singleIdVerifierParams?: SingleIdVerifierParams,
+  groupedAuthConnectionParams?: GroupedAuthConnectionParams,
 ): AuthJRPCRequestParams => {
-  const singleIdVerifierParamsArr =
-    singleIdVerifierParams?.subVerifierIdTokens &&
-    singleIdVerifierParams?.subVerifier
+  const groupedAuthConnectionParamsArr =
+    groupedAuthConnectionParams?.idTokens &&
+    groupedAuthConnectionParams?.authConnectionId
       ? {
           subVerifierAuthParams: [
             {
-              subVerifierIdToken: singleIdVerifierParams.subVerifierIdTokens[0],
-              subVerifier: singleIdVerifierParams.subVerifier,
+              subVerifierIdToken: groupedAuthConnectionParams.idTokens[0],
+              subVerifier: groupedAuthConnectionParams.authConnectionId,
             },
           ],
         }
@@ -51,10 +50,10 @@ const createAuthenticateRequestParams = (
     authData: {
       authenticationContext: {
         idToken,
-        verifier,
-        verifierId,
+        verifier: authConnectionId,
+        verifierId: userId,
       },
-      singleIdVerifierParams: singleIdVerifierParamsArr,
+      singleIdVerifierParams: groupedAuthConnectionParamsArr,
     },
     commitmentSignatures,
     clientTime: Math.floor(Date.now() / 1000).toString(),
@@ -159,16 +158,16 @@ export const validateAndWaitForAllAuthResponses = async (
 };
 
 /**
- * Authenticates the user with the given idToken and verifierId and validates the responses.
+ * Authenticates the user with the given idToken and userId and validates the responses.
  *
  * @param params - The parameters for the authenticate request
  * @param params.idToken - The idToken to be used for the authenticate request
- * @param params.verifier - The verifier to be used for the authenticate request
- * @param params.verifierId - The verifierId to be used for the authenticate request
+ * @param params.authConnectionId - The auth connection name to be used for the authenticate request
+ * @param params.userId - The user id of the user to be used for the authenticate request
  * @param params.sessionPrivateKey - The session private key used for commitment request.
  * @param params.nodeEndpointsMap - The map of node indexes to endpoints map to be used for the authenticate request.
  * @param params.commitmentSignatures - The idToken commitment signatures to be used for the authenticate request.
- * @param params.singleIdVerifierParams - Optional singleIdVerifierParams to be used for the authenticate request.
+ * @param params.groupedAuthConnectionParams - Optional groupedAuthConnectionParams to be used for the authenticate request.
  * You can pass this to use aggregate verifier.
  *
  * @returns resultArr - The authenticate request result, where each element is
@@ -176,12 +175,12 @@ export const validateAndWaitForAllAuthResponses = async (
  */
 export const authenticateUser = async (params: {
   idToken: string;
-  verifier: string;
-  verifierId: string;
+  authConnectionId: string;
+  userId: string;
   sessionPrivateKey: Uint8Array;
   nodeEndpointsMap: Record<number, string>;
   commitmentSignatures: CommitmentRequestResult[];
-  singleIdVerifierParams?: SingleIdVerifierParams;
+  groupedAuthConnectionParams?: GroupedAuthConnectionParams;
 }): Promise<{
   authTokensData: AuthRequestResult[];
   isNewUser: boolean;
@@ -189,18 +188,18 @@ export const authenticateUser = async (params: {
   const {
     idToken,
     nodeEndpointsMap,
-    verifier,
-    verifierId,
+    authConnectionId,
+    userId,
     commitmentSignatures,
     sessionPrivateKey,
-    singleIdVerifierParams,
+    groupedAuthConnectionParams,
   } = params;
   const requestParams = createAuthenticateRequestParams(
     idToken,
-    verifier,
-    verifierId,
+    authConnectionId,
+    userId,
     commitmentSignatures,
-    singleIdVerifierParams,
+    groupedAuthConnectionParams,
   );
   // start with half the nodes count optimistically.
   const promiseArr = Object.values(nodeEndpointsMap).map(async (endpoint) =>

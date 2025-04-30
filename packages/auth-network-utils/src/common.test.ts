@@ -449,8 +449,8 @@ describe('common utils', function () {
       authData: {
         authenticationContext: {
           idToken: 'test',
-          verifier: 'test',
-          verifierId: 'test',
+          authConnectionId: 'test',
+          userId: 'test',
         },
         verifierOauthParams: {
           test: 'test',
@@ -465,8 +465,8 @@ describe('common utils', function () {
       auth_data: {
         authentication_context: {
           id_token: 'test',
-          verifier: 'test',
-          verifier_id: 'test',
+          auth_connection_id: 'test',
+          user_id: 'test',
         },
         verifier_oauth_params: {
           test: 'test',
