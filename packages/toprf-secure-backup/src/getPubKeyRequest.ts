@@ -20,20 +20,20 @@ import { mergeEndpointsWithAuthTokens, postJRPCRequest } from './utils';
  * Creates the parameters for the get pub key request
  *
  * @param authToken - The auth issued by node to authenticate the request.
- * @param verifier - The verifier name.
- * @param verifierId - The verifier id of the user.
+ * @param authConnectionId - The auth connection name.
+ * @param userId - The user id of the user issued by authentication service.
  *
  * @returns The parameters for the get pub key jrpc request.
  */
 const createGetPubKeyRequestParams = (
   authToken: string,
-  verifier: string,
-  verifierId: string,
+  authConnectionId: string,
+  userId: string,
 ): GetPubKeyJRPCRequestParams => {
   return {
     authToken,
-    verifier,
-    verifierId,
+    verifier: authConnectionId,
+    verifierId: userId,
   };
 };
 
@@ -90,8 +90,8 @@ export const validatePubKey = async (
  *
  * @param params - The parameters for the get pub key request
  * @param params.authTokens - The auth tokens issued by the nodes on authenticating the user.
- * @param params.verifier - The verifier name used for authentication.
- * @param params.verifierId - The verifierId issued to user after authentication.
+ * @param params.authConnectionId - The auth connection name used for authentication.
+ * @param params.userId - The user id of the user issued by authentication service.
  * @param params.nodeEndpointsMap - Map of node index to endpoint to be used for the toprf eval request.
  *
  * @returns - A promise that resolves with the key pair seed successfully.
@@ -99,10 +99,10 @@ export const validatePubKey = async (
 export const getPubKey = async (params: {
   authTokens: NodeAuthTokens;
   nodeEndpointsMap: Record<number, string>;
-  verifier: string;
-  verifierId: string;
+  authConnectionId: string;
+  userId: string;
 }): Promise<Uint8Array> => {
-  const { authTokens, nodeEndpointsMap, verifier, verifierId } = params;
+  const { authTokens, nodeEndpointsMap, authConnectionId, userId } = params;
 
   if (authTokens.length < GET_PUB_KEY_THRESHOLD) {
     throw TOPRFError.insufficientAuthTokens(
@@ -119,8 +119,8 @@ export const getPubKey = async (params: {
     async ({ endpoint, authToken }) => {
       const requestParams = createGetPubKeyRequestParams(
         authToken.authToken,
-        verifier,
-        verifierId,
+        authConnectionId,
+        userId,
       );
       return sendGetPubKeyRequest(endpoint, requestParams);
     },

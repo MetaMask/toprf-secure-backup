@@ -14,10 +14,7 @@ import {
 } from './resetRateLimits';
 import { storeKeyShares } from './storeSharesRequest';
 import { createNodeEndpointsMap } from './utils';
-import {
-  generateIdToken,
-  generateRandomVerifierId,
-} from '../tests/testHelpers';
+import { generateIdToken, generateRandomUserId } from '../tests/testHelpers';
 
 // TODO: add more tests to test rate limit affect on multiple password input attempts in future.
 describe('resetRateLimits', () => {
@@ -29,11 +26,12 @@ describe('resetRateLimits', () => {
   });
 
   it('should reset rate limits without throwing', async function () {
-    const verifier = 'torus-test-health';
+    const authConnectionId = 'torus-test-health';
+    const userId = generateRandomUserId();
     const { torusNodeSSSEndpoints, torusIndexes } =
       await nodeDetailManager.getNodeDetails({
-        verifier,
-        verifierId: 'dummy-id',
+        verifier: authConnectionId,
+        verifierId: userId,
       });
 
     if (!torusNodeSSSEndpoints || !torusIndexes) {
@@ -42,15 +40,14 @@ describe('resetRateLimits', () => {
 
     const privKey = secp256k1.utils.randomPrivateKey();
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
-    const verifierId = generateRandomVerifierId();
 
-    const idToken = generateIdToken(verifierId, 'ES256');
+    const idToken = generateIdToken(userId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
 
     const commitmentResults = await commitIdToken({
       idToken,
-      verifier,
+      authConnectionId,
       sessionPubKeyX,
       sessionPubKeyY,
       endpoints: torusNodeSSSEndpoints,
@@ -70,8 +67,8 @@ describe('resetRateLimits', () => {
 
     const { authTokensData } = await authenticateUser({
       idToken,
-      verifier,
-      verifierId,
+      authConnectionId,
+      userId,
       sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
@@ -84,8 +81,8 @@ describe('resetRateLimits', () => {
 
     const storeSharesResponse = await storeKeyShares({
       nodeEndpointsMap: selectedEndpointsMap,
-      verifier,
-      verifierId,
+      authConnectionId,
+      userId,
       authTokens: authTokensData,
       keyShareIndex: 1,
       oprfKey,
@@ -98,19 +95,20 @@ describe('resetRateLimits', () => {
     const result = await resetRateLimits({
       authTokens: authTokensData,
       nodeEndpointsMap: selectedEndpointsMap,
-      verifier,
-      verifierId,
+      authConnectionId,
+      userId,
       authPrivKey: authKeyPair.sk,
     });
     expect(result).toBe(true);
   });
 
   it('should fail if endpoint is not found for auth token node index', async function () {
-    const verifier = 'torus-test-health';
+    const authConnectionId = 'torus-test-health';
+    const userId = generateRandomUserId();
     const { torusNodeSSSEndpoints, torusIndexes } =
       await nodeDetailManager.getNodeDetails({
-        verifier,
-        verifierId: 'dummy-id',
+        verifier: authConnectionId,
+        verifierId: userId,
       });
 
     if (!torusNodeSSSEndpoints || !torusIndexes) {
@@ -119,15 +117,14 @@ describe('resetRateLimits', () => {
 
     const privKey = secp256k1.utils.randomPrivateKey();
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
-    const verifierId = generateRandomVerifierId();
 
-    const idToken = generateIdToken(verifierId, 'ES256');
+    const idToken = generateIdToken(userId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
 
     const commitmentResults = await commitIdToken({
       idToken,
-      verifier,
+      authConnectionId,
       sessionPubKeyX,
       sessionPubKeyY,
       endpoints: torusNodeSSSEndpoints,
@@ -147,8 +144,8 @@ describe('resetRateLimits', () => {
 
     const { authTokensData } = await authenticateUser({
       idToken,
-      verifier,
-      verifierId,
+      authConnectionId,
+      userId,
       sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
@@ -161,8 +158,8 @@ describe('resetRateLimits', () => {
 
     const storeSharesResponse = await storeKeyShares({
       nodeEndpointsMap: selectedEndpointsMap,
-      verifier,
-      verifierId,
+      authConnectionId,
+      userId,
       authTokens: authTokensData,
       keyShareIndex: 1,
       oprfKey,
@@ -179,8 +176,8 @@ describe('resetRateLimits', () => {
           ...selectedEndpointsMap,
           [authTokensData[0].nodeIndex]: '',
         },
-        verifier,
-        verifierId,
+        authConnectionId,
+        userId,
         authPrivKey: authKeyPair.sk,
       }),
     ).rejects.toThrow(
