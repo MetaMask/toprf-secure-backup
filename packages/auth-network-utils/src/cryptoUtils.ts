@@ -56,8 +56,8 @@ export function encParamsHexToBuf(
   eciesData: Omit<EciesHex, 'ciphertext'>,
 ): Omit<Ecies, 'ciphertext'> {
   return {
-    ephemPublicKey: Buffer.from(eciesData.ephemPublicKey, 'hex'),
     iv: Buffer.from(eciesData.iv, 'hex'),
+    ephemPublicKey: Buffer.from(eciesData.ephemPublicKey, 'hex'),
     mac: Buffer.from(eciesData.mac, 'hex'),
   };
 }
@@ -69,7 +69,10 @@ export function encParamsHexToBuf(
  * @returns The string without the hex prefix
  */
 function stripHexPrefix(str: string): string {
-  return str.startsWith('0x') ? str.slice(2) : str;
+  if (str.startsWith('0x') || str.startsWith('0X')) {
+    return str.slice(2);
+  }
+  return str;
 }
 
 /**
