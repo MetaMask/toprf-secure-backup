@@ -42,7 +42,7 @@ function setup(options?: {
   const idToken = generateIdToken(userId, 'ES256');
   const toprfSecureBackup = new ToprfSecureBackup({
     network: 'sapphire_devnet',
-    nodeDetailsOverride: options?.nodeDetailsOverride, // Pass the structurally compatible object
+    nodeDetailsOverride: options?.nodeDetailsOverride,
   });
 
   return { authConnectionId, userId, idToken, toprfSecureBackup };
