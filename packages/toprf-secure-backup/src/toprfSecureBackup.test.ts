@@ -5,7 +5,7 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import { FIRST_KEY_INDEX } from './constants';
 import { TOPRFError, TOPRFErrorCode } from './errors';
-import type { KeyPair } from './interfaces';
+import type { KeyPair, NodeDetailsOverride } from './interfaces';
 import { MetadataStore } from './metadata';
 import * as resetRateLimitsModule from './resetRateLimits';
 import { ToprfSecureBackup } from './toprfSecureBackup';
@@ -17,13 +17,6 @@ import {
 } from '../tests/testHelpers';
 
 const EXISTING_USER_ID = 'test-verifier-id-existing-user';
-
-// Define a local type for test setup that mirrors the internal NodeDetailsOverride
-type MockNodeDetailsOverride = {
-  sssConfig?: string | string[];
-  indexes?: number[];
-  pubKeys?: INodePub[];
-};
 
 /**
  * Sets up the test environment.
@@ -37,7 +30,7 @@ type MockNodeDetailsOverride = {
 function setup(options?: {
   authConnectionId?: string;
   userId?: string;
-  nodeDetailsOverride?: MockNodeDetailsOverride; // Use local mock type
+  nodeDetailsOverride?: NodeDetailsOverride;
 }): {
   authConnectionId: string;
   userId: string;
