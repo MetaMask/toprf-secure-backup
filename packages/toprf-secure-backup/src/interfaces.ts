@@ -22,12 +22,12 @@ export type KeyPair = {
  */
 export type NodeDetailsOverride = {
   /**
-   * SSS configuration. Can be:
-   * - An array of complete SSS endpoint URLs (if overriding entirely).
+   * Endpoint configuration. Can be:
+   * - An array of complete endpoint URLs (if overriding entirely).
    * - A path string (e.g., '/sss-toprf') to append to FND-resolved node URLs.
    * If undefined, FND-resolved SSS endpoints are used directly.
    */
-  sssConfig?: string | string[];
+  endpoints?: string | string[];
   /**
    * Array of node indexes. Must match network node count if provided.
    */

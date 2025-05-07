@@ -137,14 +137,14 @@ describe('toprf secret backup', function () {
       { X: '4', Y: '4' },
       { X: '5', Y: '5' },
     ];
-    const MOCK_SSS_URLS_5 = [
+    const MOCK_ENDPOINTS_5 = [
       'https://node-1.dev-node.web3auth.io/sss/jrpc',
       'https://node-2.dev-node.web3auth.io/sss/jrpc',
       'https://node-3.dev-node.web3auth.io/sss/jrpc',
       'https://node-4.dev-node.web3auth.io/sss/jrpc',
       'https://node-5.dev-node.web3auth.io/sss/jrpc',
     ];
-    const MOCK_SSS_PATH = '/sss-path';
+    const MOCK_ENDPOINT_PATH = '/sss-path';
 
     let fndSpy: jest.SpyInstance;
 
@@ -157,12 +157,12 @@ describe('toprf secret backup', function () {
     });
 
     describe('when all node details are overridden', () => {
-      it('should throw if overridden sssConfig array length mismatches overridden indexes length', async () => {
+      it('should throw if overridden endpoints array length mismatches overridden indexes length', async () => {
         const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
           nodeDetailsOverride: {
             indexes: MOCK_INDEXES_5, // length 5
             pubKeys: MOCK_PUBKEYS_5, // length 5
-            sssConfig: MOCK_SSS_URLS_5.slice(0, 4), // length 4
+            endpoints: MOCK_ENDPOINTS_5.slice(0, 4), // length 4
           },
         });
         fndSpy.mockResolvedValue({
@@ -178,7 +178,7 @@ describe('toprf secret backup', function () {
             userId,
           }),
         ).rejects.toThrow(
-          'Node details arrays (indexes, pubKeys, sssEndpoints) must have equal lengths',
+          'Node details arrays (indexes, pubKeys, endpoints) must have equal lengths',
         );
         expect(fndSpy).not.toHaveBeenCalled();
       });
@@ -188,7 +188,7 @@ describe('toprf secret backup', function () {
           nodeDetailsOverride: {
             indexes: MOCK_INDEXES_5, // length 5
             pubKeys: MOCK_PUBKEYS_5.slice(0, 4), // length 4
-            sssConfig: MOCK_SSS_URLS_5, // length 5
+            endpoints: MOCK_ENDPOINTS_5, // length 5
           },
         });
         fndSpy.mockResolvedValue({
@@ -204,7 +204,7 @@ describe('toprf secret backup', function () {
             userId,
           }),
         ).rejects.toThrow(
-          'Node details arrays (indexes, pubKeys, sssEndpoints) must have equal lengths',
+          'Node details arrays (indexes, pubKeys, endpoints) must have equal lengths',
         );
         expect(fndSpy).not.toHaveBeenCalled();
       });
@@ -214,7 +214,7 @@ describe('toprf secret backup', function () {
           nodeDetailsOverride: {
             indexes: MOCK_INDEXES_5,
             pubKeys: MOCK_PUBKEYS_5,
-            sssConfig: MOCK_SSS_URLS_5,
+            endpoints: MOCK_ENDPOINTS_5,
           },
         });
         fndSpy.mockResolvedValue({
@@ -233,15 +233,15 @@ describe('toprf secret backup', function () {
     });
 
     describe('when FND service is involved (partial/no overrides)', () => {
-      it('should throw if sssConfig array length mismatches FND-resolved indexes', async () => {
+      it('should throw if endpoints array length mismatches FND-resolved indexes', async () => {
         const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
           nodeDetailsOverride: {
             // indexes and pubKeys not provided
-            sssConfig: MOCK_SSS_URLS_5,
+            endpoints: MOCK_ENDPOINTS_5,
           },
         });
         fndSpy.mockResolvedValue({
-          torusNodeEndpoints: MOCK_SSS_URLS_5.slice(0, 3), // FND returns 3 endpoints
+          torusNodeEndpoints: MOCK_ENDPOINTS_5.slice(0, 3), // FND returns 3 endpoints
           torusIndexes: MOCK_INDEXES_5.slice(0, 3), // FND returns 3 indexes
           torusNodePub: MOCK_PUBKEYS_5.slice(0, 3), // FND returns 3 pubKeys
           currentEpoch: '1',
@@ -254,15 +254,15 @@ describe('toprf secret backup', function () {
             userId,
           }),
         ).rejects.toThrow(
-          'Node details arrays (indexes, pubKeys, sssEndpoints) must have equal lengths',
+          'Node details arrays (indexes, pubKeys, endpoints) must have equal lengths',
         );
         expect(fndSpy).toHaveBeenCalled();
       });
 
-      it('should throw if sssConfig is path and FND returns no SSS URLs', async () => {
+      it('should throw if endpoints is path and FND returns no SSS URLs', async () => {
         const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
           nodeDetailsOverride: {
-            sssConfig: MOCK_SSS_PATH, // sssConfig is a path
+            endpoints: MOCK_ENDPOINT_PATH, // endpoint is a path
           },
         });
         fndSpy.mockResolvedValue({
@@ -282,10 +282,10 @@ describe('toprf secret backup', function () {
         expect(fndSpy).toHaveBeenCalled();
       });
 
-      it('should throw if sssConfig is undefined and FND returns no SSS URLs', async () => {
+      it('should throw if endpoints is undefined and FND returns no SSS URLs', async () => {
         const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
           nodeDetailsOverride: {
-            sssConfig: undefined, // sssConfig is undefined
+            endpoints: undefined, // endpoint is undefined
           },
         });
         fndSpy.mockResolvedValue({
@@ -305,15 +305,15 @@ describe('toprf secret backup', function () {
         expect(fndSpy).toHaveBeenCalled();
       });
 
-      it('should correctly apply sssConfig path to FND-resolved URLs', async () => {
+      it('should correctly apply endpoints path to FND-resolved URLs', async () => {
         const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
           nodeDetailsOverride: {
-            sssConfig: MOCK_SSS_PATH, // Provide a path
+            endpoints: MOCK_ENDPOINT_PATH, // Provide a path
           },
         });
 
         fndSpy.mockResolvedValue({
-          torusNodeSSSEndpoints: MOCK_SSS_URLS_5, // Using the live URLs as base
+          torusNodeSSSEndpoints: MOCK_ENDPOINTS_5, // Using the live URLs as base
           torusIndexes: MOCK_INDEXES_5,
           torusNodePub: MOCK_PUBKEYS_5,
           currentEpoch: '1',

@@ -589,17 +589,17 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
   }> {
     let finalIndexes = this.#nodeDetailsOverride?.indexes;
     let finalPubKeys = this.#nodeDetailsOverride?.pubKeys;
-    let finalSssConfig = this.#nodeDetailsOverride?.sssConfig;
+    let finalEndpoints = this.#nodeDetailsOverride?.endpoints;
 
-    if (finalIndexes && finalPubKeys && Array.isArray(finalSssConfig)) {
+    if (finalIndexes && finalPubKeys && Array.isArray(finalEndpoints)) {
       ToprfSecureBackup.#validateNodeDetailsLengths(
         finalIndexes,
         finalPubKeys,
-        finalSssConfig,
+        finalEndpoints,
       );
       return {
-        nodeEndpoints: finalSssConfig,
-        nodeEndpointsMap: createNodeEndpointsMap(finalSssConfig, finalIndexes),
+        nodeEndpoints: finalEndpoints,
+        nodeEndpointsMap: createNodeEndpointsMap(finalEndpoints, finalIndexes),
         nodeIndexes: finalIndexes,
         nodePubkeys: finalPubKeys,
       };
@@ -614,16 +614,16 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     finalIndexes ??= torusIndexes;
     finalPubKeys ??= torusNodePub;
 
-    if (!Array.isArray(finalSssConfig)) {
+    if (!Array.isArray(finalEndpoints)) {
       if (!torusNodeSSSEndpoints) {
         const message = 'Failed to get node details';
         throw new Error(message);
       }
 
-      finalSssConfig = finalSssConfig
+      finalEndpoints = finalEndpoints
         ? torusNodeSSSEndpoints.map((endpoint) => {
             const url = new URL(endpoint);
-            url.pathname = finalSssConfig as string;
+            url.pathname = finalEndpoints as string;
             return url.href;
           })
         : torusNodeSSSEndpoints;
@@ -632,12 +632,12 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     ToprfSecureBackup.#validateNodeDetailsLengths(
       finalIndexes,
       finalPubKeys,
-      finalSssConfig,
+      finalEndpoints,
     );
 
     return {
-      nodeEndpoints: finalSssConfig,
-      nodeEndpointsMap: createNodeEndpointsMap(finalSssConfig, finalIndexes),
+      nodeEndpoints: finalEndpoints,
+      nodeEndpointsMap: createNodeEndpointsMap(finalEndpoints, finalIndexes),
       nodeIndexes: finalIndexes,
       nodePubkeys: finalPubKeys,
     };
@@ -728,20 +728,20 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    *
    * @param indexes - Array of node indexes.
    * @param pubKeys - Array of node public keys.
-   * @param sssEndpoints - Array of SSS endpoint URLs.
+   * @param endpoints - Array of SSS endpoint URLs.
    * @throws If lengths are inconsistent.
    */
   static #validateNodeDetailsLengths(
     indexes: unknown[],
     pubKeys: unknown[],
-    sssEndpoints: unknown[],
+    endpoints: unknown[],
   ): void {
     if (
       indexes.length !== pubKeys.length ||
-      indexes.length !== sssEndpoints.length
+      indexes.length !== endpoints.length
     ) {
       const message =
-        'Node details arrays (indexes, pubKeys, sssEndpoints) must have equal lengths';
+        'Node details arrays (indexes, pubKeys, endpoints) must have equal lengths';
       throw new Error(message);
     }
   }
