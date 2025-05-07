@@ -623,7 +623,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       finalSssConfig = finalSssConfig
         ? torusNodeSSSEndpoints.map((endpoint) => {
             const url = new URL(endpoint);
-            return `${url.origin}${finalSssConfig as string}`;
+            url.pathname = finalSssConfig as string;
+            return url.href;
           })
         : torusNodeSSSEndpoints;
     }
