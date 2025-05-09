@@ -1,10 +1,11 @@
 import { keccak256AndHexify } from '@metamask/auth-network-utils';
 import { utf8ToBytes } from '@noble/ciphers/utils';
+import type { INodePub } from '@toruslabs/constants';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import { FIRST_KEY_INDEX } from './constants';
 import { TOPRFError, TOPRFErrorCode } from './errors';
-import type { KeyPair } from './interfaces';
+import type { KeyPair, NodeDetailsOverride } from './interfaces';
 import { MetadataStore } from './metadata';
 import * as resetRateLimitsModule from './resetRateLimits';
 import { ToprfSecureBackup } from './toprfSecureBackup';
@@ -23,9 +24,14 @@ const EXISTING_USER_ID = 'test-verifier-id-existing-user';
  * @param options - The options for the setup.
  * @param options.authConnectionId - The auth connection id to be used for the test.
  * @param options.userId - The user id to be used for the test.
+ * @param options.nodeDetailsOverride - The node details override to be used for the test.
  * @returns The setup object.
  */
-function setup(options?: { authConnectionId?: string; userId?: string }): {
+function setup(options?: {
+  authConnectionId?: string;
+  userId?: string;
+  nodeDetailsOverride?: NodeDetailsOverride;
+}): {
   authConnectionId: string;
   userId: string;
   idToken: string;
@@ -36,6 +42,7 @@ function setup(options?: { authConnectionId?: string; userId?: string }): {
   const idToken = generateIdToken(userId, 'ES256');
   const toprfSecureBackup = new ToprfSecureBackup({
     network: 'sapphire_devnet',
+    nodeDetailsOverride: options?.nodeDetailsOverride,
   });
 
   return { authConnectionId, userId, idToken, toprfSecureBackup };
@@ -118,6 +125,219 @@ describe('toprf secret backup', function () {
       ).rejects.toThrow('Failed to get node details');
 
       expect(fndSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('#getNodeDetails configurations', function () {
+    const MOCK_INDEXES_5 = [1, 2, 3, 4, 5];
+    const MOCK_PUBKEYS_5: INodePub[] = [
+      { X: '1', Y: '1' },
+      { X: '2', Y: '2' },
+      { X: '3', Y: '3' },
+      { X: '4', Y: '4' },
+      { X: '5', Y: '5' },
+    ];
+    const MOCK_ENDPOINTS_5 = [
+      'https://node-1.dev-node.web3auth.io/sss/jrpc',
+      'https://node-2.dev-node.web3auth.io/sss/jrpc',
+      'https://node-3.dev-node.web3auth.io/sss/jrpc',
+      'https://node-4.dev-node.web3auth.io/sss/jrpc',
+      'https://node-5.dev-node.web3auth.io/sss/jrpc',
+    ];
+    const MOCK_ENDPOINT_PATH = '/sss-path';
+
+    let fndSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      fndSpy = jest.spyOn(NodeDetailManager.prototype, 'getNodeDetails');
+    });
+
+    afterEach(() => {
+      fndSpy.mockRestore();
+    });
+
+    describe('when all node details are overridden', () => {
+      it('should throw if overridden endpoints array length mismatches overridden indexes length', async () => {
+        const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
+          nodeDetailsOverride: {
+            indexes: MOCK_INDEXES_5, // length 5
+            pubKeys: MOCK_PUBKEYS_5, // length 5
+            endpoints: MOCK_ENDPOINTS_5.slice(0, 4), // length 4
+          },
+        });
+        fndSpy.mockResolvedValue({
+          torusNodeEndpoints: [],
+          torusIndexes: [],
+          torusNodePub: [],
+        }); // Should not be called
+
+        await expect(
+          toprfSecureBackup.authenticate({
+            idTokens: [idToken],
+            authConnectionId,
+            userId,
+          }),
+        ).rejects.toThrow(
+          'Node details arrays (indexes, pubKeys, endpoints) must have equal lengths',
+        );
+        expect(fndSpy).not.toHaveBeenCalled();
+      });
+
+      it('should throw if overridden pubKeys length mismatches overridden indexes length', async () => {
+        const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
+          nodeDetailsOverride: {
+            indexes: MOCK_INDEXES_5, // length 5
+            pubKeys: MOCK_PUBKEYS_5.slice(0, 4), // length 4
+            endpoints: MOCK_ENDPOINTS_5, // length 5
+          },
+        });
+        fndSpy.mockResolvedValue({
+          torusNodeEndpoints: [],
+          torusIndexes: [],
+          torusNodePub: [],
+        }); // Should not be called
+
+        await expect(
+          toprfSecureBackup.authenticate({
+            idTokens: [idToken],
+            authConnectionId,
+            userId,
+          }),
+        ).rejects.toThrow(
+          'Node details arrays (indexes, pubKeys, endpoints) must have equal lengths',
+        );
+        expect(fndSpy).not.toHaveBeenCalled();
+      });
+
+      it('should use overridden details and not call FND if all details are validly overridden', async () => {
+        const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
+          nodeDetailsOverride: {
+            indexes: MOCK_INDEXES_5,
+            pubKeys: MOCK_PUBKEYS_5,
+            endpoints: MOCK_ENDPOINTS_5,
+          },
+        });
+        fndSpy.mockResolvedValue({
+          torusNodeEndpoints: [],
+          torusIndexes: [],
+          torusNodePub: [],
+        }); // Should not be called
+
+        await toprfSecureBackup.authenticate({
+          idTokens: [idToken],
+          authConnectionId,
+          userId,
+        });
+        expect(fndSpy).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('when FND service is involved (partial/no overrides)', () => {
+      it('should throw if endpoints array length mismatches FND-resolved indexes', async () => {
+        const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
+          nodeDetailsOverride: {
+            // indexes and pubKeys not provided
+            endpoints: MOCK_ENDPOINTS_5,
+          },
+        });
+        fndSpy.mockResolvedValue({
+          torusNodeEndpoints: MOCK_ENDPOINTS_5.slice(0, 3), // FND returns 3 endpoints
+          torusIndexes: MOCK_INDEXES_5.slice(0, 3), // FND returns 3 indexes
+          torusNodePub: MOCK_PUBKEYS_5.slice(0, 3), // FND returns 3 pubKeys
+          currentEpoch: '1',
+        });
+
+        await expect(
+          toprfSecureBackup.authenticate({
+            idTokens: [idToken],
+            authConnectionId,
+            userId,
+          }),
+        ).rejects.toThrow(
+          'Node details arrays (indexes, pubKeys, endpoints) must have equal lengths',
+        );
+        expect(fndSpy).toHaveBeenCalled();
+      });
+
+      it('should throw if endpoints is path and FND returns no SSS URLs', async () => {
+        const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
+          nodeDetailsOverride: {
+            endpoints: MOCK_ENDPOINT_PATH, // endpoint is a path
+          },
+        });
+        fndSpy.mockResolvedValue({
+          torusNodeEndpoints: undefined, // FND returns no SSS URLs
+          torusIndexes: MOCK_INDEXES_5,
+          pubKeys: MOCK_PUBKEYS_5,
+          currentEpoch: '1',
+        });
+
+        await expect(
+          toprfSecureBackup.authenticate({
+            idTokens: [idToken],
+            authConnectionId,
+            userId,
+          }),
+        ).rejects.toThrow('Failed to get node details');
+        expect(fndSpy).toHaveBeenCalled();
+      });
+
+      it('should throw if endpoints is undefined and FND returns no SSS URLs', async () => {
+        const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
+          nodeDetailsOverride: {
+            endpoints: undefined, // endpoint is undefined
+          },
+        });
+        fndSpy.mockResolvedValue({
+          torusNodeEndpoints: [], // FND returns empty SSS URLs
+          torusIndexes: MOCK_INDEXES_5,
+          pubKeys: MOCK_PUBKEYS_5,
+          currentEpoch: '1',
+        });
+
+        await expect(
+          toprfSecureBackup.authenticate({
+            idTokens: [idToken],
+            authConnectionId,
+            userId,
+          }),
+        ).rejects.toThrow('Failed to get node details');
+        expect(fndSpy).toHaveBeenCalled();
+      });
+
+      it('should correctly apply endpoints path to FND-resolved URLs', async () => {
+        const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
+          nodeDetailsOverride: {
+            endpoints: MOCK_ENDPOINT_PATH, // Provide a path
+          },
+        });
+
+        fndSpy.mockResolvedValue({
+          torusNodeSSSEndpoints: MOCK_ENDPOINTS_5, // Using the live URLs as base
+          torusIndexes: MOCK_INDEXES_5,
+          torusNodePub: MOCK_PUBKEYS_5,
+          currentEpoch: '1',
+        });
+
+        let errorMessage: string;
+        try {
+          await toprfSecureBackup.authenticate({
+            idTokens: [idToken],
+            authConnectionId,
+            userId,
+          });
+          throw new Error('Expected error to be thrown');
+        } catch (error: unknown) {
+          errorMessage = (error as Error).message;
+        }
+        expect(errorMessage).toBeDefined();
+        expect(errorMessage).not.toMatch(/Failed to get node details/iu);
+        expect(errorMessage).not.toMatch(
+          /Node details arrays .* must have equal lengths/iu,
+        );
+
+        expect(fndSpy).toHaveBeenCalledTimes(1);
+      });
     });
   });
 

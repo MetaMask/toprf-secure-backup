@@ -1,3 +1,5 @@
+import type { INodePub } from '@toruslabs/constants';
+
 /**
  * SEC1 encoded public key
  */
@@ -13,6 +15,35 @@ export type SEC1EncodedPublicKey = Uint8Array;
 export type KeyPair = {
   sk: bigint;
   pk: SEC1EncodedPublicKey;
+};
+
+/**
+ * Optional override for node details.
+ */
+export type NodeDetailsOverride = {
+  /**
+   * Endpoint configuration. This allows for overriding the default SSS node endpoints.
+   *
+   * - **To use FND-resolved node URLs with a custom path:** Provide a single `string`
+   * representing the path to be appended to each FND-resolved node URL.
+   * For example, `'/sss-toprf'` will transform FND URLs like `https://node1.example.com`
+   * into `https://node1.example.com/sss-toprf`.
+   *
+   * - **To use a completely custom set of node URLs (bypassing FND resolution):**
+   * Provide an array of `string[]` where each string is a complete endpoint URL.
+   * For example, `['https://custom-node1.com/custom-path', 'https://custom-node2.com/custom-path']`.
+   *
+   * If left `undefined`, the SDK will use the default FND-resolved SSS endpoints directly.
+   */
+  endpoints?: string | string[];
+  /**
+   * Array of node indexes. Must match network node count if provided.
+   */
+  indexes?: number[];
+  /**
+   * Array of node public keys. Must match network node count if provided.
+   */
+  pubKeys?: INodePub[];
 };
 
 export type GroupedAuthConnectionParams = {
