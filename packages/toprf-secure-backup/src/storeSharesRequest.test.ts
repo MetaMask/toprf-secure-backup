@@ -73,7 +73,7 @@ describe('secure backup operations', function () {
     expect(authTokensData).toBeDefined();
     const passwordBytes = toBytes('test-input');
     const oprfKey = generateRandomScalar();
-    const seed = OPRF.localEval(oprfKey, passwordBytes);
+    const seed = await OPRF.localEval(oprfKey, passwordBytes);
     const authKeyPair = deriveAuthenticationKeyPair(seed);
 
     const storeSharesResponse = await storeKeyShares({
@@ -145,7 +145,7 @@ describe('secure backup operations', function () {
     expect(authTokensData).toBeDefined();
     const passwordBytes = toBytes('test-input');
     const oprfKey = generateRandomScalar();
-    const seed = OPRF.localEval(oprfKey, passwordBytes);
+    const seed = await OPRF.localEval(oprfKey, passwordBytes);
     const authKeyPair = deriveAuthenticationKeyPair(seed);
 
     const storeSharesResponse = await storeKeyShares({
@@ -217,7 +217,7 @@ describe('secure backup operations', function () {
     // Original password setup
     const originalPasswordBytes = toBytes('original-password');
     const oprfKey = generateRandomScalar();
-    const originalSeed = OPRF.localEval(oprfKey, originalPasswordBytes);
+    const originalSeed = await OPRF.localEval(oprfKey, originalPasswordBytes);
     const originalAuthKeyPair = deriveAuthenticationKeyPair(originalSeed);
 
     // Store shares with original password
@@ -237,7 +237,7 @@ describe('secure backup operations', function () {
     // Key change flow - new password setup
     const newPasswordBytes = toBytes('new-password');
     const newOprfKey = generateRandomScalar();
-    const newSeed = OPRF.localEval(newOprfKey, newPasswordBytes);
+    const newSeed = await OPRF.localEval(newOprfKey, newPasswordBytes);
     const newAuthKeyPair = deriveAuthenticationKeyPair(newSeed);
 
     // Verify that the original password works
@@ -372,12 +372,12 @@ describe('secure backup operations', function () {
 
     const originalPasswordBytes = toBytes('original-password');
     const oprfKey = generateRandomScalar();
-    const originalSeed = OPRF.localEval(oprfKey, originalPasswordBytes);
+    const originalSeed = await OPRF.localEval(oprfKey, originalPasswordBytes);
     const originalAuthKeyPair = deriveAuthenticationKeyPair(originalSeed);
 
     const newPasswordBytes = toBytes('new-password');
     const newOprfKey = generateRandomScalar();
-    const newSeed = OPRF.localEval(newOprfKey, newPasswordBytes);
+    const newSeed = await OPRF.localEval(newOprfKey, newPasswordBytes);
     const newAuthKeyPair = deriveAuthenticationKeyPair(newSeed);
 
     // Attempt to change key before storing shares, which should fail
@@ -452,7 +452,7 @@ describe('secure backup operations', function () {
 
     const originalPasswordBytes = toBytes('original-password');
     const oprfKey = generateRandomScalar();
-    const originalSeed = OPRF.localEval(oprfKey, originalPasswordBytes);
+    const originalSeed = await OPRF.localEval(oprfKey, originalPasswordBytes);
     const originalAuthKeyPair = deriveAuthenticationKeyPair(originalSeed);
 
     // Use a higher initial key index
@@ -473,7 +473,7 @@ describe('secure backup operations', function () {
 
     const newPasswordBytes = toBytes('new-password');
     const newOprfKey = generateRandomScalar();
-    const newSeed = OPRF.localEval(newOprfKey, newPasswordBytes);
+    const newSeed = await OPRF.localEval(newOprfKey, newPasswordBytes);
     const newAuthKeyPair = deriveAuthenticationKeyPair(newSeed);
 
     // Try to change key with a lower key index

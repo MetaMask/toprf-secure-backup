@@ -19,7 +19,7 @@ import type {
   ToprfEvalResult,
 } from './jrpcInterfaces';
 import { deriveAuthenticationKeyPair } from './keyDerivation';
-import { OPRF } from './oprf';
+import { OPRF, type KeyDeriver } from './oprf';
 import {
   checkRateLimitErrors,
   mergeEndpointsWithAuthTokens,
@@ -86,15 +86,17 @@ const sendToprfEvalRequest = async (
  * @param userInput - The user input i.e. the password.
  * @param blindingFactor - The random scalar used to blind the input.
  * @param thresholdAuthPubKey - The threshold auth pub key derived from the toprf eval responses.
+ * @param keyDeriver - The key deriver to be used for key management and authentication.
  *
  * @returns The seed and key share index if found, otherwise null.
  */
-const findMatchingSeedWithAllCombinations = (
+const findMatchingSeedWithAllCombinations = async (
   sortedBlindedOutputs: BlindedOutputShare[],
   userInput: Uint8Array,
   blindingFactor: bigint,
   thresholdAuthPubKey: string,
-): { seed: Uint8Array; keyShareIndex: number } | null => {
+  keyDeriver?: KeyDeriver,
+): Promise<{ seed: Uint8Array; keyShareIndex: number } | null> => {
   const allCombis = kCombinations(
     sortedBlindedOutputs.length,
     TOPRF_EVAL_THRESHOLD,
@@ -117,10 +119,11 @@ const findMatchingSeedWithAllCombinations = (
       nodeIndexes,
     );
 
-    const recoveredSeed = OPRF.unblindAndHash(
+    const recoveredSeed = await OPRF.unblindAndHash(
       userInput,
       blindedOutput,
       blindingFactor,
+      keyDeriver,
     );
     const { pk } = deriveAuthenticationKeyPair(recoveredSeed);
     const derivedPubKey = secp256k1.ProjectivePoint.fromHex(pk);
@@ -172,12 +175,15 @@ const assertIsValidToprfEvalResult = (
  * @param userInput - The user input i.e. the password.
  * @param blindingFactor - The random scalar used to blind the input.
  * @param resultArr - The toprf eval request result
+ * @param keyDeriver - The key deriver to be used for the toprf eval request.
+ *
  * @returns The toprf eval request result and the key share index
  */
 export const validateSeed = async (
   userInput: Uint8Array,
   blindingFactor: bigint,
   resultArr: ToprfEvalJRPCResponse[],
+  keyDeriver?: KeyDeriver,
 ): Promise<{ seed: Uint8Array; keyShareIndex: number }> => {
   // Check for rate limit errors before filtering responses
   const rateLimitDetails = checkRateLimitErrors(resultArr);
@@ -232,11 +238,12 @@ export const validateSeed = async (
     );
   }
 
-  const seedAndKeyIndex = findMatchingSeedWithAllCombinations(
+  const seedAndKeyIndex = await findMatchingSeedWithAllCombinations(
     blindedOutputShares,
     userInput,
     blindingFactor,
     thresholdAuthPubKey,
+    keyDeriver,
   );
   if (!seedAndKeyIndex) {
     throw TOPRFError.couldNotDeriveEncryptionKey();
@@ -254,6 +261,7 @@ export const validateSeed = async (
  * @param params.authConnectionId - The auth connection name used for authentication.
  * @param params.userId - The user id of the user issued by authentication service.
  * @param params.userInput - The user input to be used for the toprf eval request.
+ * @param params.keyDeriver - The key deriver to be used for the toprf eval request.
  *
  * @returns - A promise that resolves with the key pair seed and key share index.
  */
@@ -263,9 +271,16 @@ export const recoverTOPRFSeed = async (params: {
   authConnectionId: string;
   userId: string;
   userInput: Uint8Array;
+  keyDeriver?: KeyDeriver;
 }): Promise<{ seed: Uint8Array; keyShareIndex: number }> => {
-  const { authTokens, nodeEndpointsMap, authConnectionId, userId, userInput } =
-    params;
+  const {
+    authTokens,
+    nodeEndpointsMap,
+    authConnectionId,
+    userId,
+    userInput,
+    keyDeriver,
+  } = params;
 
   if (authTokens.length < TOPRF_EVAL_THRESHOLD) {
     throw TOPRFError.insufficientAuthTokens(
@@ -296,7 +311,9 @@ export const recoverTOPRFSeed = async (params: {
     return await Some<
       ToprfEvalJRPCResponse,
       { seed: Uint8Array; keyShareIndex: number }
-    >(promises, async (resultArr) => validateSeed(userInput, r, resultArr));
+    >(promises, async (resultArr) =>
+      validateSeed(userInput, r, resultArr, keyDeriver),
+    );
   } catch (error) {
     throw getTOPRFError(error as Error);
   }
