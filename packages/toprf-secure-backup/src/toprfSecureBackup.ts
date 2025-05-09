@@ -38,6 +38,7 @@ import type {
   RecoverPasswordParams,
   KeyPair,
   RecoverPasswordResult,
+  NodeDetailsOverride,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -58,17 +59,24 @@ import { createNodeEndpointsMap } from './utils';
 export class ToprfSecureBackup implements IToprfSecureBackup {
   readonly #nodeDetailManager: NodeDetailManager;
 
+  readonly #nodeDetailsOverride?: NodeDetailsOverride;
+
   #metadataStoreCache: MetadataStore | undefined;
 
   /**
    *
    * @param params - The parameters for the constructor.
    * @param params.network - The web3auth network to be used for key management and authentication.
+   * @param params.nodeDetailsOverride - Optional overrides for node details like SSS endpoints, indexes, and public keys.
    */
-  constructor(params: { network: TORUS_SAPPHIRE_NETWORK_TYPE }) {
+  constructor(params: {
+    network: TORUS_SAPPHIRE_NETWORK_TYPE;
+    nodeDetailsOverride?: NodeDetailsOverride;
+  }) {
     this.#nodeDetailManager = new NodeDetailManager({
       network: params.network,
     });
+    this.#nodeDetailsOverride = params.nodeDetailsOverride;
   }
 
   /**
@@ -579,24 +587,59 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     nodeIndexes: number[];
     nodePubkeys: INodePub[];
   }> {
+    let finalIndexes = this.#nodeDetailsOverride?.indexes;
+    let finalPubKeys = this.#nodeDetailsOverride?.pubKeys;
+    let finalEndpoints = this.#nodeDetailsOverride?.endpoints;
+
+    if (finalIndexes && finalPubKeys && Array.isArray(finalEndpoints)) {
+      ToprfSecureBackup.#validateNodeDetailsLengths(
+        finalIndexes,
+        finalPubKeys,
+        finalEndpoints,
+      );
+      return {
+        nodeEndpoints: finalEndpoints,
+        nodeEndpointsMap: createNodeEndpointsMap(finalEndpoints, finalIndexes),
+        nodeIndexes: finalIndexes,
+        nodePubkeys: finalPubKeys,
+      };
+    }
+
     const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
       await this.#nodeDetailManager.getNodeDetails({
         verifier: 'auth-connection-id',
         verifierId: 'user-id',
       });
 
-    if (!torusNodeSSSEndpoints) {
-      throw new Error('Failed to get node details');
+    finalIndexes ??= torusIndexes;
+    finalPubKeys ??= torusNodePub;
+
+    if (!Array.isArray(finalEndpoints)) {
+      if (!torusNodeSSSEndpoints) {
+        const message = 'Failed to get node details';
+        throw new Error(message);
+      }
+
+      finalEndpoints = finalEndpoints
+        ? torusNodeSSSEndpoints.map((endpoint) => {
+            const url = new URL(endpoint);
+            url.pathname = finalEndpoints as string;
+            return url.href;
+          })
+        : torusNodeSSSEndpoints;
     }
 
+    ToprfSecureBackup.#validateNodeDetailsLengths(
+      finalIndexes,
+      finalPubKeys,
+      finalEndpoints,
+    );
+
     return {
-      nodeEndpoints: torusNodeSSSEndpoints,
-      nodeEndpointsMap: createNodeEndpointsMap(
-        torusNodeSSSEndpoints,
-        torusIndexes,
-      ),
-      nodeIndexes: torusIndexes,
-      nodePubkeys: torusNodePub,
+      nodeEndpoints: finalEndpoints,
+      nodeEndpointsMap: createNodeEndpointsMap(finalEndpoints, finalIndexes),
+      nodeIndexes: finalIndexes,
+      nodePubkeys: finalPubKeys,
     };
   }
 
@@ -678,6 +721,29 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       encKey: pwBackupDataJson.encKey,
       authKeyPair: pwBackupDataJson.authKeyPair,
     };
+  }
+
+  /**
+   * Validates that the lengths of node detail arrays are consistent.
+   *
+   * @param indexes - Array of node indexes.
+   * @param pubKeys - Array of node public keys.
+   * @param endpoints - Array of SSS endpoint URLs.
+   * @throws If lengths are inconsistent.
+   */
+  static #validateNodeDetailsLengths(
+    indexes: unknown[],
+    pubKeys: unknown[],
+    endpoints: unknown[],
+  ): void {
+    if (
+      indexes.length !== pubKeys.length ||
+      indexes.length !== endpoints.length
+    ) {
+      const message =
+        'Node details arrays (indexes, pubKeys, endpoints) must have equal lengths';
+      throw new Error(message);
+    }
   }
 }
 
