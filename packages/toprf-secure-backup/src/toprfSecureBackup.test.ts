@@ -491,8 +491,8 @@ describe('toprf secret backup', function () {
 
   describe('recoverEncKey', function () {
     it('should be able to recover enc key', async function () {
-      // const keyDerivers = [undefined, keyDeriver];
-      const keyDerivers = [keyDeriver];
+      // Test with and without optional key deriver.
+      const keyDerivers = [undefined, keyDeriver];
       for (const kd of keyDerivers) {
         const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
           keyDeriver: kd,
