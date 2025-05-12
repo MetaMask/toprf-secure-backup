@@ -15,7 +15,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Breaking**: `createLocalKey` is now an asynchronous function that returns a Promise. ([#104](https://github.com/MetaMask/toprf-secure-backup/pull/104))
 
-
 ## [0.1.0]
 
 ### Added
