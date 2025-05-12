@@ -1,5 +1,7 @@
 import { keccak256AndHexify } from '@metamask/auth-network-utils';
 import { utf8ToBytes } from '@noble/ciphers/utils';
+import { pbkdf2Async } from '@noble/hashes/pbkdf2';
+import { sha256 } from '@noble/hashes/sha2';
 import type { INodePub } from '@toruslabs/constants';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
@@ -7,6 +9,7 @@ import { FIRST_KEY_INDEX } from './constants';
 import { TOPRFError, TOPRFErrorCode } from './errors';
 import type { KeyPair, NodeDetailsOverride } from './interfaces';
 import { MetadataStore } from './metadata';
+import type { KeyDeriver } from './oprf';
 import * as resetRateLimitsModule from './resetRateLimits';
 import { ToprfSecureBackup } from './toprfSecureBackup';
 import {
@@ -18,6 +21,20 @@ import {
 
 const EXISTING_USER_ID = 'test-verifier-id-existing-user';
 
+const keyDeriver = {
+  // Disable eslint-plugin-jsdoc because this is a test file.
+  // eslint-disable-next-line jsdoc/require-jsdoc
+  deriveKey: async (
+    seed: Uint8Array,
+    salt: Uint8Array,
+  ): Promise<Uint8Array> => {
+    return pbkdf2Async(sha256, seed, salt, {
+      dkLen: 32,
+      c: 500_000,
+    });
+  },
+};
+
 /**
  * Sets up the test environment.
  *
@@ -25,12 +42,14 @@ const EXISTING_USER_ID = 'test-verifier-id-existing-user';
  * @param options.authConnectionId - The auth connection id to be used for the test.
  * @param options.userId - The user id to be used for the test.
  * @param options.nodeDetailsOverride - The node details override to be used for the test.
+ * @param options.keyDeriver - The key deriver to be used for the test.
  * @returns The setup object.
  */
 function setup(options?: {
   authConnectionId?: string;
   userId?: string;
   nodeDetailsOverride?: NodeDetailsOverride;
+  keyDeriver?: KeyDeriver;
 }): {
   authConnectionId: string;
   userId: string;
@@ -43,6 +62,7 @@ function setup(options?: {
   const toprfSecureBackup = new ToprfSecureBackup({
     network: 'sapphire_devnet',
     nodeDetailsOverride: options?.nodeDetailsOverride,
+    keyDeriver: options?.keyDeriver,
   });
 
   return { authConnectionId, userId, idToken, toprfSecureBackup };
@@ -345,7 +365,7 @@ describe('toprf secret backup', function () {
     it('should be able to create local enc key', async function () {
       const { toprfSecureBackup } = setup();
       const password = generateRandomPassword();
-      const encKey = toprfSecureBackup.createLocalKey({
+      const encKey = await toprfSecureBackup.createLocalKey({
         password,
       });
       expect(encKey).toBeDefined();
@@ -354,7 +374,7 @@ describe('toprf secret backup', function () {
       expect(encKey.authKeyPair.pk).toBeDefined();
       expect(encKey.encKey).toBeDefined();
 
-      const encKey2 = toprfSecureBackup.createLocalKey({
+      const encKey2 = await toprfSecureBackup.createLocalKey({
         password,
         oprfKey: encKey.oprfKey,
       });
@@ -368,7 +388,7 @@ describe('toprf secret backup', function () {
       expect(encKey2.authKeyPair.sk).toStrictEqual(encKey.authKeyPair.sk);
       expect(encKey2.encKey).toStrictEqual(encKey.encKey);
 
-      const encKey3 = toprfSecureBackup.createLocalKey({
+      const encKey3 = await toprfSecureBackup.createLocalKey({
         password,
       });
       expect(encKey3).toBeDefined();
@@ -380,7 +400,7 @@ describe('toprf secret backup', function () {
       expect(encKey3.authKeyPair.sk).not.toStrictEqual(encKey.authKeyPair.sk);
       expect(encKey3.encKey).not.toStrictEqual(encKey.encKey);
 
-      const encKey4 = toprfSecureBackup.createLocalKey({
+      const encKey4 = await toprfSecureBackup.createLocalKey({
         password: generateRandomPassword(),
         oprfKey: encKey3.oprfKey,
       });
@@ -471,43 +491,49 @@ describe('toprf secret backup', function () {
 
   describe('recoverEncKey', function () {
     it('should be able to recover enc key', async function () {
-      const { authConnectionId, userId, idToken, toprfSecureBackup } = setup();
+      // Test with and without optional key deriver.
+      const keyDerivers = [undefined, keyDeriver];
+      for (const kd of keyDerivers) {
+        const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
+          keyDeriver: kd,
+        });
 
-      const result = await toprfSecureBackup.authenticate({
-        idTokens: [idToken],
-        authConnectionId,
-        userId,
-      });
+        const result = await toprfSecureBackup.authenticate({
+          idTokens: [idToken],
+          authConnectionId,
+          userId,
+        });
 
-      const password = generateRandomPassword();
-      const encKey = await toprfSecureBackup.createAndPersistEncKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        password,
-        authConnectionId,
-        userId,
-      });
+        const password = generateRandomPassword();
+        const encKey = await toprfSecureBackup.createAndPersistEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          password,
+          authConnectionId,
+          userId,
+        });
 
-      const recoveredEncKey = await toprfSecureBackup.recoverEncKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        password,
-        authConnectionId,
-        userId,
-      });
-      expect(recoveredEncKey).toBeDefined();
-      expect(recoveredEncKey.authKeyPair).toBeDefined();
-      expect(recoveredEncKey.authKeyPair.sk).toBeDefined();
-      expect(recoveredEncKey.authKeyPair.pk).toBeDefined();
-      expect(recoveredEncKey.encKey).toBeDefined();
-      expect(recoveredEncKey.keyShareIndex).toBeDefined();
-      expect(await recoveredEncKey.rateLimitResetResult).toBeUndefined();
+        const recoveredEncKey = await toprfSecureBackup.recoverEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          password,
+          authConnectionId,
+          userId,
+        });
+        expect(recoveredEncKey).toBeDefined();
+        expect(recoveredEncKey.authKeyPair).toBeDefined();
+        expect(recoveredEncKey.authKeyPair.sk).toBeDefined();
+        expect(recoveredEncKey.authKeyPair.pk).toBeDefined();
+        expect(recoveredEncKey.encKey).toBeDefined();
+        expect(recoveredEncKey.keyShareIndex).toBeDefined();
+        expect(await recoveredEncKey.rateLimitResetResult).toBeUndefined();
 
-      expect(recoveredEncKey.authKeyPair.sk).toStrictEqual(
-        encKey.authKeyPair.sk,
-      );
-      expect(recoveredEncKey.encKey).toStrictEqual(encKey.encKey);
-      expect(recoveredEncKey.authKeyPair.pk).toStrictEqual(
-        encKey.authKeyPair.pk,
-      );
+        expect(recoveredEncKey.authKeyPair.sk).toStrictEqual(
+          encKey.authKeyPair.sk,
+        );
+        expect(recoveredEncKey.encKey).toStrictEqual(encKey.encKey);
+        expect(recoveredEncKey.authKeyPair.pk).toStrictEqual(
+          encKey.authKeyPair.pk,
+        );
+      }
     });
 
     it('should recover enc key even when rate limit reset fails', async function () {
@@ -1036,7 +1062,7 @@ describe('toprf secret backup', function () {
 
       // Generate incorrect authKeyPair
       const differentPassword = generateRandomPassword();
-      const incorrectKeyResult = toprfSecureBackup.createLocalKey({
+      const incorrectKeyResult = await toprfSecureBackup.createLocalKey({
         password: differentPassword,
       });
 
@@ -1090,7 +1116,7 @@ describe('toprf secret backup', function () {
 
       // Generate incorrect encryption key
       const differentPassword = generateRandomPassword();
-      const incorrectKeyResult = toprfSecureBackup.createLocalKey({
+      const incorrectKeyResult = await toprfSecureBackup.createLocalKey({
         password: differentPassword,
       });
 
