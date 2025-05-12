@@ -9,11 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add optional `keyDeriver` parameter to `ToprfSecureBackup` constructor.
+- Add optional `keyDeriver` parameter to `ToprfSecureBackup` constructor. ([#104](https://github.com/MetaMask/toprf-secure-backup/pull/104))
 
 ### Changed
 
-- **Breaking**: `createLocalKey` is now an asynchronous function that returns a Promise.
+- **Breaking**: `createLocalKey` is now an asynchronous function that returns a Promise. ([#104](https://github.com/MetaMask/toprf-secure-backup/pull/104))
 
 
 ## [0.1.0]
