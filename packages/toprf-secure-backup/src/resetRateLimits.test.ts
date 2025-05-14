@@ -76,7 +76,7 @@ describe('resetRateLimits', () => {
 
     const passwordBytes = toBytes('test-input');
     const oprfKey = generateRandomScalar();
-    const seed = OPRF.localEval(oprfKey, passwordBytes);
+    const seed = await OPRF.localEval(oprfKey, passwordBytes);
     const authKeyPair = deriveAuthenticationKeyPair(seed);
 
     const storeSharesResponse = await storeKeyShares({
@@ -153,7 +153,7 @@ describe('resetRateLimits', () => {
 
     const passwordBytes = toBytes('test-input');
     const oprfKey = generateRandomScalar();
-    const seed = OPRF.localEval(oprfKey, passwordBytes);
+    const seed = await OPRF.localEval(oprfKey, passwordBytes);
     const authKeyPair = deriveAuthenticationKeyPair(seed);
 
     const storeSharesResponse = await storeKeyShares({

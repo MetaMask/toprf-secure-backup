@@ -218,7 +218,7 @@ describe('toprfEvalRequest', () => {
       // Prepare password, key and shares
       const passwordBytes = toBytes('correct-password');
       const oprfKey = generateRandomScalar();
-      const seed = OPRF.localEval(oprfKey, passwordBytes);
+      const seed = await OPRF.localEval(oprfKey, passwordBytes);
       const authKeyPair = deriveAuthenticationKeyPair(seed);
 
       const storeSharesResponse = await storeKeyShares({

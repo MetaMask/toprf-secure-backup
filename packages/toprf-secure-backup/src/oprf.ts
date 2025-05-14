@@ -7,6 +7,10 @@ import { bytesToNumberBE } from '@noble/curves/abstract/utils';
 import type { ProjPointType } from '@noble/curves/abstract/weierstrass';
 import { secp256k1, hashToCurve } from '@noble/curves/secp256k1';
 
+export type KeyDeriver = {
+  deriveKey(seed: Uint8Array, salt: Uint8Array): Promise<Uint8Array>;
+};
+
 /**
  * Generates a random scalar value using the secp256k1 curve.
  *
@@ -64,16 +68,26 @@ export class OPRF {
    * @param x - The original input value as a `Uint8Array`.
    * @param b - The blinded output as a projective point.
    * @param r - The blinding scalar used for blinding.
+   * @param keyDeriver - An optional key derivation function.
    * @returns The unblinded output as a `Uint8Array`.
    */
-  public static unblindAndHash(
+  public static async unblindAndHash(
     x: Uint8Array,
     b: ProjPointType<bigint>,
     r: bigint,
-  ): Uint8Array {
+    keyDeriver?: KeyDeriver,
+  ): Promise<Uint8Array> {
     const rInv = scalarField.inv(r);
     const d = b.multiply(rInv);
-    const y = secp256k1.CURVE.hash(new Uint8Array([...x, ...d.toRawBytes()]));
+    let y = secp256k1.CURVE.hash(new Uint8Array([...x, ...d.toRawBytes()]));
+
+    // Optionally, inject another key derivation step. This can be used for
+    // slowing down the key derivation to increase resistance against local
+    // brute force attacks.
+    if (keyDeriver) {
+      const l = y.length;
+      y = await keyDeriver.deriveKey(y.slice(0, l / 2), y.slice(l / 2));
+    }
 
     return y;
   }
@@ -83,14 +97,19 @@ export class OPRF {
    *
    * @param k - The OPRF key.
    * @param x - The input value as a `Uint8Array` to be evaluated.
+   * @param keyDeriver - An optional key derivation function.
    * @returns The evaluated output as a `Uint8Array`.
    */
-  public static localEval(k: bigint, x: Uint8Array): Uint8Array {
+  public static async localEval(
+    k: bigint,
+    x: Uint8Array,
+    keyDeriver?: KeyDeriver,
+  ): Promise<Uint8Array> {
     // Blind input.
     const { a, r } = this.blind(x);
     // Compute blinded output.
     const b = a.multiply(k);
     // Unblind output.
-    return this.unblindAndHash(x, b, r);
+    return this.unblindAndHash(x, b, r, keyDeriver);
   }
 }
