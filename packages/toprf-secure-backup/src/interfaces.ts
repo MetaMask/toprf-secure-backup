@@ -358,7 +358,9 @@ export type IToprfSecureBackup = {
    *
    * @returns A promise that resolves with the encryption key.
    */
-  createLocalKey: (params: CreateLocalKeyParams) => CreateLocalKeyResult;
+  createLocalKey: (
+    params: CreateLocalKeyParams,
+  ) => Promise<CreateLocalKeyResult>;
 
   /**
    * This function persists an locally created OPRF key's shares to the servers.
