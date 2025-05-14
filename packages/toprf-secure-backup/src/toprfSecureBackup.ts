@@ -46,6 +46,7 @@ import {
 } from './keyDerivation';
 import type { SecretDataItem } from './metadata';
 import { MetadataStore } from './metadata';
+import type { KeyDeriver } from './oprf';
 import { OPRF, generateRandomScalar } from './oprf';
 import { resetRateLimits } from './resetRateLimits';
 import { storeKeyShares, changeKeyShares } from './storeSharesRequest';
@@ -61,22 +62,36 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
 
   readonly #nodeDetailsOverride?: NodeDetailsOverride;
 
+  readonly #keyDeriver?: KeyDeriver;
+
   #metadataStoreCache: MetadataStore | undefined;
 
   /**
+   * The constructor for the ToprfSecureBackup class.
+   *
+   * If `keyDeriver` is provided, it will be used as an additional step during
+   * key derivation. This can be used, for example, to inject a slow key
+   * derivation step to protect against local brute force attacks on the
+   * password.
    *
    * @param params - The parameters for the constructor.
-   * @param params.network - The web3auth network to be used for key management and authentication.
-   * @param params.nodeDetailsOverride - Optional overrides for node details like SSS endpoints, indexes, and public keys.
+   * @param params.network - The web3auth network to be used for key management
+   * and authentication.
+   * @param params.nodeDetailsOverride - Optional overrides for node details
+   * like SSS endpoints, indexes, and public keys.
+   * @param params.keyDeriver - Optional key deriver to be used for an
+   * additional layer of security.
    */
   constructor(params: {
     network: TORUS_SAPPHIRE_NETWORK_TYPE;
     nodeDetailsOverride?: NodeDetailsOverride;
+    keyDeriver?: KeyDeriver;
   }) {
     this.#nodeDetailManager = new NodeDetailManager({
       network: params.network,
     });
     this.#nodeDetailsOverride = params.nodeDetailsOverride;
+    this.#keyDeriver = params.keyDeriver;
   }
 
   /**
@@ -153,10 +168,12 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    *
    * @returns The OPRF key, seed, and derived keys.
    */
-  createLocalKey(params: CreateLocalKeyParams): CreateLocalKeyResult {
+  async createLocalKey(
+    params: CreateLocalKeyParams,
+  ): Promise<CreateLocalKeyResult> {
     const { password, oprfKey = generateRandomScalar() } = params;
     const pwBytes = utf8ToBytes(password);
-    const seed = OPRF.localEval(oprfKey, pwBytes);
+    const seed = await OPRF.localEval(oprfKey, pwBytes, this.#keyDeriver);
     const authKeyPair = deriveAuthenticationKeyPair(seed);
     const encKey = deriveEncryptionKey(seed);
 
@@ -240,7 +257,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     params: CreateEncryptionKeyParams,
   ): Promise<CreateEncryptionKeyResult> {
     const { nodeAuthTokens, password, authConnectionId, userId } = params;
-    const { oprfKey, authKeyPair, encKey } = this.createLocalKey({
+    const { oprfKey, authKeyPair, encKey } = await this.createLocalKey({
       password,
     });
 
@@ -285,6 +302,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       authConnectionId,
       userId,
       userInput: pwBytes,
+      keyDeriver: this.#keyDeriver,
     });
 
     const authKeyPair = deriveAuthenticationKeyPair(seed);
@@ -346,7 +364,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       newKeyShareIndex,
     } = params;
 
-    const { oprfKey, authKeyPair, encKey } = this.createLocalKey({
+    const { oprfKey, authKeyPair, encKey } = await this.createLocalKey({
       password: newPassword,
     });
 
