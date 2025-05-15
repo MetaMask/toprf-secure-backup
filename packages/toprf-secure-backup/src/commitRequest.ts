@@ -62,66 +62,51 @@ const sendCommitmentRequest = async (
 };
 
 /**
- * Validates the commitment responses.
- *
- * @param resultArr - The commitment request result.
- * @returns The commitment request result.
- */
-export const validateThresholdCommitmentResponses = async (
-  resultArr: CommitmentJRPCResponse[],
-): Promise<CommitmentRequestResult[]> => {
-  const completedRequests =
-    filterCompletedRequests<CommitmentJRPCResponse>(resultArr);
-
-  if (completedRequests.length < COMMIT_RESPONSE_THRESHOLD) {
-    throw TOPRFError.invalidCommitResults(
-      `Not enough completed requests. Expected: ${COMMIT_RESPONSE_THRESHOLD}, got: ${completedRequests.length}, ${JSON.stringify(resultArr)}`,
-    );
-  }
-  return completedRequests
-    .filter((res) => res.result)
-    .map((res) => res.result as CommitmentRequestResult);
-};
-
 /**
- * Validates the commitment responses and waits for the maximum number of requests to complete before
- * buffer wait time has elapsed or the threshold number of requests is reached after buffer wait time.
+ * Creates a function that handles commitment responses incrementally.
  *
- * @param results - Commitment request responses.
- * @param promiseArr - Commitment request promises.
- * @param startTime - Start time of initiating commitment requests.
- * @param bufferWaitTime - Buffer wait time to wait for the maximum number of requests to complete even if
- * threshold number of requests is reached.
- *
- * @returns threshold or maximum number of commitment request results.
- * @throws Error if threshold number of requests is not reached.
+ * @param results - The array of results received so far from Some.
+ * @param allSettled - Flag indicating if Some processed all promises.
+ * @returns A function that returns the final results array if conditions met, undefined otherwise.
+ * Throws TOPRFError if threshold not met after all settled.
  */
-export const validateAndWaitForCommitResponses = async (
+export const createHandleCommitmentResponses = (
   results: CommitmentJRPCResponse[],
-  promiseArr: Promise<CommitmentJRPCResponse>[],
-  startTime: number,
-  bufferWaitTime: number,
-): Promise<CommitmentRequestResult[]> => {
-  const validatedResults = await validateThresholdCommitmentResponses(results);
+  allSettled: boolean,
+): (() => Promise<CommitmentRequestResult[] | undefined>) => {
+  const bufferWaitTime = 1000; // ms
+  let thresholdMetTime: number | null = null;
 
-  // Return immediately if we have all responses
-  if (results.length === promiseArr.length) {
-    return validatedResults;
-  }
+  return async (): Promise<CommitmentRequestResult[] | undefined> => {
+    const successfulResults = filterCompletedRequests(results);
+    const thresholdMet = successfulResults.length >= COMMIT_RESPONSE_THRESHOLD;
 
-  // Return if buffer wait time has elapsed
-  if (Date.now() - startTime > bufferWaitTime) {
-    return validatedResults;
-  }
+    if (thresholdMet) {
+      // Start the timer when the threshold is met
+      thresholdMetTime ??= Date.now();
+      const bufferElapsed = Date.now() - thresholdMetTime > bufferWaitTime;
 
-  // Continue waiting by throwing error
-  throw new Error(
-    'Predicate Error: Threshold achieved, Waiting for maximum number of requests to complete',
-  );
+      if (allSettled || bufferElapsed) {
+        return successfulResults.map(
+          (res) => res.result as CommitmentRequestResult,
+        );
+      }
+      return undefined; // Continue waiting
+    }
+
+    if (allSettled) {
+      // Threshold not met after all settled
+      throw TOPRFError.invalidCommitResults(
+        `Threshold not met after all requests processed. Expected: ${COMMIT_RESPONSE_THRESHOLD}, got: ${successfulResults.length}`,
+      );
+    }
+
+    return undefined; // Continue waiting
+  };
 };
 
 /**
- * Creates a commitment request to the given endpoints and validates the responses
+ * Creates a commitment request to the given endpoints and validates the responses using the original Some function.
  *
  * @param params - The parameters for the commitment request
  * @param params.idToken - The idToken to be used for the commitment request
@@ -131,6 +116,7 @@ export const validateAndWaitForCommitResponses = async (
  * @param params.endpoints - The endpoints to be used for the commitment request
  * @returns resultArr - The commitment request result, where each element is
  * a signed commitment data from a node.
+ * @throws SomeError if underlying requests fail significantly (per original Some behavior), or TOPRFError if threshold not met after settling.
  */
 export const commitIdToken = async (params: {
   idToken: string;
@@ -159,17 +145,9 @@ export const commitIdToken = async (params: {
     sendCommitmentRequest(endpoint, requestParams),
   );
 
-  const bufferWaitTime = 500;
-  const startTime = Date.now();
-
   return Some<CommitmentJRPCResponse, CommitmentRequestResult[]>(
     promiseArr,
-    async (results) =>
-      validateAndWaitForCommitResponses(
-        results,
-        promiseArr,
-        startTime,
-        bufferWaitTime,
-      ),
+    async (results, cbParams) =>
+      createHandleCommitmentResponses(results, cbParams.allSettled)(),
   );
 };

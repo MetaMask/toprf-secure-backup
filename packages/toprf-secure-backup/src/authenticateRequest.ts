@@ -79,86 +79,73 @@ const sendAuthenticateRequest = async (
 };
 
 /**
- * Validates the authenticate responses
+ * Creates a function that handles authenticate responses incrementally.
  *
- * @param resultArr - The authenticate request result
- * @returns The authenticate request result and a boolean indicating if the user is new or not.
+ * @param results - The array of results received so far from Some.
+ * @param allSettled - Flag indicating if Some processed all promises.
+ * @returns A function that returns the final validation result if conditions met, undefined otherwise.
+ * Throws TOPRFError if threshold not met or data inconsistent.
  */
-export const validateThresholdAuthenticateResponses = async (
-  resultArr: AuthJRPCResponse[],
-): Promise<{
-  authRequestResults: AuthRequestResult[];
-  isNewUser: boolean;
-}> => {
-  const completedRequests =
-    filterCompletedRequests<AuthJRPCResponse>(resultArr);
-  if (completedRequests.length < AUTHENTICATION_THRESHOLD) {
-    throw TOPRFError.invalidAuthenticateResults(
-      `Not enough completed requests. Expected: ${AUTHENTICATION_THRESHOLD}, got: ${completedRequests.length}`,
-    );
-  }
-  const pubData = completedRequests.map((res: AuthJRPCResponse) => {
-    const result = res.result as AuthRequestResult;
-    return {
-      pubKey: result.pubKey,
-      keyIndex: result.keyIndex,
-    };
-  });
-  const thresholdPubData = thresholdSame(pubData, AUTHENTICATION_THRESHOLD);
-  if (!thresholdPubData) {
-    throw TOPRFError.invalidAuthenticateResults(
-      `Threshold pubKey not found for ${JSON.stringify(pubData)}`,
-    );
-  }
-  const isNewUser = !thresholdPubData.pubKey;
+export const createAuthResponseHandler = (
+  results: AuthJRPCResponse[],
+  allSettled: boolean,
+): (() => Promise<
+  { authRequestResults: AuthRequestResult[]; isNewUser: boolean } | undefined
+>) => {
+  const bufferWaitTime = 1000;
+  let thresholdMetTime: number | null = null;
 
-  return {
-    authRequestResults: completedRequests.map(
-      (res) => res.result as AuthRequestResult,
-    ),
-    isNewUser,
+  return async (): Promise<
+    { authRequestResults: AuthRequestResult[]; isNewUser: boolean } | undefined
+  > => {
+    const completedRequests = filterCompletedRequests(results);
+    const thresholdMet = completedRequests.length >= AUTHENTICATION_THRESHOLD;
+
+    if (thresholdMet) {
+      // Start the timer when the threshold is met
+      thresholdMetTime ??= Date.now();
+      const bufferElapsed = Date.now() - thresholdMetTime > bufferWaitTime;
+
+      if (allSettled || bufferElapsed) {
+        // Check consistency of pubKey/keyIndex data
+        const pubData = completedRequests.map((res: AuthJRPCResponse) => {
+          const { pubKey, keyIndex } = res.result as AuthRequestResult;
+          return { pubKey, keyIndex };
+        });
+        const thresholdPubData = thresholdSame(
+          pubData,
+          AUTHENTICATION_THRESHOLD,
+        );
+
+        if (!thresholdPubData) {
+          throw TOPRFError.invalidAuthenticateResults(
+            `Authentication threshold met, but pubKey/keyIndex data inconsistent: ${JSON.stringify(pubData)}`,
+          );
+        }
+
+        return {
+          authRequestResults: completedRequests.map(
+            (res) => res.result as AuthRequestResult,
+          ),
+          isNewUser: !thresholdPubData.pubKey,
+        };
+      }
+      return undefined; // Continue waiting
+    }
+
+    if (allSettled) {
+      // Threshold not met after all settled
+      throw TOPRFError.invalidAuthenticateResults(
+        `Authentication threshold not met after all requests processed. Expected: ${AUTHENTICATION_THRESHOLD}, got: ${completedRequests.length}`,
+      );
+    }
+
+    return undefined; // Continue waiting
   };
 };
 
 /**
- * Validates the authenticate responses and waits for the maximum number of requests to complete.
- *
- * @param responses - Authenticate request responses.
- * @param promiseArr - Authenticate request promises.
- * @param startTime - Start time of initiating authenticate requests.
- * @param bufferWaitTime - Buffer wait time to wait for the maximum number of requests to complete even if
- * threshold number of requests is reached.
- *
- * @returns threshold or maximum number of authenticate request results.
- * @throws Error if threshold number of requests is reached but buffer wait time has not elapsed.
- * @throws Error if buffer wait time has elapsed but threshold number of requests is not reached.
- */
-export const validateAndWaitForAllAuthResponses = async (
-  responses: AuthJRPCResponse[],
-  promiseArr: Promise<AuthJRPCResponse>[],
-  startTime: number,
-  bufferWaitTime: number,
-): Promise<{ authRequestResults: AuthRequestResult[]; isNewUser: boolean }> => {
-  const result = await validateThresholdAuthenticateResponses(responses);
-
-  // Return immediately if we have all responses
-  if (responses.length === promiseArr.length) {
-    return result;
-  }
-
-  // Return if buffer wait time has elapsed
-  if (Date.now() - startTime > bufferWaitTime) {
-    return result;
-  }
-
-  // Continue waiting by throwing error
-  throw new Error(
-    'Predicate Error: Threshold achieved, Waiting for maximum number of requests to complete',
-  );
-};
-
-/**
- * Authenticates the user with the given idToken and userId and validates the responses.
+ * Authenticates the user with the given id token and user id and validates the responses.
  *
  * @param params - The parameters for the authenticate request
  * @param params.idToken - The idToken to be used for the authenticate request
@@ -172,6 +159,7 @@ export const validateAndWaitForAllAuthResponses = async (
  *
  * @returns resultArr - The authenticate request result, where each element is
  * a signed authenticate data from a node and a boolean indicating if the user is new or not.
+ * @throws SomeError if underlying requests fail significantly, or TOPRFError if threshold cannot be met or data is inconsistent.
  */
 export const authenticateUser = async (params: {
   idToken: string;
@@ -201,47 +189,43 @@ export const authenticateUser = async (params: {
     commitmentSignatures,
     groupedAuthConnectionParams,
   );
-  // start with half the nodes count optimistically.
-  const promiseArr = Object.values(nodeEndpointsMap).map(async (endpoint) =>
+
+  const endpoints = Object.values(nodeEndpointsMap);
+  const promiseArr = endpoints.map(async (endpoint) =>
     sendAuthenticateRequest(endpoint, requestParams),
   );
 
-  // buffer wait time to wait for pending requests to complete even if we have achieved desired threshold.
-  const bufferWaitTime = 500;
-  const startTime = Date.now();
-  const { authRequestResults, isNewUser } = await Some<
+  const validationResult = await Some<
     AuthJRPCResponse,
     {
       authRequestResults: AuthRequestResult[];
       isNewUser: boolean;
     }
-  >(promiseArr, async (responses) =>
-    validateAndWaitForAllAuthResponses(
-      responses,
-      promiseArr,
-      startTime,
-      bufferWaitTime,
-    ),
+  >(promiseArr, async (results, cbParams) =>
+    createAuthResponseHandler(results, cbParams.allSettled)(),
   );
 
+  // Decrypt results after successful validation
   const decryptedAuthResults = await Promise.all(
-    authRequestResults.map(async (result: AuthRequestResult) => {
-      const { authToken, nodeIndex, nodePubKey, pubKey, keyIndex } = result;
-      const decryptedAuthToken = await decryptAuthToken(
-        authToken,
-        sessionPrivateKey,
-      );
-      return {
-        authToken: decryptedAuthToken,
-        nodeIndex,
-        nodePubKey,
-        pubKey,
-        keyIndex,
-      };
-    }),
+    validationResult.authRequestResults.map(
+      async (result: AuthRequestResult) => {
+        const { authToken, nodeIndex, nodePubKey, pubKey, keyIndex } = result;
+        const decryptedAuthToken = await decryptAuthToken(
+          authToken,
+          sessionPrivateKey,
+        );
+        return {
+          authToken: decryptedAuthToken,
+          nodeIndex,
+          nodePubKey,
+          pubKey,
+          keyIndex,
+        };
+      },
+    ),
   );
   return {
     authTokensData: decryptedAuthResults,
-    isNewUser,
+    isNewUser: validationResult.isNewUser,
   };
 };

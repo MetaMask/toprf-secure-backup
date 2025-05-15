@@ -3,14 +3,11 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import {
   commitIdToken,
-  validateAndWaitForCommitResponses,
-  validateThresholdCommitmentResponses,
+  createHandleCommitmentResponses,
 } from './commitRequest';
+import { COMMIT_RESPONSE_THRESHOLD } from './constants';
 import { TOPRFError } from './errors';
-import type {
-  CommitmentJRPCResponse,
-  CommitmentRequestResult,
-} from './jrpcInterfaces';
+import type { CommitmentJRPCResponse } from './jrpcInterfaces';
 import { generateIdToken } from '../tests/testHelpers';
 
 describe('commitment request', function () {
@@ -110,7 +107,7 @@ describe('commitment request', function () {
       throw new Error('Failed to get node details');
     }
     const endpoints = [...torusNodeSSSEndpoints];
-    // node endpoints without path, so that test won't get stucked.
+    // node endpoints without path, so that test won't get stuck
     endpoints[0] = endpoints[0].replace('/jrpc', '');
     endpoints[1] = endpoints[1].replace('/jrpc', '');
     endpoints[2] = endpoints[1].replace('/jrpc', '');
@@ -129,206 +126,138 @@ describe('commitment request', function () {
   });
 });
 
-describe('validateThresholdCommitmentResponses', () => {
-  /**
-   * Creates a mock commitment result
-   *
-   * @param nodeIndex - The index of the node
-   * @returns A mock commitment result
-   */
-  const mockCommitmentResult = (
-    nodeIndex: number,
-  ): CommitmentRequestResult => ({
-    signature: 'mockSignature',
+/**
+ * Helper function to create mock commitment responses.
+ *
+ * @param nodeIndex - The node index to use.
+ * @returns A mock commitment response.
+ */
+const mockCommitResponse = (nodeIndex: number): CommitmentJRPCResponse => ({
+  jsonrpc: '2.0',
+  id: 1,
+  result: {
     nodeIndex,
-    nodePubX: 'mockNodePubX',
-    nodePubY: 'mockNodePubY',
-    data: 'mockData',
-  });
-
-  /**
-   * Creates a mock commitment response.
-   *
-   * @param result - The result of the commitment
-   * @param error - The error of the commitment.
-   * @param error.code - The code of the error.
-   * @param error.message - The message of the error.
-   * @returns A mock commitment response.
-   */
-  const createMockResponse = (
-    result?: CommitmentRequestResult,
-    error?: { code: number; message: string },
-  ): CommitmentJRPCResponse => ({
-    jsonrpc: '2.0',
-    id: 1,
-    result,
-    error: error as { code: number; message: string; data?: unknown },
-  });
-
-  it('should validate successful responses', async () => {
-    const responses: CommitmentJRPCResponse[] = [
-      createMockResponse(mockCommitmentResult(1)),
-      createMockResponse(mockCommitmentResult(2)),
-      createMockResponse(mockCommitmentResult(3)),
-      createMockResponse(mockCommitmentResult(4)),
-    ];
-
-    const result = await validateThresholdCommitmentResponses(responses);
-    expect(result).toHaveLength(4);
-    expect(result).toStrictEqual(responses.map((res) => res.result));
-  });
-
-  it('should filter out responses with errors', async () => {
-    const responses: CommitmentJRPCResponse[] = [
-      createMockResponse(mockCommitmentResult(1)),
-      createMockResponse(undefined, { code: 500, message: 'Server error' }),
-      createMockResponse(mockCommitmentResult(3)),
-      createMockResponse(mockCommitmentResult(4)),
-      createMockResponse(mockCommitmentResult(5)),
-    ];
-
-    const result = await validateThresholdCommitmentResponses(responses);
-    expect(result).toHaveLength(4);
-    expect(result).toStrictEqual([
-      mockCommitmentResult(1),
-      mockCommitmentResult(3),
-      mockCommitmentResult(4),
-      mockCommitmentResult(5),
-    ]);
-  });
-
-  it('should filter out responses with missing results', async () => {
-    const responses: CommitmentJRPCResponse[] = [
-      createMockResponse(mockCommitmentResult(1)),
-      createMockResponse(undefined),
-      createMockResponse(mockCommitmentResult(3)),
-      createMockResponse(mockCommitmentResult(4)),
-      createMockResponse(mockCommitmentResult(5)),
-    ];
-
-    const result = await validateThresholdCommitmentResponses(responses);
-    expect(result).toHaveLength(4);
-    expect(result).toStrictEqual([
-      mockCommitmentResult(1),
-      mockCommitmentResult(3),
-      mockCommitmentResult(4),
-      mockCommitmentResult(5),
-    ]);
-  });
-
-  it('should throw an error if empty response array', async () => {
-    const responses: CommitmentJRPCResponse[] = [];
-    await expect(
-      validateThresholdCommitmentResponses(responses),
-    ).rejects.toBeInstanceOf(TOPRFError);
-  });
-
-  it('should throw if all invalid responses', async () => {
-    const responses: CommitmentJRPCResponse[] = [
-      createMockResponse(undefined, { code: 500, message: 'Error 1' }),
-      createMockResponse(undefined, { code: 500, message: 'Error 2' }),
-      createMockResponse(undefined, { code: 500, message: 'Error 3' }),
-    ];
-
-    await expect(
-      validateThresholdCommitmentResponses(responses),
-    ).rejects.toBeInstanceOf(TOPRFError);
-  });
+    signature: `mockSignature${nodeIndex}`,
+    nodePubX: `mockNodePubX${nodeIndex}`,
+    nodePubY: `mockNodePubY${nodeIndex}`,
+    data: `mockData${nodeIndex}`,
+  },
 });
 
-describe('validateAndWaitForCommitResponses', () => {
-  /**
-   *
-   * @param nodeIndex - The node index to be used for the mock response.
-   * @returns The mock response.
-   */
-  const mockCommitResponse = (nodeIndex: number): CommitmentJRPCResponse => ({
-    jsonrpc: '2.0',
-    id: 1,
-    result: {
-      nodeIndex,
-      signature: 'mockSignature',
-      nodePubX: 'mockNodePubX',
-      nodePubY: 'mockNodePubY',
-      data: 'mockData',
-    },
+describe('createHandleCommitmentResponses', () => {
+  const threshold = COMMIT_RESPONSE_THRESHOLD;
+  const bufferWaitTime = 1000;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
   });
 
-  /**
-   *
-   * @param count - The number of promises to create.
-   * @returns The mock promises.
-   */
-  const createMockCommitPromises = (
-    count: number,
-  ): Promise<CommitmentJRPCResponse>[] =>
-    Array.from({ length: count }, async (_, i) =>
-      Promise.resolve(mockCommitResponse(i)),
-    );
-
-  it('should return results immediately when all promises are complete', async () => {
-    const responses = [
-      mockCommitResponse(1),
-      mockCommitResponse(2),
-      mockCommitResponse(3),
-      mockCommitResponse(4),
-      mockCommitResponse(5),
-    ];
-    const promiseArr = createMockCommitPromises(5);
-    const startTime = Date.now();
-    const bufferWaitTime = 500;
-
-    const result = await validateAndWaitForCommitResponses(
-      responses,
-      promiseArr,
-      startTime,
-      bufferWaitTime,
-    );
-
-    expect(result).toHaveLength(5);
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
-  it('should return results when buffer time has elapsed', async () => {
-    const responses = [
-      mockCommitResponse(1),
-      mockCommitResponse(2),
-      mockCommitResponse(3),
-      mockCommitResponse(4),
-    ];
-    const promiseArr = createMockCommitPromises(5);
-    const startTime = Date.now() - 600;
-    const bufferWaitTime = 500;
-
-    const result = await validateAndWaitForCommitResponses(
-      responses,
-      promiseArr,
-      startTime,
-      bufferWaitTime,
+  it('should return undefined if threshold not met and not all settled', async () => {
+    const results = Array.from({ length: threshold - 1 }, (_, i) =>
+      mockCommitResponse(i),
     );
-
-    expect(result).toHaveLength(4);
+    results.push(undefined as any, undefined as any);
+    const handler = createHandleCommitmentResponses(results, false);
+    expect(await handler()).toBeUndefined();
   });
 
-  it('should throw error to continue waiting if buffer time not elapsed', async () => {
-    const responses = [
-      mockCommitResponse(1),
-      mockCommitResponse(2),
-      mockCommitResponse(3),
-      mockCommitResponse(4),
-    ];
-    const promiseArr = createMockCommitPromises(5);
-    const startTime = Date.now();
-    const bufferWaitTime = 500;
-
-    await expect(
-      validateAndWaitForCommitResponses(
-        responses,
-        promiseArr,
-        startTime,
-        bufferWaitTime,
-      ),
-    ).rejects.toThrow(
-      'Predicate Error: Threshold achieved, Waiting for maximum number of requests to complete',
+  it('should return undefined if threshold met but buffer not elapsed and not all settled', async () => {
+    const results = Array.from({ length: threshold }, (_, i) =>
+      mockCommitResponse(i),
     );
+    results.push(undefined as any);
+    const handler = createHandleCommitmentResponses(results, false);
+
+    expect(await handler()).toBeUndefined();
+
+    await jest.advanceTimersByTimeAsync(bufferWaitTime / 2);
+    expect(await handler()).toBeUndefined();
+  });
+
+  it('should return results if threshold met and buffer has elapsed', async () => {
+    const results = Array.from({ length: threshold }, (_, i) =>
+      mockCommitResponse(i),
+    );
+    results.push(undefined as any);
+    const handler = createHandleCommitmentResponses(results, false);
+
+    expect(await handler()).toBeUndefined();
+
+    await jest.advanceTimersByTimeAsync(bufferWaitTime + 50);
+
+    const finalResult = await handler();
+    expect(finalResult).toBeDefined();
+    expect(finalResult).toHaveLength(threshold);
+  });
+
+  it('should return results if threshold met and all have settled (before buffer)', async () => {
+    const results = Array.from({ length: threshold + 1 }, (_, i) =>
+      mockCommitResponse(i),
+    );
+    const handler = createHandleCommitmentResponses(results, true);
+
+    const finalResult = await handler();
+    expect(finalResult).toBeDefined();
+    expect(finalResult).toHaveLength(threshold + 1);
+  });
+
+  it('should throw TOPRFError if threshold not met when all settled', async () => {
+    const results = Array.from({ length: threshold - 1 }, (_, i) =>
+      mockCommitResponse(i),
+    );
+    const handler = createHandleCommitmentResponses(results, true);
+
+    await expect(handler()).rejects.toBeInstanceOf(TOPRFError);
+    await expect(handler()).rejects.toThrow(
+      `Threshold not met after all requests processed. Expected: ${threshold}, got: ${threshold - 1}`,
+    );
+  });
+
+  it('should handle results array changing between calls', async () => {
+    const initialResults = Array.from({ length: threshold - 1 }, (_, i) =>
+      mockCommitResponse(i),
+    );
+    const handler1 = createHandleCommitmentResponses(initialResults, false);
+    expect(await handler1()).toBeUndefined();
+
+    const finalResultsResults = Array.from({ length: threshold }, (_, i) =>
+      mockCommitResponse(i),
+    );
+    const handler2 = createHandleCommitmentResponses(finalResultsResults, true);
+
+    const finalResult = await handler2();
+    expect(finalResult).toBeDefined();
+    expect(finalResult).toHaveLength(threshold);
+  });
+
+  it('should track thresholdMetTime correctly across calls', async () => {
+    const resultsMeetThreshold = Array.from({ length: threshold }, (_, i) =>
+      mockCommitResponse(i),
+    );
+    resultsMeetThreshold.push(undefined as any);
+    const handler = createHandleCommitmentResponses(
+      resultsMeetThreshold,
+      false,
+    );
+
+    expect(await handler()).toBeUndefined();
+    const timeAfterFirstCall = Date.now();
+
+    await jest.advanceTimersByTimeAsync(bufferWaitTime / 2);
+    const timeAfterAdvance = Date.now();
+
+    expect(await handler()).toBeUndefined();
+
+    const remainingBuffer =
+      bufferWaitTime - (timeAfterAdvance - timeAfterFirstCall);
+    await jest.advanceTimersByTimeAsync(remainingBuffer + 50);
+
+    const finalResult = await handler();
+    expect(finalResult).toBeDefined();
+    expect(finalResult).toHaveLength(threshold);
   });
 });

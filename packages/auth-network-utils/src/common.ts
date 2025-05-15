@@ -239,11 +239,14 @@ function handleSomeCallBackFnError<Type>(
     });
   }
 
+  type ResultWithError = { error?: { data?: string } };
+
   // check if there're any error inside resolved result array
-  hasError = resultArr.some((result) => Boolean(result));
+  const resultArrWithError = resultArr as ResultWithError[];
+  hasError = resultArrWithError.some((result) => Boolean(result?.error));
   if (hasError) {
     const errors = resultArr.map((result) => {
-      const { error } = result as { error?: { data?: string } };
+      const { error } = result as ResultWithError;
       if (error?.data && error.data.length > 0) {
         return new Error(error.data);
       }
@@ -256,7 +259,7 @@ function handleSomeCallBackFnError<Type>(
     });
   }
 
-  // throw an `unknown` error if there's no error or resolved result
+  // no error was thrown and callback never returned a value
   throw new SomeError({
     errors: errorArr,
     responses: resultArr,
@@ -275,8 +278,8 @@ export async function Some<Input, Output>(
   promises: Promise<Input>[],
   callbackFn: (
     resultArr: Input[],
-    params?: { resolved: boolean },
-  ) => Promise<Output>,
+    params: { allSettled: boolean },
+  ) => Promise<Output | undefined>,
 ): Promise<Output> {
   let predicateError: Error | undefined; // to keep track of the latest error thrown by the callbackFn
   const resultArr: Input[] = new Array(promises.length).fill(undefined);
@@ -284,14 +287,19 @@ export async function Some<Input, Output>(
 
   for (const [i, promise] of promises.entries()) {
     try {
-      resultArr[i] = await promise;
+      // Race the promise against a timeout
+      const timeoutPromise = new Promise<Input>((_resolve, reject) => {
+        setTimeout(() => reject(new Error('Promise timed out')), 10_000);
+      });
+      resultArr[i] = await Promise.race([promise, timeoutPromise]);
     } catch (error: unknown) {
       errorArr[i] = error as Error;
     }
 
     try {
-      const result = await callbackFn(resultArr);
-      if (result) {
+      const allSettled = resultArr.every((result) => result !== undefined);
+      const result = await callbackFn(resultArr, { allSettled });
+      if (typeof result !== 'undefined') {
         return result;
       }
     } catch (error: unknown) {
