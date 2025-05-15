@@ -204,7 +204,7 @@ export async function Some<Input, Output>(
     try {
       const allSettled = resultArr.every((result) => result !== undefined);
       const result = await callbackFn(resultArr, { allSettled });
-      if (typeof result !== 'undefined') {
+      if (result) {
         return result;
       }
     } catch (error: unknown) {

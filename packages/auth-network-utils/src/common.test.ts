@@ -341,6 +341,27 @@ describe('common utils', function () {
         SomeError,
       );
     });
+
+    it('`Some` should throw an error when a promise times out', async () => {
+      jest.useFakeTimers();
+
+      const somePromise = Some(
+        [
+          new Promise((resolve) => {
+            setTimeout(() => {
+              resolve({ id: '1', data: 'success1' });
+            }, 12_000);
+          }),
+        ],
+        async () => undefined,
+      );
+
+      jest.advanceTimersByTime(11_000);
+
+      await expect(somePromise).rejects.toThrow('Promise timed out');
+
+      jest.useRealTimers();
+    });
   });
 
   describe('filterCompletedRequests', () => {
