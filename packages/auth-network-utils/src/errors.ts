@@ -43,17 +43,6 @@ export class SomeError<TResponse> extends Error {
   /**
    * @returns - message with errors and responses from all promises.
    */
-  get message(): string {
-    const predicateMessage = this.predicate?.message ?? 'unknown error';
-    return `${super.message}. errors: ${this.errors.map((er: Error | undefined) => er?.message ?? er).join(', ')} and ${
-      this.responses.length
-    } responses: ${JSON.stringify(this.responses)},
-      predicate error: ${predicateMessage}`;
-  }
-
-  /**
-   * @returns - message with errors and responses from all promises.
-   */
   toString(): string {
     return this.message;
   }

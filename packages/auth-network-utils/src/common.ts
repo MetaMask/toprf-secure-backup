@@ -1,10 +1,8 @@
 import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
-import type { JRPCResponse } from '@toruslabs/constants';
 import BN from 'bn.js';
 import JsonStringify from 'json-stable-stringify';
 
 import { SomeError } from './errors';
-import { waitFor } from './helpers';
 import type { JSONRPCError } from './interfaces';
 
 /**
@@ -124,99 +122,6 @@ export const getProxyCoordinatorNodeIndex = (
 };
 
 /**
- *
- * @param arr - The array to calculate the median of
- * @returns The median of the array
- */
-export function calculateMedian(arr: number[]): number {
-  const arrSize = arr.length;
-
-  if (arrSize === 0) {
-    return 0;
-  }
-  const sortedArr = arr.sort(function (a, b) {
-    return a - b;
-  });
-
-  // odd length
-  if (arrSize % 2 !== 0) {
-    return sortedArr[Math.floor(arrSize / 2)];
-  }
-
-  // return average of two mid values in case of even arrSize
-  const mid1 = sortedArr[arrSize / 2 - 1];
-
-  const mid2 = sortedArr[arrSize / 2];
-  return (mid1 + mid2) / 2;
-}
-
-/**
- *
- * @param executionPromise - The promise to retry
- * @param maxRetries - The maximum number of retries
- * @returns The result of the promise
- */
-export async function retryPromiseWithBackoff<Type>(
-  executionPromise: () => Promise<JRPCResponse<Type>>,
-  maxRetries: number,
-): Promise<JRPCResponse<Type>> {
-  // Notice that we declare an inner function here
-  // so we can encapsulate the retries and don't expose
-  // it to the caller. This is also a recursive function
-  /**
-   *
-   * @param retries - The number of retries
-   * @returns The result of the promise
-   */
-  async function retryWithBackoff(
-    retries: number,
-  ): Promise<JRPCResponse<Type>> {
-    try {
-      // we don't wait on the first attempt
-      if (retries > 0) {
-        // on every retry, we exponentially increase the time to wait.
-        // Here is how it looks for a `maxRetries` = 4
-        // (2 ** 1) * 100 = 200 ms
-        // (2 ** 2) * 100 = 400 ms
-        // (2 ** 3) * 100 = 800 ms
-        const timeToWait = 2 ** retries * 100;
-        await waitFor(timeToWait);
-      }
-      const a = await executionPromise();
-      return a;
-    } catch (error: unknown) {
-      const errorMsg = (error as Error).message;
-      const acceptedErrorMsgs = [
-        // Slow node
-        'Timed out',
-        'Failed to fetch',
-        'fetch failed',
-        'Load failed',
-        'cancelled',
-        'NetworkError when attempting to fetch resource.',
-        // Happens when the node is not reachable (dns issue etc)
-        'TypeError: Failed to fetch', // All except iOS and Firefox
-        'TypeError: cancelled', // iOS
-        'TypeError: NetworkError when attempting to fetch resource.', // Firefox
-      ];
-
-      if (
-        retries < maxRetries &&
-        (acceptedErrorMsgs.includes(errorMsg) ||
-          errorMsg?.includes('reason: getaddrinfo EAI_AGAIN'))
-      ) {
-        // only retry if we didn't reach the limit
-        // otherwise, let the caller handle the error
-        return retryWithBackoff(retries + 1);
-      }
-      throw error;
-    }
-  }
-
-  return retryWithBackoff(0);
-}
-
-/**
  * This function handles when `Some` function cannot determine the outcome of the operation\
  * even after all promises are settled
  *
@@ -228,7 +133,7 @@ function handleSomeCallBackFnError<Type>(
   errorArr: Error[],
   resultArr: Type[],
   predicateError?: Error,
-): void {
+): never {
   // check if there's any rejected promises
   let hasError = errorArr.some((error) => error !== undefined);
   if (hasError) {
@@ -309,8 +214,6 @@ export async function Some<Input, Output>(
 
   // If we still don't have a result, handle the error
   handleSomeCallBackFnError(errorArr, resultArr, predicateError);
-  // If handleSomeCallBackFnError doesn't throw, throw a generic error
-  throw new Error('Some function failed to produce a valid result');
 }
 
 /**

@@ -29,6 +29,28 @@ describe('Noble Curves Lagrange Interpolation', () => {
     });
   });
 
+  describe('generateRandomScalar', () => {
+    const defaultCurveN = secp256k1.CURVE.n;
+
+    it('should return a bigint', () => {
+      const scalar = generateRandomScalar();
+      expect(typeof scalar).toBe('bigint');
+    });
+
+    it('should return a scalar less than the default curve order', () => {
+      const scalar = generateRandomScalar(); // Uses default secp256k1 n
+      expect(scalar).toBeGreaterThanOrEqual(0n);
+      expect(scalar).toBeLessThan(defaultCurveN);
+    });
+
+    it('should return a scalar less than a custom curve order', () => {
+      const customCurveN = 12345678901234567890n; // Example smaller order
+      const scalar = generateRandomScalar(customCurveN);
+      expect(scalar).toBeGreaterThanOrEqual(0n);
+      expect(scalar).toBeLessThan(customCurveN);
+    });
+  });
+
   describe('lagrangeInterpolationForScalars', () => {
     it('should reconstruct secret from scalar shares', () => {
       const degree = 3;
