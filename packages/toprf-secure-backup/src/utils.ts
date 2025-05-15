@@ -531,14 +531,15 @@ export function mergeEndpointsWithAuthTokens(
  */
 export function parseJsonRpcError(rpcError: JSONRPCError): ITOPRFError {
   if (rpcError.code === JsonRpcErrorCodes.ErrorCodeInvalidParams) {
-    if (rpcError.message === 'Invalid auth tokens') {
-      return TOPRFError.invalidAuthTokens();
+    // Check for expired auth token first since it's a specific case of auth token error
+    if (rpcError.message.toLowerCase().includes('auth token expired')) {
+      return TOPRFError.authTokenExpired();
     }
 
-    // Commenting this as backend is not returning the correct error code for auth token expired
-    // if (rpcError.message === 'Auth token expired') {
-    //   return TOPRFError.authTokenExpired('Auth token expired.');
-    // }
+    // Check for general auth token validation failures
+    if (rpcError.message.toLowerCase().includes('invalid auth token')) {
+      return TOPRFError.invalidAuthToken();
+    }
 
     let errorDescription = rpcError.message;
     if (typeof rpcError.data === 'string') {

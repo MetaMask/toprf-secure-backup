@@ -70,8 +70,8 @@ describe('TOPRFError', () => {
     expect(TOPRFError.insufficientAuthTokens().code).toBe(
       TOPRFErrorCode.InsufficientAuthTokens,
     );
-    expect(TOPRFError.invalidAuthTokens().code).toBe(
-      TOPRFErrorCode.InvalidAuthTokens,
+    expect(TOPRFError.invalidAuthToken().code).toBe(
+      TOPRFErrorCode.InvalidAuthToken,
     );
     expect(TOPRFError.couldNotFetchPassword().code).toBe(
       TOPRFErrorCode.CouldNotFetchPassword,

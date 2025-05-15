@@ -485,7 +485,7 @@ describe('toprf secret backup', function () {
           authConnectionId,
           userId,
         }),
-      ).rejects.toThrow(TOPRFError.invalidAuthTokens());
+      ).rejects.toThrow(TOPRFError.invalidAuthToken());
     });
   });
 
