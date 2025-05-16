@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0]
+
 ### Added
 
 - Add optional `keyDeriver` parameter to `ToprfSecureBackup` constructor. ([#104](https://github.com/MetaMask/toprf-secure-backup/pull/104))
@@ -14,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Breaking**: `createLocalKey` is now an asynchronous function that returns a Promise. ([#104](https://github.com/MetaMask/toprf-secure-backup/pull/104))
+
+### Fixed
+
+- Rename InvalidAuthTokens, prioritize expired check in parsing. ([#92](https://github.com/MetaMask/toprf-secure-backup/pull/92))
+
+- Improve response handling logic for commitIdToken and authenticateUser. ([#89](https://github.com/MetaMask/toprf-secure-backup/pull/89))
+
+- Allow override of node details in ToprfSecureBackup. ([#103](https://github.com/MetaMask/toprf-secure-backup/pull/103))
 
 ## [0.1.0]
 
@@ -32,5 +42,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Add `fetchAuthPubKey` function to fetch current auth public key associated with user's password, helps to check if user password is changed.
   - Add `recoverPassword` function to recover a older password corresponding to provided target auth public key, user can use this function only if they have access to latest password. This function is useful for password syncing across devices.
 
-[Unreleased]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@0.1.0...HEAD
+[Unreleased]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@0.2.0...HEAD
+[0.2.0]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@0.1.0...@metamask/toprf-secure-backup@0.2.0
 [0.1.0]: https://github.com/MetaMask/toprf-secure-backup/releases/tag/@metamask/toprf-secure-backup@0.1.0
