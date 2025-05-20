@@ -191,7 +191,7 @@ export async function Some<Input, Output>(
   const errorArr: Error[] = new Array(promises.length).fill(undefined);
 
   for (const [i, promise] of promises.entries()) {
-    let timeoutId: NodeJS.Timeout | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
     try {
       // Race the promise against a timeout
       const timeoutPromise = new Promise<Input>((_resolve, reject) => {
