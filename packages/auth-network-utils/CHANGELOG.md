@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+### Fixed
 
 - Added `cancellation` logic to the `timeoutPromise` after the `Promise.race` in `Some` function. ([#110](https://github.com/MetaMask/toprf-secure-backup/pull/110))
 
