@@ -191,14 +191,23 @@ export async function Some<Input, Output>(
   const errorArr: Error[] = new Array(promises.length).fill(undefined);
 
   for (const [i, promise] of promises.entries()) {
+    let timeoutFunc: NodeJS.Timeout | undefined;
     try {
       // Race the promise against a timeout
       const timeoutPromise = new Promise<Input>((_resolve, reject) => {
-        setTimeout(() => reject(new Error('Promise timed out')), 10_000);
+        timeoutFunc = setTimeout(
+          () => reject(new Error('Promise timed out')),
+          10_000,
+        );
       });
       resultArr[i] = await Promise.race([promise, timeoutPromise]);
     } catch (error: unknown) {
       errorArr[i] = error as Error;
+    } finally {
+      // Clear the timeout if it exists and still hasn't been cleared after the Promise.race is settled.
+      if (timeoutFunc) {
+        clearTimeout(timeoutFunc);
+      }
     }
 
     try {
