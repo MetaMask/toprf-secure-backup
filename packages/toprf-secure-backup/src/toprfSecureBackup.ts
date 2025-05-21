@@ -131,7 +131,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     // commit idToken to nodes
     const commitmentResults = await commitIdToken({
       idToken: hashedIdToken ?? params.idTokens[0],
-      authConnectionId: params.authConnectionId,
+      authConnectionId:
+        params.groupedAuthConnectionId ?? params.authConnectionId,
       sessionPubKeyX,
       sessionPubKeyY,
       endpoints: nodeEndpoints,
