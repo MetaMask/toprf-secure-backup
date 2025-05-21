@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Added two new utils, `add0x` and `remove0x` to add/remove `0x` prefix to/from the hexadecimal string. ([#112](https://github.com/MetaMask/toprf-secure-backup/pull/112))
 - Added `cancellation` logic to the `timeoutPromise` after the `Promise.race` in `Some` function. ([#110](https://github.com/MetaMask/toprf-secure-backup/pull/110))
 
 ## [0.2.0]

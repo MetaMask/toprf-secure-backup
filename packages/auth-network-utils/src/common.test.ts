@@ -16,6 +16,8 @@ import {
   toSnake,
   toSnakeCaseKeys,
   convertKeys,
+  remove0x,
+  add0x,
 } from './common';
 import { SomeError } from './errors';
 import { waitFor } from './helpers';
@@ -34,6 +36,27 @@ describe('common utils', function () {
       '0x9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658',
     );
     expect(expectedHashedHexString).toStrictEqual(hexString.slice(2));
+  });
+
+  describe('remove0x', () => {
+    it('should remove the 0x prefix from a hex string', () => {
+      expect(remove0x('0x1234567890')).toBe('1234567890');
+    });
+
+    it('should return the hex string if it does not start with 0x', () => {
+      // @ts-expect-error - we are testing the type of the function
+      expect(remove0x('1234567890')).toBe('1234567890');
+    });
+  });
+
+  describe('add0x', () => {
+    it('should add the 0x prefix to a hex string', () => {
+      expect(add0x('1234567890')).toBe('0x1234567890');
+    });
+
+    it('should return the hex string if it already starts with 0x', () => {
+      expect(add0x('0x1234567890')).toBe('0x1234567890');
+    });
   });
 
   describe('safeStringify', () => {

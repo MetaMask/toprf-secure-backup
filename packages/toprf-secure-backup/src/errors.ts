@@ -26,6 +26,7 @@ export enum TOPRFErrorCode {
   AuthTokenExpired = 1011,
   JsonRpcError = 1012,
   CouldNotFetchPassword = 1013,
+  NoHashedIdToken = 1014,
 }
 
 /**
@@ -57,6 +58,8 @@ export class TOPRFError extends Error implements ITOPRFError {
     [TOPRFErrorCode.AuthTokenExpired]: 'Auth token expired.',
     [TOPRFErrorCode.JsonRpcError]: 'Json rpc error.',
     [TOPRFErrorCode.CouldNotFetchPassword]: 'Could not fetch password.',
+    [TOPRFErrorCode.NoHashedIdToken]:
+      'hashedIdToken is required when using single-id(aggregate) verifier.',
   };
 
   /**

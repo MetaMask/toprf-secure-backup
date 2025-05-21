@@ -17,6 +17,32 @@ export function keccak256AndHexify(buffer: Uint8Array): `0x${string}` {
 }
 
 /**
+ * Removes the `0x` prefix from a hex string
+ *
+ * @param hexString - The hex string to remove the `0x` prefix from
+ * @returns The hex string without the `0x` prefix
+ */
+export function remove0x(hexString: `0x${string}`): string {
+  if (hexString.startsWith('0x')) {
+    return hexString.slice(2);
+  }
+  return hexString;
+}
+
+/**
+ * Adds the `0x` prefix to a hex string if it is not already present
+ *
+ * @param hexString - The hex string to add the `0x` prefix to
+ * @returns The hex string with the `0x` prefix
+ */
+export function add0x(hexString: string): `0x${string}` {
+  if (hexString.startsWith('0x')) {
+    return hexString as `0x${string}`;
+  }
+  return `0x${hexString}`;
+}
+
+/**
  * Stringifies a JSON object and persists the key orders of the object
  *
  * @param json - The JSON object to stringify

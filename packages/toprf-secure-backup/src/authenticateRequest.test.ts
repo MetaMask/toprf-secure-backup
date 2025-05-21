@@ -8,7 +8,7 @@ import {
 } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
 import { AUTHENTICATION_THRESHOLD } from './constants';
-import { TOPRFError } from './errors';
+import { TOPRFError, TOPRFErrorCode } from './errors';
 import type { AuthJRPCResponse } from './jrpcInterfaces';
 import { createNodeEndpointsMap } from './utils';
 import { generateIdToken, generateRandomUserId } from '../tests/testHelpers';
@@ -73,7 +73,8 @@ describe('authenticate request', function () {
     const privKey = secp256k1.utils.randomPrivateKey();
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
-    const authConnectionId = 'torus-test-health-aggregate';
+    const authConnectionId = 'torus-test-health';
+    const groupedAuthConnectionId = 'torus-test-health-aggregate';
     const userId = generateRandomUserId();
     const idToken = generateIdToken(userId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
@@ -93,7 +94,7 @@ describe('authenticate request', function () {
 
     const commitmentResults = await commitIdToken({
       idToken: hashedIdToken,
-      authConnectionId,
+      authConnectionId: groupedAuthConnectionId,
       sessionPubKeyX,
       sessionPubKeyY,
       endpoints: torusNodeSSSEndpoints,
@@ -111,20 +112,52 @@ describe('authenticate request', function () {
     }, {});
 
     const { authTokensData, isNewUser } = await authenticateUser({
-      idToken: hashedIdToken,
+      idToken,
       authConnectionId,
       userId,
       sessionPrivateKey: privKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
-      groupedAuthConnectionParams: {
-        authConnectionId: 'torus-test-health',
-        idTokens: [idToken],
-      },
+      groupedAuthConnectionId,
+      hashedIdToken,
     });
     expect(authTokensData).toBeDefined();
     expect(authTokensData.length).toBeGreaterThanOrEqual(3);
     expect(isNewUser).toBe(true);
+  });
+
+  it('should throw an error when hashedIdToken is not provided for single id verifier', async function () {
+    const MOCK_SESSION_PRIVATE_KEY = secp256k1.utils.randomPrivateKey();
+    const authConnectionId = 'torus-test-health';
+    const groupedAuthConnectionId = 'torus-test-health-aggregate';
+    const userId = generateRandomUserId();
+    const idToken = generateIdToken(userId, 'ES256');
+
+    const MOCK_COMMITMENT_RESULTS = [
+      {
+        nodeIndex: 0,
+        commitmentSignature: 'mockCommitmentSignature',
+        signature: 'mockSignature',
+        data: 'mockData',
+        nodePubX: 'mockNodePubX',
+        nodePubY: 'mockNodePubY',
+      },
+    ];
+    const MOCK_ENDPOINT_MAP = {
+      0: 'mockEndpoint',
+    };
+
+    await expect(
+      authenticateUser({
+        idToken,
+        authConnectionId,
+        userId,
+        sessionPrivateKey: MOCK_SESSION_PRIVATE_KEY,
+        nodeEndpointsMap: MOCK_ENDPOINT_MAP,
+        commitmentSignatures: MOCK_COMMITMENT_RESULTS,
+        groupedAuthConnectionId,
+      }),
+    ).rejects.toThrow(TOPRFError.fromCode(TOPRFErrorCode.NoHashedIdToken));
   });
 });
 
