@@ -53,7 +53,7 @@ export type NodeDetailsOverride = {
  *
  * authConnectionId - The auth connection name to be used for the authenticate request.
  *
- * groupedAuthConnectionId - The grouped auth connection id to be used for the authenticate request with aggregate (single id) verifier.
+ * groupedAuthConnectionId - Optional grouped auth connection id to be used for the authenticate request with aggregate (single id) verifier.
  *
  * userId - The user id of the user to be used for the authenticate request.
  *

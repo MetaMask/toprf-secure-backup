@@ -24,8 +24,8 @@ import { decryptAuthToken, postJRPCRequest } from './utils';
  * @param params.authConnectionId - The auth connection name to be used for the authenticate request
  * @param params.userId - The userId to be used for the authenticate request
  * @param params.commitmentSignatures - The idToken commitment signatures to be used for the authenticate request.
- * @param params.groupedAuthConnectionId - The grouped auth connection id to be used for the authenticate request.
- * @param params.hashedIdToken - The hashed idToken to be used for the authenticate request when using aggregate verifier.
+ * @param params.groupedAuthConnectionId - Optional grouped auth connection id to be used for the authenticate request.
+ * @param params.hashedIdToken - Optional hashed idToken to be used for the authenticate request when using aggregate verifier.
  * @returns The parameters for the authenticate JRPC request.
  */
 const createAuthenticateRequestParams = (params: {
@@ -161,8 +161,8 @@ export const createAuthResponseHandler = (
  * @param params - The parameters for the authenticate request
  * @param params.idToken - The idToken to be used for the authenticate request
  * @param params.authConnectionId - The auth connection name to be used for the authenticate request
- * @param params.groupedAuthConnectionId - The grouped auth connection id to be used for the authenticate request
- * @param params.hashedIdToken - The hashed idToken to be used for the authenticate request when using aggregate verifier.
+ * @param params.groupedAuthConnectionId - Optional grouped auth connection id to be used for the authenticate request
+ * @param params.hashedIdToken - Optional hashed idToken to be used for the authenticate request when using aggregate verifier.
  * @param params.userId - The user id of the user to be used for the authenticate request
  * @param params.sessionPrivateKey - The session private key used for commitment request.
  * @param params.nodeEndpointsMap - The map of node indexes to endpoints map to be used for the authenticate request.
