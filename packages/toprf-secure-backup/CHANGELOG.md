@@ -9,11 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Updated implementation of aggregate(single id) verifier authentication. ([#112](https://github.com/MetaMask/toprf-secure-backup/pull/112))
+- **Breaking**: updated implementation of aggregate(single id) verifier authentication. ([#112](https://github.com/MetaMask/toprf-secure-backup/pull/112))
   - Updated `AuthenticateParams` type to align with the web3auth docs
   - Updated `ToprfSecureBackup.authenticate` method to align with the updated params
   - Computed `hashedIdToken` in the SDK instead of getting from the method params
-  - Updated implementation of `authenticateUser` and `createAuthenticateRequestParams`
 
 ## [0.2.0]
 
