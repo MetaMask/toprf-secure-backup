@@ -47,7 +47,7 @@ const createAuthenticateRequestParams = (params: {
       }
     : undefined;
 
-  // hashedIdToken is must be present when using aggregate verifier (i.e. groupedAuthConnectionId is present)
+  // hashedIdToken must be present when using aggregate verifier (i.e. groupedAuthConnectionId is present)
   if (params.groupedAuthConnectionId && !params.hashedIdToken) {
     throw TOPRFError.fromCode(TOPRFErrorCode.NoHashedIdToken);
   }
