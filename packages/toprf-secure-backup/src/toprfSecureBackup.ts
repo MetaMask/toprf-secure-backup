@@ -1,3 +1,4 @@
+import { keccak256AndHexify, remove0x } from '@metamask/auth-network-utils';
 import { bytesToUtf8, equalBytes } from '@noble/ciphers/utils';
 import { utf8ToBytes } from '@noble/curves/abstract/utils';
 import { secp256k1 } from '@noble/curves/secp256k1';
@@ -119,9 +120,17 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     const sessionPubKeyX = sessionPubKey.x.toString(16);
     const sessionPubKeyY = sessionPubKey.y.toString(16);
 
+    let hashedIdToken: string | undefined;
+    if (params.groupedAuthConnectionId) {
+      // if groupedAuthConnectionId is provided, we'll compute the hashedIdToken for the aggregate (single id) verifier login
+      hashedIdToken = remove0x(
+        keccak256AndHexify(Buffer.from(params.idTokens[0], 'utf8')),
+      );
+    }
+
     // commit idToken to nodes
     const commitmentResults = await commitIdToken({
-      idToken: params.idTokens[0],
+      idToken: hashedIdToken ?? params.idTokens[0],
       authConnectionId: params.authConnectionId,
       sessionPubKeyX,
       sessionPubKeyY,
@@ -144,7 +153,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       sessionPrivateKey: sessionPrivKey,
       nodeEndpointsMap: selectedEndpointsMap,
       commitmentSignatures: commitmentResults,
-      groupedAuthConnectionParams: params.groupedAuthConnectionParams,
+      groupedAuthConnectionId: params.groupedAuthConnectionId,
+      hashedIdToken,
     });
 
     return {

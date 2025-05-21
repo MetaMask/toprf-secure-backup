@@ -1,4 +1,3 @@
-import { keccak256AndHexify } from '@metamask/auth-network-utils';
 import { utf8ToBytes } from '@noble/ciphers/utils';
 import { pbkdf2Async } from '@noble/hashes/pbkdf2';
 import { sha256 } from '@noble/hashes/sha2';
@@ -86,19 +85,15 @@ describe('toprf secret backup', function () {
     });
 
     it('should be able to authenticate user with single id verifier', async function () {
-      const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
-        authConnectionId: 'torus-test-health-aggregate',
-      });
-      const hashedIdToken = keccak256AndHexify(utf8ToBytes(idToken)).slice(2);
+      const authConnectionId = 'torus-test-health';
+      const groupedAuthConnectionId = 'torus-test-health-aggregate';
+      const { userId, idToken, toprfSecureBackup } = setup();
 
       const result = await toprfSecureBackup.authenticate({
-        idTokens: [hashedIdToken],
+        idTokens: [idToken],
         authConnectionId,
         userId,
-        groupedAuthConnectionParams: {
-          authConnectionId: 'torus-test-health',
-          idTokens: [idToken],
-        },
+        groupedAuthConnectionId,
       });
 
       expect(result).toBeDefined();
