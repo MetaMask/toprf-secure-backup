@@ -6,8 +6,7 @@ import {
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
 import { AUTHENTICATION_THRESHOLD, JRPC_METHODS } from './constants';
-import { TOPRFError } from './errors';
-import type { GroupedAuthConnectionParams } from './interfaces';
+import { TOPRFError, TOPRFErrorCode } from './errors';
 import type {
   AuthJRPCRequest,
   AuthJRPCResponse,
@@ -20,42 +19,54 @@ import { decryptAuthToken, postJRPCRequest } from './utils';
 /**
  * Creates the parameters for the authenticate request
  *
- * @param idToken - The idToken to be used for the authenticate request
- * @param authConnectionId - The auth connection name to be used for the authenticate request
- * @param userId - The userId to be used for the authenticate request
- * @param commitmentSignatures - The idToken commitment signatures to be used for the authenticate request.
- * @param groupedAuthConnectionParams - Optional groupedAuthConnectionParams to be used for the authenticate request.
+ * @param params - The parameters for creating the authenticate request parameters
+ * @param params.idToken - The idToken to be used for the authenticate request
+ * @param params.authConnectionId - The auth connection name to be used for the authenticate request
+ * @param params.userId - The userId to be used for the authenticate request
+ * @param params.commitmentSignatures - The idToken commitment signatures to be used for the authenticate request.
+ * @param params.groupedAuthConnectionId - The grouped auth connection id to be used for the authenticate request.
+ * @param params.hashedIdToken - The hashed idToken to be used for the authenticate request when using aggregate verifier.
  * @returns The parameters for the authenticate JRPC request.
  */
-const createAuthenticateRequestParams = (
-  idToken: string,
-  authConnectionId: string,
-  userId: string,
-  commitmentSignatures: CommitmentRequestResult[],
-  groupedAuthConnectionParams?: GroupedAuthConnectionParams,
-): AuthJRPCRequestParams => {
-  const groupedAuthConnectionParamsArr =
-    groupedAuthConnectionParams?.idTokens &&
-    groupedAuthConnectionParams?.authConnectionId
-      ? {
-          subVerifierAuthParams: [
-            {
-              subVerifierIdToken: groupedAuthConnectionParams.idTokens[0],
-              subVerifier: groupedAuthConnectionParams.authConnectionId,
-            },
-          ],
-        }
-      : undefined;
+const createAuthenticateRequestParams = (params: {
+  idToken: string;
+  authConnectionId: string;
+  userId: string;
+  commitmentSignatures: CommitmentRequestResult[];
+  groupedAuthConnectionId?: string;
+  hashedIdToken?: string;
+}): AuthJRPCRequestParams => {
+  const singleIdVerifierParams = params.groupedAuthConnectionId
+    ? {
+        subVerifierAuthParams: [
+          {
+            subVerifierIdToken: params.idToken,
+            subVerifier: params.authConnectionId,
+          },
+        ],
+      }
+    : undefined;
+
+  // hashedIdToken is must be present when using aggregate verifier (i.e. groupedAuthConnectionId is present)
+  if (params.groupedAuthConnectionId && !params.hashedIdToken) {
+    throw TOPRFError.fromCode(TOPRFErrorCode.NoHashedIdToken);
+  }
+
+  const idToken =
+    params.groupedAuthConnectionId && params.hashedIdToken
+      ? params.hashedIdToken
+      : params.idToken;
+
   return {
     authData: {
       authenticationContext: {
         idToken,
-        verifier: authConnectionId,
-        verifierId: userId,
+        verifier: params.groupedAuthConnectionId ?? params.authConnectionId,
+        verifierId: params.userId,
       },
-      singleIdVerifierParams: groupedAuthConnectionParamsArr,
+      singleIdVerifierParams,
     },
-    commitmentSignatures,
+    commitmentSignatures: params.commitmentSignatures,
     clientTime: Math.floor(Date.now() / 1000).toString(),
   };
 };
@@ -150,11 +161,12 @@ export const createAuthResponseHandler = (
  * @param params - The parameters for the authenticate request
  * @param params.idToken - The idToken to be used for the authenticate request
  * @param params.authConnectionId - The auth connection name to be used for the authenticate request
+ * @param params.groupedAuthConnectionId - The grouped auth connection id to be used for the authenticate request
+ * @param params.hashedIdToken - The hashed idToken to be used for the authenticate request when using aggregate verifier.
  * @param params.userId - The user id of the user to be used for the authenticate request
  * @param params.sessionPrivateKey - The session private key used for commitment request.
  * @param params.nodeEndpointsMap - The map of node indexes to endpoints map to be used for the authenticate request.
  * @param params.commitmentSignatures - The idToken commitment signatures to be used for the authenticate request.
- * @param params.groupedAuthConnectionParams - Optional groupedAuthConnectionParams to be used for the authenticate request.
  * You can pass this to use aggregate verifier.
  *
  * @returns resultArr - The authenticate request result, where each element is
@@ -168,7 +180,8 @@ export const authenticateUser = async (params: {
   sessionPrivateKey: Uint8Array;
   nodeEndpointsMap: Record<number, string>;
   commitmentSignatures: CommitmentRequestResult[];
-  groupedAuthConnectionParams?: GroupedAuthConnectionParams;
+  groupedAuthConnectionId?: string;
+  hashedIdToken?: string;
 }): Promise<{
   authTokensData: AuthRequestResult[];
   isNewUser: boolean;
@@ -179,16 +192,18 @@ export const authenticateUser = async (params: {
     authConnectionId,
     userId,
     commitmentSignatures,
+    groupedAuthConnectionId,
+    hashedIdToken,
     sessionPrivateKey,
-    groupedAuthConnectionParams,
   } = params;
-  const requestParams = createAuthenticateRequestParams(
+  const requestParams = createAuthenticateRequestParams({
     idToken,
     authConnectionId,
     userId,
     commitmentSignatures,
-    groupedAuthConnectionParams,
-  );
+    groupedAuthConnectionId,
+    hashedIdToken,
+  });
 
   const endpoints = Object.values(nodeEndpointsMap);
   const promiseArr = endpoints.map(async (endpoint) =>
