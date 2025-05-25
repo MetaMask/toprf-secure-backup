@@ -270,6 +270,8 @@ describe('toprfEvalRequest', () => {
           rateLimitDetails: {
             message: expect.any(String),
             remainingTime: expect.any(Number),
+            lockTime: expect.any(Number),
+            guessCount: expect.any(Number),
           },
         },
       });
