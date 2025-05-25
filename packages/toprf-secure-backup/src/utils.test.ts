@@ -59,6 +59,8 @@ describe('checkRateLimitErrors', () => {
           data: {
             message: 'Too many requests',
             remaining_time: 300,
+            lock_time: 60,
+            guess_count: 5,
           },
         },
       },
@@ -67,6 +69,8 @@ describe('checkRateLimitErrors', () => {
     const expected = {
       message: 'Too many requests',
       remainingTime: 300,
+      lockTime: 60,
+      guessCount: 5,
     };
 
     expect(checkRateLimitErrors(results)).toStrictEqual(expected);
@@ -81,6 +85,8 @@ describe('checkRateLimitErrors', () => {
           data: {
             message: 'Too many requests',
             remaining_time: 300,
+            lock_time: 60,
+            guess_count: 5,
           },
         },
       },
@@ -91,6 +97,8 @@ describe('checkRateLimitErrors', () => {
           data: {
             message: 'Too many requests',
             remaining_time: 600, // Longer time
+            lock_time: 120,
+            guess_count: 6,
           },
         },
       },
@@ -99,6 +107,8 @@ describe('checkRateLimitErrors', () => {
     const expected = {
       message: 'Too many requests',
       remainingTime: 600,
+      lockTime: 120,
+      guessCount: 6,
     };
 
     expect(checkRateLimitErrors(results)).toStrictEqual(expected);
@@ -115,6 +125,8 @@ describe('checkRateLimitErrors', () => {
           data: {
             message: 'Too many requests',
             remaining_time: 300,
+            lock_time: 300,
+            guess_count: 5,
           },
         },
       },
@@ -123,6 +135,8 @@ describe('checkRateLimitErrors', () => {
     const expected = {
       message: 'Too many requests',
       remainingTime: 300,
+      lockTime: 300,
+      guessCount: 5,
     };
 
     expect(checkRateLimitErrors(results)).toStrictEqual(expected);

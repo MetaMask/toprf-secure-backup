@@ -82,6 +82,8 @@ describe('TOPRFError', () => {
     const details: RateLimitErrorData = {
       message: 'Rate limit hit',
       remainingTime: 60,
+      lockTime: 60,
+      guessCount: 5,
     };
     const extraMessage = 'Please try again later';
     const error = TOPRFError.rateLimitExceeded(details, extraMessage);
@@ -95,6 +97,8 @@ describe('TOPRFError', () => {
     const details: RateLimitErrorData = {
       message: 'Server rate limit message',
       remainingTime: 120,
+      lockTime: 120,
+      guessCount: 6,
     };
     const error = TOPRFError.rateLimitExceeded(details);
 
