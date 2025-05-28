@@ -35,6 +35,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Add function to run lagrange interpolation on a array of scalar BNs and nodeIndexes
   - Add common Cryptographic utilities and classes that will be useful in other packages
 
-[Unreleased]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/auth-network-utils@0.2.0...HEAD
-[0.2.0]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/auth-network-utils@0.1.0...@metamask/auth-network-utils@0.2.0
-[0.1.0]: https://github.com/MetaMask/toprf-secure-backup/releases/tag/@metamask/auth-network-utils@0.1.0
+[Unreleased]: https://github.com/MetaMask/toprf-secure-backup.git/compare/@metamask/auth-network-utils@0.2.0...HEAD
+[0.2.0]: https://github.com/MetaMask/toprf-secure-backup.git/compare/@metamask/auth-network-utils@0.1.0...@metamask/auth-network-utils@0.2.0
+[0.1.0]: https://github.com/MetaMask/toprf-secure-backup.git/releases/tag/@metamask/auth-network-utils@0.1.0
