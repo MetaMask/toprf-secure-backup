@@ -23,6 +23,7 @@ export type CreateStoreKeySharesRequestParamsInput = {
   nodeEndpointsMap: Record<number, string>;
   authTokens: NodeAuthTokens;
   authConnectionId: string;
+  groupedAuthConnectionId?: string;
   userId: string;
   keyShareIndex: number;
   oprfKey: bigint;
@@ -38,6 +39,7 @@ export type StoreKeySharesRequestParams =
  * @param params.nodeEndpointsMap - The map of node indexes to endpoints.
  * @param params.authTokens - The authTokens to be used for the store key shares request.
  * @param params.authConnectionId - The auth connection name used for authentication.
+ * @param params.groupedAuthConnectionId - An optional grouped auth connection name used for authentication with aggregate (single id) verifier.
  * @param params.userId - The user id of the user issued by authentication service.
  * @param params.keyShareIndex - The key share index to be used for the store key shares request.
  * It should be 1 for the first key registration and derived from response of authenticate request for subsequent key registrations.
@@ -53,6 +55,7 @@ export const createStoreKeySharesRequestParams = async (
     nodeEndpointsMap,
     authTokens,
     authConnectionId,
+    groupedAuthConnectionId,
     userId,
     keyShareIndex,
     oprfKey,
@@ -65,7 +68,7 @@ export const createStoreKeySharesRequestParams = async (
     keyShareIndex,
   );
   return {
-    verifier: authConnectionId,
+    verifier: groupedAuthConnectionId ?? authConnectionId,
     verifierId: userId,
     pubKey: uint8ArrayToHex(authPubKey),
     shareImportItems,
@@ -98,6 +101,7 @@ export const sendStoreKeySharesRequest = async (
  * @param params.authTokens - The authTokens issued by the nodes on authenticating the user.
  * @param params.nodeEndpointsMap - The node endpoints map to be used for the store key shares request.
  * @param params.authConnectionId - The auth connection name used for authentication.
+ * @param params.groupedAuthConnectionId - An optional grouped auth connection name used for authentication with aggregate (single id) verifier.
  * @param params.userId - The user id of the user issued by authentication service.
  * @param params.keyShareIndex - The key share index to be used for the store key shares request.
  * It should be 1 for the first key registration and derived from response of authenticate request for subsequent key registrations.
@@ -114,6 +118,7 @@ export const storeKeyShares = async (
     authTokens,
     nodeEndpointsMap,
     authConnectionId,
+    groupedAuthConnectionId,
     userId,
     keyShareIndex,
     oprfKey,
@@ -123,6 +128,7 @@ export const storeKeyShares = async (
     nodeEndpointsMap,
     authTokens,
     authConnectionId,
+    groupedAuthConnectionId,
     userId,
     keyShareIndex,
     oprfKey,
@@ -130,7 +136,7 @@ export const storeKeyShares = async (
   });
   const proxyNodeEndpointIndex = getProxyCoordinatorNodeIndex(
     authTokens.map((token) => token.nodeIndex),
-    authConnectionId,
+    groupedAuthConnectionId ?? authConnectionId,
     userId,
   );
   const proxyNodeEndpoint = nodeEndpointsMap[proxyNodeEndpointIndex];
@@ -152,6 +158,7 @@ export type CreateKeyChangeRequestParamsInput = {
   authTokens: NodeAuthTokens;
   keyShareIndex: number;
   authConnectionId: string;
+  groupedAuthConnectionId?: string;
   userId: string;
   newOprfKey: bigint;
   newAuthPubKey: Uint8Array;
@@ -167,6 +174,9 @@ export type KeyChangeRequestParams = CreateKeyChangeRequestParamsInput;
  * @param params.nodeEndpointsMap - The map of node indexes to endpoints.
  * @param params.authTokens - The authTokens to be used for the key change request.
  * @param params.keyShareIndex - The key share index to be used for the key change request.
+ * @param params.authConnectionId - The auth connection name to be used for the key change request.
+ * @param params.groupedAuthConnectionId - An optional grouped auth connection name used for authentication with aggregate (single id) verifier.
+ * @param params.userId - The user id of the user to be used for the key change request.
  * @param params.newOprfKey - The new oprfKey to be used for the key change request.
  * @param params.newAuthPubKey - The new auth pubkey for the updated authentication.
  * @param params.oldAuthPrivKey - The old auth private key used to sign the key change request.
@@ -184,6 +194,7 @@ export const createKeyChangeRequestParams = async (
     newAuthPubKey,
     oldAuthPrivKey,
     authConnectionId,
+    groupedAuthConnectionId,
     userId,
   } = params;
 
@@ -199,7 +210,7 @@ export const createKeyChangeRequestParams = async (
   return {
     pubKey: uint8ArrayToHex(newAuthPubKey),
     shareImportItems,
-    verifier: authConnectionId,
+    verifier: groupedAuthConnectionId ?? authConnectionId,
     verifierId: userId,
   };
 };
@@ -210,6 +221,7 @@ export const createKeyChangeRequestParams = async (
  * @param params - The parameters for the key change request
  * @param params.nodeEndpointsMap - The node endpoints map to be used for the key change request.
  * @param params.authConnectionId - The auth connection name to be used for the key change request.
+ * @param params.groupedAuthConnectionId - An optional grouped auth connection name used for authentication with aggregate (single id) verifier.
  * @param params.userId - The user id of the user to be used for the key change request.
  * @param params.authTokens - The authTokens issued by the nodes on authenticating the user.
  * @param params.keyShareIndex - The key share index to be used for the key change request.
@@ -230,6 +242,7 @@ export const changeKeyShares = async (
     newAuthPubKey,
     oldAuthPrivKey,
     authConnectionId,
+    groupedAuthConnectionId,
     userId,
   } = params;
 
@@ -241,6 +254,7 @@ export const changeKeyShares = async (
     newAuthPubKey,
     oldAuthPrivKey,
     authConnectionId,
+    groupedAuthConnectionId,
     userId,
   });
 

@@ -40,7 +40,7 @@ type BlindedOutputShare = {
  * @param blindedInputY - The blinded input y coordinate to be used for the toprf eval request.
  * @param authConnectionId - The auth connection name.
  * @param userId - The user id of the user issued by authentication service.
- *
+ * @param groupedAuthConnectionId - An optional grouped auth connection name used for authentication with aggregate (single id) verifier.
  * @returns The parameters for the toprf eval jrpc request.
  */
 const createToprfEvalRequestParams = (
@@ -49,13 +49,14 @@ const createToprfEvalRequestParams = (
   blindedInputY: string,
   authConnectionId: string,
   userId: string,
+  groupedAuthConnectionId?: string,
 ): ToprfEvalJRPCRequestParams => {
   return {
     authToken,
     shareCoefficient: '1', // We apply share coefficient after evaluation so that we can select the share subset after we have responses.
     blindedInputX,
     blindedInputY,
-    verifier: authConnectionId,
+    verifier: groupedAuthConnectionId ?? authConnectionId,
     verifierId: userId,
   };
 };
@@ -259,6 +260,7 @@ export const validateSeed = async (
  * @param params.authTokens - The auth tokens issued by the nodes on authenticating the user.
  * @param params.nodeEndpointsMap - Map of node index to endpoint to be used for the toprf eval request.
  * @param params.authConnectionId - The auth connection name used for authentication.
+ * @param params.groupedAuthConnectionId - An optional grouped auth connection name used for authentication with aggregate (single id) verifier.
  * @param params.userId - The user id of the user issued by authentication service.
  * @param params.userInput - The user input to be used for the toprf eval request.
  * @param params.keyDeriver - The key deriver to be used for the toprf eval request.
@@ -269,6 +271,7 @@ export const recoverTOPRFSeed = async (params: {
   authTokens: NodeAuthTokens;
   nodeEndpointsMap: Record<number, string>;
   authConnectionId: string;
+  groupedAuthConnectionId?: string;
   userId: string;
   userInput: Uint8Array;
   keyDeriver?: KeyDeriver;
@@ -277,6 +280,7 @@ export const recoverTOPRFSeed = async (params: {
     authTokens,
     nodeEndpointsMap,
     authConnectionId,
+    groupedAuthConnectionId,
     userId,
     userInput,
     keyDeriver,
@@ -302,6 +306,7 @@ export const recoverTOPRFSeed = async (params: {
         a.y.toString(16),
         authConnectionId,
         userId,
+        groupedAuthConnectionId,
       );
       return sendToprfEvalRequest(endpoint, requestParams);
     },
