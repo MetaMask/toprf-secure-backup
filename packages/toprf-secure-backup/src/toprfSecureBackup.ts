@@ -207,6 +207,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * @param params.oprfKey - The OPRF key to be persisted.
    * @param params.authPubKey - The authentication public key.
    * @param params.authConnectionId - The auth connection name used for authentication.
+   * @param params.groupedAuthConnectionId - An optional grouped auth connection name used for authentication with aggregate (single id) verifier.
    * @param params.userId - The user id of the user issued by authentication service.
    * @param params.keyShareIndex - The key share index to be persisted. Required only during key change, defaults to FIRST_KEY_INDEX for first-time storage.
    * @param params.oldAuthKeyPair - The old authentication key pair of the user. Required only during key change, not needed for first-time storage.
@@ -217,6 +218,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       oprfKey,
       authPubKey,
       authConnectionId,
+      groupedAuthConnectionId,
       userId,
       keyShareIndex = FIRST_KEY_INDEX,
       oldAuthKeyPair,
@@ -235,6 +237,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       await changeKeyShares({
         nodeEndpointsMap: selectedEndpointsMap,
         authConnectionId,
+        groupedAuthConnectionId,
         userId,
         authTokens: nodeAuthTokens,
         keyShareIndex,
@@ -246,6 +249,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       await storeKeyShares({
         nodeEndpointsMap: selectedEndpointsMap,
         authConnectionId,
+        groupedAuthConnectionId,
         userId,
         authTokens: nodeAuthTokens,
         keyShareIndex,
@@ -296,6 +300,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
    * @param params.password - The password of the user.
    * @param params.authConnectionId - The auth connection name used for authentication.
+   * @param params.groupedAuthConnectionId - An optional grouped auth connection name used for authentication with aggregate (single id) verifier.
    * @param params.userId - The user id of the user.
    *
    * @returns The encryption key result with auth key pair, encryption key and key share index.
@@ -303,7 +308,13 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
   async recoverEncKey(
     params: RecoverEncryptionKeyParams,
   ): Promise<RecoverEncryptionKeyResult> {
-    const { nodeAuthTokens, password, authConnectionId, userId } = params;
+    const {
+      nodeAuthTokens,
+      password,
+      authConnectionId,
+      groupedAuthConnectionId,
+      userId,
+    } = params;
     const { nodeEndpointsMap } = await this.#getNodeDetails();
     const pwBytes = utf8ToBytes(password);
 
@@ -311,6 +322,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       authTokens: nodeAuthTokens,
       nodeEndpointsMap,
       authConnectionId,
+      groupedAuthConnectionId,
       userId,
       userInput: pwBytes,
       keyDeriver: this.#keyDeriver,
@@ -323,6 +335,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         authTokens: nodeAuthTokens,
         nodeEndpointsMap,
         authConnectionId,
+        groupedAuthConnectionId,
         userId,
         authPrivKey: authKeyPair.sk,
       })
@@ -353,6 +366,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * @param params - The parameters for changing the encryption key.
    * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
    * @param params.authConnectionId - The auth connection name used for authentication.
+   * @param params.groupedAuthConnectionId - An optional grouped auth connection name used for authentication with aggregate (single id) verifier.
    * @param params.userId - The user id of the user.
    * @param params.oldEncKey - The old encryption key of the user.
    * @param params.oldAuthKeyPair - The old authentication key pair of the user.
@@ -367,6 +381,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     const {
       nodeAuthTokens,
       authConnectionId,
+      groupedAuthConnectionId,
       userId,
       oldEncKey,
       oldAuthKeyPair,
@@ -424,6 +439,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         oprfKey,
         authPubKey: authKeyPair.pk,
         authConnectionId,
+        groupedAuthConnectionId,
         userId,
         keyShareIndex: newKeyShareIndex,
         oldAuthKeyPair,
