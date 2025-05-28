@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated `AuthenticateParams` type to align with the web3auth docs
   - Updated `ToprfSecureBackup.authenticate` method to align with the updated params
   - Computed `hashedIdToken` in the SDK instead of getting from the method params
+- **Breaking**: added optional method params, `groupedAuthConnectionId` to methods in `ToprfSecureBackup` class. ([#115](https://github.com/MetaMask/toprf-secure-backup/pull/115))
+  - For the use with aggregate (single id) verifier, the value must be provided in the new param, groupedAuthConnectionId
 
 ## [0.2.0]
 

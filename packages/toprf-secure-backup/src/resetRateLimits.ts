@@ -30,7 +30,7 @@ import {
  * @param signedData - The data that is signed for to validate if user has access to authentication key.
  * @param authConnectionId - The auth connection name.
  * @param userId - The user id of the user issued by authentication service.
- *
+ * @param groupedAuthConnectionId - The grouped auth connection name used for authentication with aggregate (single id) verifier.
  * @returns The parameters for the reset rate limit jrpc request.
  */
 const createResetRateLimitRequestParams = (
@@ -39,12 +39,13 @@ const createResetRateLimitRequestParams = (
   signedData: string,
   authConnectionId: string,
   userId: string,
+  groupedAuthConnectionId?: string,
 ): ResetRateLimitJRPCRequestParams => {
   return {
     authToken,
     signature,
     signedData,
-    verifier: authConnectionId,
+    verifier: groupedAuthConnectionId ?? authConnectionId,
     verifierId: userId,
   };
 };
@@ -100,6 +101,7 @@ export const validateThresholdResetRateLimitResponses = (
  * @param params - The parameters for the reset rate limit request
  * @param params.authTokens - The auth tokens issued by the nodes on authenticating the user.
  * @param params.authConnectionId - The auth connection name used for authentication.
+ * @param params.groupedAuthConnectionId - The grouped auth connection name used for authentication with aggregate (single id) verifier.
  * @param params.userId - The user id of the user issued by authentication service.
  * @param params.nodeEndpointsMap - Map of node index to endpoint to be used for the reset rate limit request.
  * @param params.authPrivKey - The user's authentication private key as bigint for signing the request.
@@ -110,6 +112,7 @@ export const resetRateLimits = async (params: {
   authTokens: NodeAuthTokens;
   nodeEndpointsMap: Record<number, string>;
   authConnectionId: string;
+  groupedAuthConnectionId?: string;
   userId: string;
   authPrivKey: bigint;
 }): Promise<boolean> => {
@@ -117,6 +120,7 @@ export const resetRateLimits = async (params: {
     authTokens,
     nodeEndpointsMap,
     authConnectionId,
+    groupedAuthConnectionId,
     userId,
     authPrivKey,
   } = params;
@@ -144,6 +148,7 @@ export const resetRateLimits = async (params: {
         jsonData,
         authConnectionId,
         userId,
+        groupedAuthConnectionId,
       );
       return sendResetRateLimitRequest(endpoint, requestParams);
     },

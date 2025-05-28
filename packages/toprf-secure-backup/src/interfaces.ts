@@ -143,6 +143,8 @@ export type CreateLocalKeyResult = {
  *
  * userId - The user id of the user issued by authentication service.
  *
+ * groupedAuthConnectionId - Optional grouped auth connection id to be used for the authenticate request with aggregate (single id) verifier.
+ *
  * keyShareIndex - Optional key share index to be persisted.
  *
  * oldAuthKeyPair - Optional authentication key pair to be used for key change flow.
@@ -153,6 +155,7 @@ export type PersistLocalKeyParams = {
   authPubKey: SEC1EncodedPublicKey;
   authConnectionId: string;
   userId: string;
+  groupedAuthConnectionId?: string;
   keyShareIndex?: number;
   oldAuthKeyPair?: KeyPair;
 };
@@ -167,12 +170,15 @@ export type PersistLocalKeyParams = {
  * nodeAuthTokens - The tokens issued by the nodes on verifying the idTokens.
  *
  * password - The password of the user.
+ *
+ * groupedAuthConnectionId - Optional grouped auth connection id to be used for the authenticate request with aggregate (single id) verifier.
  */
 export type CreateEncryptionKeyParams = {
   authConnectionId: string;
   userId: string;
   nodeAuthTokens: NodeAuthTokens;
   password: string;
+  groupedAuthConnectionId?: string;
 };
 
 /**
@@ -227,12 +233,15 @@ export type BatchAddSecretDataItemParams = BaseAddSecretDataItemParams<
  * authConnectionId - The auth connection name used for authentication.
  *
  * userId - The user id of the user issued by authentication service.
+ *
+ * groupedAuthConnectionId - Optional grouped auth connection id to be used for the authenticate request with aggregate (single id) verifier.
  */
 export type RecoverEncryptionKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
   password: string;
   authConnectionId: string;
   userId: string;
+  groupedAuthConnectionId?: string;
 };
 
 /**
@@ -266,6 +275,8 @@ export type RecoverEncryptionKeyResult = {
  * newPassword - The new password of the user.
  *
  * newKeyShareIndex - The key share index to be used for the new key.
+ *
+ * groupedAuthConnectionId - Optional grouped auth connection id to be used for the authenticate request with aggregate (single id) verifier.
  */
 export type ChangeEncryptionKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
@@ -276,6 +287,7 @@ export type ChangeEncryptionKeyParams = {
   oldPassword: string;
   newPassword: string;
   newKeyShareIndex: number;
+  groupedAuthConnectionId?: string;
 };
 
 /**
@@ -318,11 +330,14 @@ export type KeyChangeProof = {
  *
  * authConnectionId - The auth connection name used for authentication.
  *
+ * groupedAuthConnectionId - Optional grouped auth connection id to be used for the authenticate request with aggregate (single id) verifier.
+ *
  * userId - The user id of the user issued by authentication service.
  */
 export type FetchAuthPubKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
   authConnectionId: string;
+  groupedAuthConnectionId?: string;
   userId: string;
 };
 

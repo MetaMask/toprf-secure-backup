@@ -22,6 +22,7 @@ import { mergeEndpointsWithAuthTokens, postJRPCRequest } from './utils';
  * @param authToken - The auth issued by node to authenticate the request.
  * @param authConnectionId - The auth connection name.
  * @param userId - The user id of the user issued by authentication service.
+ * @param groupedAuthConnectionId - An optional grouped auth connection name used for authentication with aggregate (single id) verifier.
  *
  * @returns The parameters for the get pub key jrpc request.
  */
@@ -29,10 +30,11 @@ const createGetPubKeyRequestParams = (
   authToken: string,
   authConnectionId: string,
   userId: string,
+  groupedAuthConnectionId?: string,
 ): GetPubKeyJRPCRequestParams => {
   return {
     authToken,
-    verifier: authConnectionId,
+    verifier: groupedAuthConnectionId ?? authConnectionId,
     verifierId: userId,
   };
 };
@@ -91,6 +93,7 @@ export const validatePubKey = async (
  * @param params - The parameters for the get pub key request
  * @param params.authTokens - The auth tokens issued by the nodes on authenticating the user.
  * @param params.authConnectionId - The auth connection name used for authentication.
+ * @param params.groupedAuthConnectionId - An optional grouped auth connection name used for authentication with aggregate (single id) verifier.
  * @param params.userId - The user id of the user issued by authentication service.
  * @param params.nodeEndpointsMap - Map of node index to endpoint to be used for the toprf eval request.
  *
@@ -101,8 +104,15 @@ export const getPubKey = async (params: {
   nodeEndpointsMap: Record<number, string>;
   authConnectionId: string;
   userId: string;
+  groupedAuthConnectionId?: string;
 }): Promise<Uint8Array> => {
-  const { authTokens, nodeEndpointsMap, authConnectionId, userId } = params;
+  const {
+    authTokens,
+    nodeEndpointsMap,
+    authConnectionId,
+    userId,
+    groupedAuthConnectionId,
+  } = params;
 
   if (authTokens.length < GET_PUB_KEY_THRESHOLD) {
     throw TOPRFError.insufficientAuthTokens(
@@ -121,6 +131,7 @@ export const getPubKey = async (params: {
         authToken.authToken,
         authConnectionId,
         userId,
+        groupedAuthConnectionId,
       );
       return sendGetPubKeyRequest(endpoint, requestParams);
     },

@@ -431,6 +431,33 @@ describe('toprf secret backup', function () {
       expect(encKey.encKey).toBeDefined();
     });
 
+    it('should be able to create and persist enc key with single id verifier', async function () {
+      const authConnectionId = 'torus-test-health';
+      const groupedAuthConnectionId = 'torus-test-health-aggregate';
+      const { userId, idToken, toprfSecureBackup } = setup();
+
+      const result = await toprfSecureBackup.authenticate({
+        idTokens: [idToken],
+        authConnectionId,
+        userId,
+        groupedAuthConnectionId,
+      });
+
+      const encKey = await toprfSecureBackup.createAndPersistEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        password: generateRandomPassword(),
+        authConnectionId,
+        userId,
+        groupedAuthConnectionId,
+      });
+
+      expect(encKey).toBeDefined();
+      expect(encKey.authKeyPair).toBeDefined();
+      expect(encKey.authKeyPair.sk).toBeDefined();
+      expect(encKey.authKeyPair.pk).toBeDefined();
+      expect(encKey.encKey).toBeDefined();
+    });
+
     it('should throw error if user is not authenticated while creating enc key', async function () {
       const { authConnectionId, userId, toprfSecureBackup } = setup();
 
@@ -581,6 +608,51 @@ describe('toprf secret backup', function () {
       } finally {
         mockResetRateLimits.mockRestore();
       }
+    });
+
+    it('should recover enc key with single id verifier', async function () {
+      const authConnectionId = 'torus-test-health';
+      const groupedAuthConnectionId = 'torus-test-health-aggregate';
+      const { userId, idToken, toprfSecureBackup } = setup();
+
+      const result = await toprfSecureBackup.authenticate({
+        idTokens: [idToken],
+        authConnectionId,
+        userId,
+        groupedAuthConnectionId,
+      });
+
+      const password = generateRandomPassword();
+      const encKey = await toprfSecureBackup.createAndPersistEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        password,
+        authConnectionId,
+        userId,
+        groupedAuthConnectionId,
+      });
+
+      const recoveredEncKey = await toprfSecureBackup.recoverEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        password,
+        authConnectionId,
+        userId,
+        groupedAuthConnectionId,
+      });
+      expect(recoveredEncKey).toBeDefined();
+      expect(recoveredEncKey.authKeyPair).toBeDefined();
+      expect(recoveredEncKey.authKeyPair.sk).toBeDefined();
+      expect(recoveredEncKey.authKeyPair.pk).toBeDefined();
+      expect(recoveredEncKey.encKey).toBeDefined();
+      expect(recoveredEncKey.keyShareIndex).toBeDefined();
+      expect(await recoveredEncKey.rateLimitResetResult).toBeUndefined();
+
+      expect(recoveredEncKey.authKeyPair.sk).toStrictEqual(
+        encKey.authKeyPair.sk,
+      );
+      expect(recoveredEncKey.encKey).toStrictEqual(encKey.encKey);
+      expect(recoveredEncKey.authKeyPair.pk).toStrictEqual(
+        encKey.authKeyPair.pk,
+      );
     });
 
     it('should throw `TOPRFError.couldNotDeriveEncryptionKey` when the incorrect password is provided', async function () {
