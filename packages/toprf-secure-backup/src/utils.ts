@@ -449,7 +449,9 @@ function extractRateLimitDetails(
 
   if (
     typeof data?.message !== 'string' ||
-    typeof data?.remainingTime !== 'number'
+    typeof data?.remainingTime !== 'number' ||
+    typeof data?.lockTime !== 'number' ||
+    typeof data?.guessCount !== 'number'
   ) {
     return undefined;
   }
@@ -457,6 +459,8 @@ function extractRateLimitDetails(
   return {
     message: data.message,
     remainingTime: data.remainingTime,
+    lockTime: data.lockTime,
+    guessCount: data.guessCount,
   };
 }
 

@@ -2,8 +2,25 @@
  * Type for the rate limit error details
  */
 export type RateLimitErrorData = {
+  /**
+   * The error message from the server.
+   */
   message: string;
+
+  /**
+   * The ratelimit blocking time value resulting from the failed attempts.
+   */
+  lockTime: number;
+
+  /**
+   * The remaining ratelimit blocking time from the server before the next attempt is allowed.
+   */
   remainingTime: number;
+
+  /**
+   * The number of toprf key recovery failed attempts.
+   */
+  guessCount: number;
 };
 
 export type ITOPRFError = Error & {
