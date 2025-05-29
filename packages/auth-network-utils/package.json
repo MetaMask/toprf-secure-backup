@@ -47,7 +47,7 @@
     "since-latest-release": "../../scripts/since-latest-release.sh"
   },
   "devDependencies": {
-    "@metamask/auto-changelog": "^3.4.4",
+    "@metamask/auto-changelog": "^5.0.2",
     "@types/bn.js": "^5.1.6",
     "@types/elliptic": "^6",
     "@types/jest": "^29.5.14",
