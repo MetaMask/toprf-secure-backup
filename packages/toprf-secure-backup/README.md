@@ -1,7 +1,5 @@
 # `@metamask/toprf-secure-backup`
 
-The MetaMask Node module template
-
 ## Installation
 
 `yarn add @metamask/toprf-secure-backup`
