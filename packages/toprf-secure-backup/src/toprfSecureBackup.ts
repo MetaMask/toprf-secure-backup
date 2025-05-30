@@ -558,6 +558,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * @param params - The parameters for getting the authentication public key.
    * @param params.authTokens - The auth tokens issued by the nodes on authenticating the user.
    * @param params.authConnectionId - The auth connection name used for authentication.
+   * @param params.groupedAuthConnectionId - An optional grouped auth connection name used for authentication with aggregate (single id) verifier.
    * @param params.userId - The user id of the user.
    *
    * @returns The authentication public key.
@@ -565,13 +566,19 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
   async fetchAuthPubKey(
     params: FetchAuthPubKeyParams,
   ): Promise<FetchAuthPubKeyResult> {
-    const { nodeAuthTokens, authConnectionId, userId } = params;
+    const {
+      nodeAuthTokens,
+      authConnectionId,
+      userId,
+      groupedAuthConnectionId,
+    } = params;
     const { nodeEndpointsMap } = await this.#getNodeDetails();
     const authPubKey = await getPubKey({
       authTokens: nodeAuthTokens,
       nodeEndpointsMap,
       authConnectionId,
       userId,
+      groupedAuthConnectionId,
     });
     return { authPubKey };
   }
@@ -580,9 +587,10 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * This function fetches the password.
    *
    * @param params - The parameters for getting the password.
-   * @param params.nodeAuthTokens - The auth tokens issued by the nodes on authenticating the user.
-   * @param params.authConnectionId - The auth connection name used for authentication.
-   * @param params.userId - The user id of the user.
+   * @param params.targetPwPubKey - The target password public key.
+   * @param params.curEncKey - The current encryption key.
+   * @param params.curAuthKeyPair - The current authentication key pair.
+   * @param params.maxPwChainLength - Optional maximum password chain length allowed to be traversed.
    *
    * @returns The password.
    */
