@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fixed usage of `groupedAuthConnectionId` in `ToprfSecureBackup.fetchAuthPubKey`verifier use case. ([#117](https://github.com/MetaMask/toprf-secure-backup/pull/117))
+- Fixed usage of `groupedAuthConnectionId` in `ToprfSecureBackup.fetchAuthPubKey` for grouped connection use case. ([#117](https://github.com/MetaMask/toprf-secure-backup/pull/117))
 
 ## [0.3.0]
 
