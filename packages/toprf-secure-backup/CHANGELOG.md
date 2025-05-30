@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Bug Fixes for `ToprfSecureBackup.fetchAuthPubKey` with `GroupedAuthConnection`. ([#117](https://github.com/MetaMask/toprf-secure-backup/pull/117))
+  - Fixed `ToprfSecureBackup.fetchAuthPubKey` for aggregate (single-id) verifier usecase.
+  - Fixed incorrect `JsDocs` in `ToprfSecureBackup.fetchAuthPubKey` and `ToprfSecureBackup.recoverPassword`.
+
 ## [0.3.0]
 
 ### Changed
