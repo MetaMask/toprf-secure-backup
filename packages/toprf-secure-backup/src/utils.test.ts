@@ -2,8 +2,10 @@ import type { JSONRPCError } from '@metamask/auth-network-utils';
 
 import { JsonRpcErrorCodes } from './constants';
 import { TOPRFError, TOPRFErrorCode } from './errors';
+import type { ToprfEvalJRPCResponse } from './jrpcInterfaces';
 import {
   checkRateLimitErrors,
+  extractRateLimitErrorFromResults,
   getTOPRFError,
   parseJsonRpcError,
 } from './utils';
@@ -112,6 +114,50 @@ describe('checkRateLimitErrors', () => {
     };
 
     expect(checkRateLimitErrors(results)).toStrictEqual(expected);
+  });
+
+  it('should correctly extract rate limit details from a JSON-RPC response', () => {
+    const toprfEvalResponses: ToprfEvalJRPCResponse[] = Array(4)
+      .fill(0)
+      .map((_, i) => ({
+        jsonrpc: '2.0',
+        id: 1,
+        result: {
+          blindedOutputX: 'abc',
+          blindedOutputY: 'def',
+          nodeIndex: i + 1,
+          keyShareIndex: 1,
+          pubKey: `pubKey${i}`,
+        },
+      }));
+
+    expect(
+      extractRateLimitErrorFromResults(toprfEvalResponses),
+    ).toBeUndefined();
+
+    const toprfEvalResponsesWithRateLimit: ToprfEvalJRPCResponse[] = Array(4)
+      .fill(0)
+      .map((_, i) => ({
+        jsonrpc: '2.0',
+        id: 1,
+        result: {
+          blindedOutputX: 'abc',
+          blindedOutputY: 'def',
+          nodeIndex: i + 1,
+          keyShareIndex: 1,
+          pubKey: `pubKey${i}`,
+          guessCount: 3,
+          lockTimeSeconds: 30,
+        },
+      }));
+
+    const rateLimitDetails = extractRateLimitErrorFromResults(
+      toprfEvalResponsesWithRateLimit,
+    );
+    expect(rateLimitDetails).toBeDefined();
+    expect(rateLimitDetails?.remainingTime).toBe(30);
+    expect(rateLimitDetails?.guessCount).toBe(3);
+    expect(rateLimitDetails?.lockTime).toBe(30);
   });
 
   it('should handle mixed error types', () => {
