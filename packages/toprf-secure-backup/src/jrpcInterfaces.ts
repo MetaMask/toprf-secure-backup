@@ -116,6 +116,8 @@ export type ToprfEvalResult = {
   nodeIndex: number;
   pubKey: string;
   keyShareIndex: number;
+  guessCount?: number;
+  lockTimeSeconds?: number;
 };
 
 export type ToprfEvalJRPCResponse = JRPCResponse<ToprfEvalResult>;

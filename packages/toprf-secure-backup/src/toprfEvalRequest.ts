@@ -25,6 +25,7 @@ import {
   mergeEndpointsWithAuthTokens,
   postJRPCRequest,
   getTOPRFError,
+  extractRateLimitErrorFromResults,
 } from './utils';
 
 type BlindedOutputShare = {
@@ -187,7 +188,7 @@ export const validateSeed = async (
   keyDeriver?: KeyDeriver,
 ): Promise<{ seed: Uint8Array; keyShareIndex: number }> => {
   // Check for rate limit errors before filtering responses
-  const rateLimitDetails = checkRateLimitErrors(resultArr);
+  let rateLimitDetails = checkRateLimitErrors(resultArr);
   if (rateLimitDetails) {
     throw TOPRFError.rateLimitExceeded(rateLimitDetails);
   }
@@ -247,6 +248,11 @@ export const validateSeed = async (
     keyDeriver,
   );
   if (!seedAndKeyIndex) {
+    // if seed and key index is not found, check if rate limit error is present in the resultArr
+    rateLimitDetails = extractRateLimitErrorFromResults(resultArr);
+    if (rateLimitDetails) {
+      throw TOPRFError.rateLimitExceeded(rateLimitDetails);
+    }
     throw TOPRFError.couldNotDeriveEncryptionKey();
   }
 
