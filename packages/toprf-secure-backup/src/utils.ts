@@ -425,6 +425,23 @@ export const createNodeEndpointsMap = (
 };
 
 /**
+ * Compares two rate limit errors and returns the one with the longest remaining time.
+ *
+ * @param error1 - The first rate limit error
+ * @param error2 - The second rate limit error
+ * @returns The rate limit error with the longest remaining time
+ */
+export function getMaxRateLimitError(
+  error1: RateLimitErrorData,
+  error2: RateLimitErrorData,
+): RateLimitErrorData {
+  if (error1.remainingTime > error2.remainingTime) {
+    return error1;
+  }
+  return error2;
+}
+
+/**
  * Extracts rate limit details from a toprf eval result
  *
  * @param results - TOPRF Eval results
@@ -447,12 +464,9 @@ export function extractRateLimitErrorFromResults(
         guessCount: result.result.guessCount,
       };
 
-      const { remainingTime } = rateLimitError;
-
-      const currentMaxTime = maxRateLimit?.remainingTime ?? 0;
-      const hasLongerTime = remainingTime > currentMaxTime;
-
-      if (hasLongerTime) {
+      if (maxRateLimit) {
+        maxRateLimit = getMaxRateLimitError(maxRateLimit, rateLimitError);
+      } else {
         maxRateLimit = rateLimitError;
       }
     }
@@ -521,14 +535,9 @@ export function checkRateLimitErrors<Type>(
       continue;
     }
 
-    const noMaxYet = !maxRateLimit;
-
-    const { remainingTime } = rateLimitDetails;
-
-    const currentMaxTime = maxRateLimit?.remainingTime ?? 0;
-    const hasLongerTime = remainingTime > currentMaxTime;
-
-    if (noMaxYet || hasLongerTime) {
+    if (maxRateLimit) {
+      maxRateLimit = getMaxRateLimitError(maxRateLimit, rateLimitDetails);
+    } else {
       maxRateLimit = rateLimitDetails;
     }
   }

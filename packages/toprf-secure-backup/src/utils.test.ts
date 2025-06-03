@@ -5,6 +5,7 @@ import { TOPRFError, TOPRFErrorCode } from './errors';
 import type { ToprfEvalJRPCResponse } from './jrpcInterfaces';
 import {
   checkRateLimitErrors,
+  getMaxRateLimitError,
   extractRateLimitErrorFromResults,
   getTOPRFError,
   parseJsonRpcError,
@@ -13,6 +14,35 @@ import {
 describe('checkRateLimitErrors', () => {
   it('should return undefined for an empty array', () => {
     expect(checkRateLimitErrors([])).toBeUndefined();
+  });
+
+  it('should compare rate limit errors and return the one with the longest remaining time', () => {
+    const error1 = {
+      remainingTime: 60,
+      message: 'Rate limit exceeded',
+      lockTime: 60,
+      guessCount: 4,
+    };
+
+    const error2 = {
+      remainingTime: 300,
+      message: 'Rate limit exceeded',
+      lockTime: 300,
+      guessCount: 5,
+    };
+
+    const maxError = getMaxRateLimitError(error1, error2);
+    expect(maxError).toStrictEqual(error2);
+
+    const error3 = {
+      remainingTime: 30,
+      message: 'Rate limit exceeded',
+      lockTime: 30,
+      guessCount: 3,
+    };
+
+    const maxError2 = getMaxRateLimitError(error1, error3);
+    expect(maxError2).toStrictEqual(error1);
   });
 
   it('should return undefined if no rate limit errors are found', () => {
