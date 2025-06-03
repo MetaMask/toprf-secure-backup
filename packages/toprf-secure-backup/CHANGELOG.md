@@ -7,10 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2]
+
 ### Fixed
 
-- Fixed `RateLimit` error parsing. ([#120](https://github.com/MetaMask/toprf-secure-backup/pull/120))
-  - Parse `RateLimit` details from `TOPRFEvalResponse` when the encryption derivation fails.
+- Fixed `RateLimit` error parsing on TOPRFEvalRequest. ([#120](https://github.com/MetaMask/toprf-secure-backup/pull/120))
 
 ## [0.3.1]
 
