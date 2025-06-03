@@ -128,6 +128,8 @@ describe('checkRateLimitErrors', () => {
           nodeIndex: i + 1,
           keyShareIndex: 1,
           pubKey: `pubKey${i}`,
+          guessCount: 1,
+          lockTimeSeconds: 0,
         },
       }));
 

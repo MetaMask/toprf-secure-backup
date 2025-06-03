@@ -116,8 +116,22 @@ export type ToprfEvalResult = {
   nodeIndex: number;
   pubKey: string;
   keyShareIndex: number;
-  guessCount?: number;
-  lockTimeSeconds?: number;
+
+  /**
+   * Number of eval requests made for this server.
+   *
+   * Upon successful encryption key derivation,
+   * the reset request will be made to the server and the count will be reset to 0.
+   */
+  guessCount: number;
+
+  /**
+   * Time in seconds before the next guess is allowed to the server.
+   *
+   * Upon successful encryption key derivation,
+   * the reset request will be made to the server and the time will be reset to 0.
+   */
+  lockTimeSeconds: number;
 };
 
 export type ToprfEvalJRPCResponse = JRPCResponse<ToprfEvalResult>;
