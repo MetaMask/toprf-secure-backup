@@ -32,6 +32,8 @@ describe('toprfEvalRequest', () => {
             nodeIndex: 1,
             keyShareIndex: 1,
             pubKey: 'pubKey',
+            guessCount: 1,
+            lockTimeSeconds: 0,
           },
         }));
 
@@ -60,6 +62,8 @@ describe('toprfEvalRequest', () => {
             nodeIndex: i + 1,
             keyShareIndex: 1,
             pubKey: `pubKey${i}`,
+            guessCount: 1,
+            lockTimeSeconds: 0,
           },
         }));
 
@@ -85,6 +89,8 @@ describe('toprfEvalRequest', () => {
             nodeIndex: i + 1,
             keyShareIndex: 1,
             pubKey: 'pubKey',
+            guessCount: 1,
+            lockTimeSeconds: 0,
           },
         }));
 
@@ -98,6 +104,8 @@ describe('toprfEvalRequest', () => {
           nodeIndex: 5,
           keyShareIndex: 1,
           pubKey: 'pubKey',
+          guessCount: 1,
+          lockTimeSeconds: 0,
         },
       };
 

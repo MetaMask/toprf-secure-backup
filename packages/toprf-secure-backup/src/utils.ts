@@ -31,7 +31,7 @@ import type {
   NodeAuthToken,
   NodeAuthTokens,
 } from './interfaces';
-import type { ShareImportItem } from './jrpcInterfaces';
+import type { ShareImportItem, ToprfEvalJRPCResponse } from './jrpcInterfaces';
 
 type EncryptedData = {
   data: string;
@@ -425,6 +425,57 @@ export const createNodeEndpointsMap = (
 };
 
 /**
+ * Compares two rate limit errors and returns the one with the longest remaining time.
+ *
+ * @param error1 - The first rate limit error
+ * @param error2 - The second rate limit error
+ * @returns The rate limit error with the longest remaining time
+ */
+export function getMaxRateLimitError(
+  error1: RateLimitErrorData,
+  error2: RateLimitErrorData,
+): RateLimitErrorData {
+  if (error1.remainingTime > error2.remainingTime) {
+    return error1;
+  }
+  return error2;
+}
+
+/**
+ * Extracts rate limit details from a toprf eval result
+ *
+ * @param results - TOPRF Eval results
+ * @returns Rate limit details if found, undefined otherwise
+ */
+export function extractRateLimitErrorFromResults(
+  results: ToprfEvalJRPCResponse[],
+): RateLimitErrorData | undefined {
+  let maxRateLimit: RateLimitErrorData | undefined;
+  for (const result of results) {
+    if (
+      result.result?.lockTimeSeconds &&
+      result.result.lockTimeSeconds > 0 &&
+      result.result.guessCount
+    ) {
+      const rateLimitError = {
+        remainingTime: result.result.lockTimeSeconds,
+        message: 'Rate limit exceeded',
+        lockTime: result.result.lockTimeSeconds,
+        guessCount: result.result.guessCount,
+      };
+
+      if (maxRateLimit) {
+        maxRateLimit = getMaxRateLimitError(maxRateLimit, rateLimitError);
+      } else {
+        maxRateLimit = rateLimitError;
+      }
+    }
+  }
+
+  return maxRateLimit;
+}
+
+/**
  * Extracts rate limit details from a JSON-RPC error response if it's a rate limit error.
  *
  * @param error - The error object from a JSON-RPC response
@@ -484,14 +535,9 @@ export function checkRateLimitErrors<Type>(
       continue;
     }
 
-    const noMaxYet = !maxRateLimit;
-
-    const { remainingTime } = rateLimitDetails;
-
-    const currentMaxTime = maxRateLimit?.remainingTime ?? 0;
-    const hasLongerTime = remainingTime > currentMaxTime;
-
-    if (noMaxYet || hasLongerTime) {
+    if (maxRateLimit) {
+      maxRateLimit = getMaxRateLimitError(maxRateLimit, rateLimitDetails);
+    } else {
       maxRateLimit = rateLimitDetails;
     }
   }

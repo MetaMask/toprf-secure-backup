@@ -701,8 +701,8 @@ describe('toprf secret backup', function () {
 
       const incorrectPassword = generateRandomPassword();
 
-      // First 3 attempts with incorrect password should fail normally
-      for (let i = 0; i < 3; i++) {
+      // First 2 attempts with incorrect password should fail normally
+      for (let i = 0; i < 2; i++) {
         await expect(
           toprfSecureBackup.recoverEncKey({
             nodeAuthTokens: authResult.nodeAuthTokens,
@@ -713,7 +713,27 @@ describe('toprf secret backup', function () {
         ).rejects.toThrow(TOPRFError.couldNotDeriveEncryptionKey());
       }
 
-      // 4th attempt with incorrect password should trigger rate limiting
+      // 3rd attempt with incorrect password should trigger rate limiting
+      await expect(
+        toprfSecureBackup.recoverEncKey({
+          nodeAuthTokens: authResult.nodeAuthTokens,
+          password: incorrectPassword,
+          authConnectionId,
+          userId,
+        }),
+      ).rejects.toMatchObject({
+        code: TOPRFErrorCode.RateLimitExceeded,
+        message: expect.stringContaining('Rate limit error from server'),
+        meta: {
+          rateLimitDetails: {
+            message: expect.any(String),
+            remainingTime: 30,
+          },
+        },
+      });
+
+      // next attempt (within the rate limit period) should fail even with the correct password
+      // 3rd attempt with incorrect password should trigger rate limiting
       await expect(
         toprfSecureBackup.recoverEncKey({
           nodeAuthTokens: authResult.nodeAuthTokens,
@@ -732,8 +752,8 @@ describe('toprf secret backup', function () {
         },
       });
 
-      // Wait for the rate limit period
-      await sleep(30000);
+      // Wait for the rate limit period, 30 seconds
+      await sleep(30_000);
 
       // Attempt with the correct password should succeed and reset rate limit
       const recoveredKey = await toprfSecureBackup.recoverEncKey({
@@ -1603,59 +1623,5 @@ describe('toprf secret backup', function () {
         userId,
       }),
     ).rejects.toBeDefined();
-  });
-
-  it('should trigger rate limiting after multiple incorrect password attempts', async function () {
-    // Setup: Create user and password
-    const { authConnectionId, userId, idToken, toprfSecureBackup } = setup();
-
-    const result = await toprfSecureBackup.authenticate({
-      idTokens: [idToken],
-      authConnectionId,
-      userId,
-    });
-
-    const correctPassword = generateRandomPassword();
-    const encKeyResult = await toprfSecureBackup.createAndPersistEncKey({
-      nodeAuthTokens: result.nodeAuthTokens,
-      password: correctPassword,
-      authConnectionId,
-      userId,
-    });
-
-    // Create an account with incorrect password for testing
-    expect(encKeyResult).toBeDefined();
-    const incorrectPassword = generateRandomPassword();
-
-    // First 3 attempts fail normally
-    for (let i = 0; i < 3; i++) {
-      await expect(
-        toprfSecureBackup.recoverEncKey({
-          nodeAuthTokens: result.nodeAuthTokens,
-          password: incorrectPassword,
-          authConnectionId,
-          userId,
-        }),
-      ).rejects.toThrow('Could not derive encryption key');
-    }
-
-    // 4th attempt triggers rate limiting
-    await expect(
-      toprfSecureBackup.recoverEncKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        password: incorrectPassword,
-        authConnectionId,
-        userId,
-      }),
-    ).rejects.toMatchObject({
-      code: TOPRFErrorCode.RateLimitExceeded,
-      message: expect.stringContaining('Rate limit error from server'),
-      meta: {
-        rateLimitDetails: {
-          message: expect.any(String),
-          remainingTime: expect.any(Number),
-        },
-      },
-    });
   });
 });

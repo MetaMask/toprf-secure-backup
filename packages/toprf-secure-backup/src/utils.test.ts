@@ -2,8 +2,11 @@ import type { JSONRPCError } from '@metamask/auth-network-utils';
 
 import { JsonRpcErrorCodes } from './constants';
 import { TOPRFError, TOPRFErrorCode } from './errors';
+import type { ToprfEvalJRPCResponse } from './jrpcInterfaces';
 import {
   checkRateLimitErrors,
+  getMaxRateLimitError,
+  extractRateLimitErrorFromResults,
   getTOPRFError,
   parseJsonRpcError,
 } from './utils';
@@ -11,6 +14,35 @@ import {
 describe('checkRateLimitErrors', () => {
   it('should return undefined for an empty array', () => {
     expect(checkRateLimitErrors([])).toBeUndefined();
+  });
+
+  it('should compare rate limit errors and return the one with the longest remaining time', () => {
+    const error1 = {
+      remainingTime: 60,
+      message: 'Rate limit exceeded',
+      lockTime: 60,
+      guessCount: 4,
+    };
+
+    const error2 = {
+      remainingTime: 300,
+      message: 'Rate limit exceeded',
+      lockTime: 300,
+      guessCount: 5,
+    };
+
+    const maxError = getMaxRateLimitError(error1, error2);
+    expect(maxError).toStrictEqual(error2);
+
+    const error3 = {
+      remainingTime: 30,
+      message: 'Rate limit exceeded',
+      lockTime: 30,
+      guessCount: 3,
+    };
+
+    const maxError2 = getMaxRateLimitError(error1, error3);
+    expect(maxError2).toStrictEqual(error1);
   });
 
   it('should return undefined if no rate limit errors are found', () => {
@@ -112,6 +144,52 @@ describe('checkRateLimitErrors', () => {
     };
 
     expect(checkRateLimitErrors(results)).toStrictEqual(expected);
+  });
+
+  it('should correctly extract rate limit details from a JSON-RPC response', () => {
+    const toprfEvalResponses: ToprfEvalJRPCResponse[] = Array(4)
+      .fill(0)
+      .map((_, i) => ({
+        jsonrpc: '2.0',
+        id: 1,
+        result: {
+          blindedOutputX: 'abc',
+          blindedOutputY: 'def',
+          nodeIndex: i + 1,
+          keyShareIndex: 1,
+          pubKey: `pubKey${i}`,
+          guessCount: 1,
+          lockTimeSeconds: 0,
+        },
+      }));
+
+    expect(
+      extractRateLimitErrorFromResults(toprfEvalResponses),
+    ).toBeUndefined();
+
+    const toprfEvalResponsesWithRateLimit: ToprfEvalJRPCResponse[] = Array(4)
+      .fill(0)
+      .map((_, i) => ({
+        jsonrpc: '2.0',
+        id: 1,
+        result: {
+          blindedOutputX: 'abc',
+          blindedOutputY: 'def',
+          nodeIndex: i + 1,
+          keyShareIndex: 1,
+          pubKey: `pubKey${i}`,
+          guessCount: 3,
+          lockTimeSeconds: 30,
+        },
+      }));
+
+    const rateLimitDetails = extractRateLimitErrorFromResults(
+      toprfEvalResponsesWithRateLimit,
+    );
+    expect(rateLimitDetails).toBeDefined();
+    expect(rateLimitDetails?.remainingTime).toBe(30);
+    expect(rateLimitDetails?.guessCount).toBe(3);
+    expect(rateLimitDetails?.lockTime).toBe(30);
   });
 
   it('should handle mixed error types', () => {
