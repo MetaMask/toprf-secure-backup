@@ -115,57 +115,63 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
   async authenticate(params: AuthenticateParams): Promise<AuthenticateResult> {
     const { nodeEndpoints, nodeEndpointsMap } = await this.#getNodeDetails();
     const sessionPrivKey = secp256k1.utils.randomPrivateKey();
-    const sessionPubKey =
-      secp256k1.ProjectivePoint.fromPrivateKey(sessionPrivKey);
-    const sessionPubKeyX = sessionPubKey.x.toString(16);
-    const sessionPubKeyY = sessionPubKey.y.toString(16);
 
-    let hashedIdToken: string | undefined;
-    if (params.groupedAuthConnectionId) {
-      // if groupedAuthConnectionId is provided, we'll compute the hashedIdToken for the aggregate (single id) verifier login
-      hashedIdToken = remove0x(
-        keccak256AndHexify(Buffer.from(params.idTokens[0], 'utf8')),
-      );
+    try {
+      const sessionPubKey =
+        secp256k1.ProjectivePoint.fromPrivateKey(sessionPrivKey);
+      const sessionPubKeyX = sessionPubKey.x.toString(16);
+      const sessionPubKeyY = sessionPubKey.y.toString(16);
+
+      let hashedIdToken: string | undefined;
+      if (params.groupedAuthConnectionId) {
+        // if groupedAuthConnectionId is provided, we'll compute the hashedIdToken for the aggregate (single id) verifier login
+        hashedIdToken = remove0x(
+          keccak256AndHexify(Buffer.from(params.idTokens[0], 'utf8')),
+        );
+      }
+
+      // commit idToken to nodes
+      const commitmentResults = await commitIdToken({
+        idToken: hashedIdToken ?? params.idTokens[0],
+        authConnectionId:
+          params.groupedAuthConnectionId ?? params.authConnectionId,
+        sessionPubKeyX,
+        sessionPubKeyY,
+        endpoints: nodeEndpoints,
+      });
+
+      // use only the node indexes that returned valid commitment responses
+      const selectedEndpointsMap = commitmentResults.reduce<
+        Record<number, string>
+      >((acc, result) => {
+        acc[result.nodeIndex] = nodeEndpointsMap[result.nodeIndex];
+        return acc;
+      }, {});
+
+      // get auth tokens from nodes
+      const { authTokensData, isNewUser } = await authenticateUser({
+        idToken: params.idTokens[0],
+        authConnectionId: params.authConnectionId,
+        userId: params.userId,
+        sessionPrivateKey: sessionPrivKey,
+        nodeEndpointsMap: selectedEndpointsMap,
+        commitmentSignatures: commitmentResults,
+        groupedAuthConnectionId: params.groupedAuthConnectionId,
+        hashedIdToken,
+      });
+
+      return {
+        nodeAuthTokens: authTokensData.map((tokenData) => ({
+          authToken: tokenData.authToken,
+          nodeIndex: tokenData.nodeIndex,
+          nodePubKey: tokenData.nodePubKey,
+        })),
+        isNewUser,
+      };
+    } finally {
+      // Clean up session private key
+      sessionPrivKey.fill(0);
     }
-
-    // commit idToken to nodes
-    const commitmentResults = await commitIdToken({
-      idToken: hashedIdToken ?? params.idTokens[0],
-      authConnectionId:
-        params.groupedAuthConnectionId ?? params.authConnectionId,
-      sessionPubKeyX,
-      sessionPubKeyY,
-      endpoints: nodeEndpoints,
-    });
-
-    // use only the node indexes that returned valid commitment responses
-    const selectedEndpointsMap = commitmentResults.reduce<
-      Record<number, string>
-    >((acc, result) => {
-      acc[result.nodeIndex] = nodeEndpointsMap[result.nodeIndex];
-      return acc;
-    }, {});
-
-    // get auth tokens from nodes
-    const { authTokensData, isNewUser } = await authenticateUser({
-      idToken: params.idTokens[0],
-      authConnectionId: params.authConnectionId,
-      userId: params.userId,
-      sessionPrivateKey: sessionPrivKey,
-      nodeEndpointsMap: selectedEndpointsMap,
-      commitmentSignatures: commitmentResults,
-      groupedAuthConnectionId: params.groupedAuthConnectionId,
-      hashedIdToken,
-    });
-
-    return {
-      nodeAuthTokens: authTokensData.map((tokenData) => ({
-        authToken: tokenData.authToken,
-        nodeIndex: tokenData.nodeIndex,
-        nodePubKey: tokenData.nodePubKey,
-      })),
-      isNewUser,
-    };
   }
 
   /**
@@ -183,20 +189,28 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     params: CreateLocalKeyParams,
   ): Promise<CreateLocalKeyResult> {
     const { password, oprfKey = generateRandomScalar() } = params;
-    const pwBytes = utf8ToBytes(password);
-    const seed = await OPRF.localEval(oprfKey, pwBytes, this.#keyDeriver);
-    const authKeyPair = deriveAuthenticationKeyPair(seed);
-    const encKey = deriveEncryptionKey(seed);
+    let pwBytes: Uint8Array | null = null;
 
-    return {
-      oprfKey,
-      seed,
-      authKeyPair: {
-        sk: authKeyPair.sk,
-        pk: authKeyPair.pk,
-      },
-      encKey,
-    };
+    try {
+      pwBytes = utf8ToBytes(password);
+      const seed = await OPRF.localEval(oprfKey, pwBytes, this.#keyDeriver);
+
+      const authKeyPair = deriveAuthenticationKeyPair(seed);
+      const encKey = deriveEncryptionKey(seed);
+
+      return {
+        oprfKey,
+        seed,
+        authKeyPair,
+        encKey,
+      };
+    } finally {
+      // Clean up sensitive intermediate data
+      if (pwBytes) {
+        pwBytes.fill(0);
+        pwBytes = null;
+      }
+    }
   }
 
   /**
@@ -315,47 +329,64 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       groupedAuthConnectionId,
       userId,
     } = params;
-    const { nodeEndpointsMap } = await this.#getNodeDetails();
-    const pwBytes = utf8ToBytes(password);
 
-    const { seed, keyShareIndex } = await recoverTOPRFSeed({
-      authTokens: nodeAuthTokens,
-      nodeEndpointsMap,
-      authConnectionId,
-      groupedAuthConnectionId,
-      userId,
-      userInput: pwBytes,
-      keyDeriver: this.#keyDeriver,
-    });
+    let pwBytes: Uint8Array | null = null;
+    let seed: Uint8Array | null = null;
 
-    const authKeyPair = deriveAuthenticationKeyPair(seed);
-    const encKeyPair = deriveEncryptionKey(seed);
-    const rateLimitResetResult = new Promise<void>((resolve, reject) => {
-      resetRateLimits({
+    try {
+      const { nodeEndpointsMap } = await this.#getNodeDetails();
+      pwBytes = utf8ToBytes(password);
+
+      const { seed: seedValue, keyShareIndex } = await recoverTOPRFSeed({
         authTokens: nodeAuthTokens,
         nodeEndpointsMap,
         authConnectionId,
         groupedAuthConnectionId,
         userId,
-        authPrivKey: authKeyPair.sk,
-      })
-        .then(() => {
-          return resolve();
-        })
-        .catch((error) => {
-          reject(error as Error);
-        });
-    });
+        userInput: pwBytes,
+        keyDeriver: this.#keyDeriver,
+      });
 
-    return {
-      authKeyPair: {
-        sk: authKeyPair.sk,
-        pk: authKeyPair.pk,
-      },
-      encKey: encKeyPair,
-      keyShareIndex,
-      rateLimitResetResult,
-    };
+      seed = seedValue;
+
+      const authKeyPair = deriveAuthenticationKeyPair(seed);
+      const encKey = deriveEncryptionKey(seed);
+
+      const rateLimitResetResult = new Promise<void>((resolve, reject) => {
+        resetRateLimits({
+          authTokens: nodeAuthTokens,
+          nodeEndpointsMap,
+          authConnectionId,
+          groupedAuthConnectionId,
+          userId,
+          authPrivKey: authKeyPair.sk,
+        })
+          .then(() => {
+            return resolve();
+          })
+          .catch((error) => {
+            reject(error as Error);
+          });
+      });
+
+      return {
+        authKeyPair,
+        encKey,
+        keyShareIndex,
+        rateLimitResetResult,
+      };
+    } finally {
+      // Clean up sensitive intermediate data
+      if (pwBytes) {
+        pwBytes.fill(0);
+        pwBytes = null;
+      }
+
+      if (seed) {
+        seed.fill(0);
+        seed = null;
+      }
+    }
   }
 
   /**

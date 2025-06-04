@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Security documentation with best practices for handling sensitive data.
+
+### Security
+
+- Immediate cleanup of sensitive data (session keys, passwords, seeds) in memory.
+- Try-finally patterns to ensure cleanup on exceptions.
+
 ## [0.3.2]
 
 ### Fixed
