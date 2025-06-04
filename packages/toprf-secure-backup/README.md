@@ -48,4 +48,4 @@ this.encKey = result.encKey; // Persists in memory
 - Memory inspection via developer tools
 - System-level memory dumps
 
-The SDK internally clears Uint8Array data and temporary variables, but JavaScript strings and BigInts cannot be reliably cleared from memory.
+The SDK internally clears sensitive Uint8Array data (session keys, password bytes, seeds) where possible, but JavaScript strings and BigInts cannot be reliably cleared from memory.
