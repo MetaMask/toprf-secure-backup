@@ -114,7 +114,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    */
   async authenticate(params: AuthenticateParams): Promise<AuthenticateResult> {
     const { nodeEndpoints, nodeEndpointsMap } = await this.#getNodeDetails();
-    const sessionPrivKey = secp256k1.utils.randomPrivateKey();
+    let sessionPrivKey: Uint8Array | null = secp256k1.utils.randomPrivateKey();
 
     try {
       const sessionPubKey =
@@ -171,6 +171,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     } finally {
       // Clean up session private key
       sessionPrivKey.fill(0);
+      sessionPrivKey = null;
     }
   }
 
