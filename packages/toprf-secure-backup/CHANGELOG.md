@@ -10,8 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 - Added security documentation with best practices for handling sensitive data. ([#122](https://github.com/MetaMask/toprf-secure-backup/pull/122))
-- Immediate cleanup of sensitive data (session keys, password bytes, seeds) in memory. ([#122](https://github.com/MetaMask/toprf-secure-backup/pull/122))
-- Try-finally patterns to ensure cleanup on exceptions. ([#122](https://github.com/MetaMask/toprf-secure-backup/pull/122))
+- Immediate cleanup of sensitive data (session keys, password bytes, seeds) with try-finally patterns to ensure cleanup on exceptions. ([#122](https://github.com/MetaMask/toprf-secure-backup/pull/122))
 
 ## [0.3.2]
 
