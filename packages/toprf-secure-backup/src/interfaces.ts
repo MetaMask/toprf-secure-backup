@@ -270,8 +270,6 @@ export type RecoverEncryptionKeyResult = {
  *
  * oldAuthKeyPair - The old authentication key pair of the user.
  *
- * oldPassword - The old password of the user.
- *
  * newPassword - The new password of the user.
  *
  * newKeyShareIndex - The key share index to be used for the new key.
@@ -284,7 +282,6 @@ export type ChangeEncryptionKeyParams = {
   userId: string;
   oldEncKey: Uint8Array;
   oldAuthKeyPair: KeyPair;
-  oldPassword: string;
   newPassword: string;
   newKeyShareIndex: number;
   groupedAuthConnectionId?: string;
@@ -345,15 +342,15 @@ export type FetchAuthPubKeyResult = {
   authPubKey: SEC1EncodedPublicKey;
 };
 
-export type RecoverPasswordParams = {
+export type RecoverEncKeyFromHistoryParams = {
   targetPwPubKey: SEC1EncodedPublicKey;
   curEncKey: Uint8Array;
   curAuthKeyPair: KeyPair;
   maxPwChainLength?: number;
 };
 
-export type RecoverPasswordResult = {
-  password: string;
+export type RecoverEncKeyFromHistoryResult = {
+  encKey: Uint8Array;
 };
 
 export type IToprfSecureBackup = {
@@ -466,18 +463,18 @@ export type IToprfSecureBackup = {
   ) => Promise<FetchAuthPubKeyResult>;
 
   /**
-   * This function recovers the password of the user.
+   * This function recovers the encryption key of the user.
    *
-   * @param params - The parameters for recovering the password.
-   * @param params.targetPwPubKey - The public key of the target password.
+   * @param params - The parameters for recovering the encryption key.
+   * @param params.targetPwPubKey - The public key of the target encryption key.
    * @param params.curEncKey - The current encryption key of the user.
    * @param params.curAuthKeyPair - The current authentication key pair of the user.
    *
-   * @returns A promise that resolves with the password of the user.
+   * @returns A promise that resolves to the encryption key of the user.
    */
-  recoverPassword: (
-    params: RecoverPasswordParams,
-  ) => Promise<RecoverPasswordResult>;
+  recoverEncKeyFromHistory: (
+    params: RecoverEncKeyFromHistoryParams,
+  ) => Promise<RecoverEncKeyFromHistoryResult>;
 };
 
 /**
