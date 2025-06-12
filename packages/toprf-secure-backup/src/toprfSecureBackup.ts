@@ -36,9 +36,9 @@ import type {
   CreateLocalKeyParams,
   CreateLocalKeyResult,
   BatchAddSecretDataItemParams,
-  RecoverPasswordParams,
+  RecoverEncKeyFromHistoryParams,
   KeyPair,
-  RecoverPasswordResult,
+  RecoverEncKeyFromHistoryResult,
   NodeDetailsOverride,
 } from './interfaces';
 import {
@@ -417,7 +417,6 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       userId,
       oldEncKey,
       oldAuthKeyPair,
-      oldPassword,
       newPassword,
       newKeyShareIndex,
     } = params;
@@ -456,7 +455,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       }
 
       const pwBackup: SecretDataItem = {
-        data: serializePwBackup(oldPassword, oldEncKey, oldAuthKeyPair),
+        data: serializePwBackup('', oldEncKey, oldAuthKeyPair),
         itemId: PW_BACKUP_ITEM_ID,
       };
 
@@ -616,19 +615,19 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
   }
 
   /**
-   * This function fetches the password.
+   * This function looks up an encryption key from the encryption key history.
    *
-   * @param params - The parameters for getting the password.
+   * @param params - The parameters for getting the encryption key.
    * @param params.targetPwPubKey - The target password public key.
    * @param params.curEncKey - The current encryption key.
    * @param params.curAuthKeyPair - The current authentication key pair.
    * @param params.maxPwChainLength - Optional maximum password chain length allowed to be traversed.
    *
-   * @returns The password.
+   * @returns The encryption key.
    */
-  async recoverPassword(
-    params: RecoverPasswordParams,
-  ): Promise<RecoverPasswordResult> {
+  async recoverEncKeyFromHistory(
+    params: RecoverEncKeyFromHistoryParams,
+  ): Promise<RecoverEncKeyFromHistoryResult> {
     const {
       targetPwPubKey,
       curEncKey,
@@ -649,7 +648,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
           authKeyPair: pwAndKeys.authKeyPair,
         });
         if (equalBytes(pwAndKeys.authKeyPair.pk, targetPwPubKey)) {
-          return { password: pwAndKeys.password };
+          return { encKey: pwAndKeys.encKey };
         }
       } catch (error) {
         throw TOPRFError.couldNotFetchPassword((error as Error).message);
