@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Changed `recoverPassword` to `recoverEncKeyFromHistory`. No longer storing passwords. ([#123](https://github.com/MetaMask/toprf-secure-backup/pull/123))
+
 ### Security
 
 - Added security documentation with best practices for handling sensitive data. ([#122](https://github.com/MetaMask/toprf-secure-backup/pull/122))
