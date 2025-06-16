@@ -191,68 +191,6 @@ describe('MetadataStore', () => {
     expect(fetchSpy).toHaveBeenCalled();
   });
 
-  it('should be able to store secret data in batch', async () => {
-    const metadataStore = await createMetadataStore();
-
-    await metadataStore.addSecretDataItem({
-      secretData: { data: secretData },
-      encKey,
-      authKeyPair,
-    });
-
-    const allSecretDataBeforeBatchAdd =
-      await metadataStore.fetchAllSecretDataItems(encKey, authKeyPair);
-    expect(allSecretDataBeforeBatchAdd).not.toBeNull();
-
-    // derive new encryption key and authentication key pair from the new seed
-    const newSeed = randomBytes(32);
-    const newEncKey = deriveEncryptionKey(newSeed);
-    const newAuthKeyPair = deriveAuthenticationKeyPair(newSeed);
-
-    // acquire the metadata lock
-    const metadataLock =
-      await metadataStore.acquireMetadataLock(newAuthKeyPair);
-    expect(metadataLock).not.toBeNull();
-
-    await metadataStore.batchAddSecretData({
-      secretData: allSecretDataBeforeBatchAdd ?? [], // should not be null, the above `expect` should have failed if it was
-      encKey: newEncKey,
-      authKeyPair: newAuthKeyPair,
-    });
-
-    // the result should be the new encrypted value of the existing secret data
-    const allSecretDataAfterBatchAdd =
-      await metadataStore.fetchAllSecretDataItems(newEncKey, newAuthKeyPair);
-
-    // verify that secretData values before/after batchAdd should be equal
-    expect(allSecretDataAfterBatchAdd).not.toBeNull();
-    expect(allSecretDataAfterBatchAdd?.length).toStrictEqual(
-      allSecretDataBeforeBatchAdd?.length,
-    );
-
-    const sortedResult = allSecretDataAfterBatchAdd?.sort();
-    const shouldHaveSameValuesBeforeAfterBatchAdd = sortedResult.every(
-      (dataAfterBatch, idx) => {
-        const dataBeforeBatchAdd = allSecretDataBeforeBatchAdd?.[idx];
-        if (!dataBeforeBatchAdd) {
-          return false;
-        }
-        return Buffer.from(dataAfterBatch.data).equals(
-          Buffer.from(dataBeforeBatchAdd.data),
-        );
-      },
-    );
-    expect(shouldHaveSameValuesBeforeAfterBatchAdd).toBe(true);
-
-    // release the metadata lock
-    const releaseLockStatus = await metadataStore.releaseMetadataLock(
-      newAuthKeyPair,
-      metadataLock,
-    );
-
-    expect(releaseLockStatus).toStrictEqual(MetadataLockStatus.SUCCESS);
-  });
-
   it('should get empty array if metadata key not found', async () => {
     const metadataStore = await createMetadataStore();
 
@@ -405,5 +343,81 @@ describe('MetadataStore', () => {
     expect(result?.length).toBe(1);
     expect(result?.[0].data).toStrictEqual(secretData);
     expect(result?.[0].itemId).toBe('PW_BACKUP');
+  });
+
+  describe('batchAddSecretData', () => {
+    it('should be able to store secret data in batch', async () => {
+      const metadataStore = await createMetadataStore();
+
+      await metadataStore.addSecretDataItem({
+        secretData: { data: secretData },
+        encKey,
+        authKeyPair,
+      });
+
+      const allSecretDataBeforeBatchAdd =
+        await metadataStore.fetchAllSecretDataItems(encKey, authKeyPair);
+      expect(allSecretDataBeforeBatchAdd).not.toBeNull();
+
+      // derive new encryption key and authentication key pair from the new seed
+      const newSeed = randomBytes(32);
+      const newEncKey = deriveEncryptionKey(newSeed);
+      const newAuthKeyPair = deriveAuthenticationKeyPair(newSeed);
+
+      // acquire the metadata lock
+      const metadataLock =
+        await metadataStore.acquireMetadataLock(newAuthKeyPair);
+      expect(metadataLock).not.toBeNull();
+
+      await metadataStore.batchAddSecretData({
+        secretData: allSecretDataBeforeBatchAdd ?? [], // should not be null, the above `expect` should have failed if it was
+        encKey: newEncKey,
+        authKeyPair: newAuthKeyPair,
+      });
+
+      // the result should be the new encrypted value of the existing secret data
+      const allSecretDataAfterBatchAdd =
+        await metadataStore.fetchAllSecretDataItems(newEncKey, newAuthKeyPair);
+
+      // verify that secretData values before/after batchAdd should be equal
+      expect(allSecretDataAfterBatchAdd).not.toBeNull();
+      expect(allSecretDataAfterBatchAdd?.length).toStrictEqual(
+        allSecretDataBeforeBatchAdd?.length,
+      );
+
+      const sortedResult = allSecretDataAfterBatchAdd?.sort();
+      const shouldHaveSameValuesBeforeAfterBatchAdd = sortedResult.every(
+        (dataAfterBatch, idx) => {
+          const dataBeforeBatchAdd = allSecretDataBeforeBatchAdd?.[idx];
+          if (!dataBeforeBatchAdd) {
+            return false;
+          }
+          return Buffer.from(dataAfterBatch.data).equals(
+            Buffer.from(dataBeforeBatchAdd.data),
+          );
+        },
+      );
+      expect(shouldHaveSameValuesBeforeAfterBatchAdd).toBe(true);
+
+      // release the metadata lock
+      const releaseLockStatus = await metadataStore.releaseMetadataLock(
+        newAuthKeyPair,
+        metadataLock,
+      );
+
+      expect(releaseLockStatus).toStrictEqual(MetadataLockStatus.SUCCESS);
+    });
+
+    it('should throw error if length of secretData and encKey are not equal', async () => {
+      const metadataStore = await createMetadataStore();
+
+      await expect(
+        metadataStore.batchAddSecretData({
+          secretData: [{ data: utf8ToBytes('SECRET_DATA') }],
+          encKey: [encKey, encKey], // length of secretData is 1, but encKey is 2
+          authKeyPair,
+        }),
+      ).rejects.toThrow('encKey must be of same length as secretData');
+    });
   });
 });
