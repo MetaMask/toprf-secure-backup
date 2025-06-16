@@ -7,6 +7,7 @@ import type { KeyPair } from './interfaces';
 
 const HKDF_AUTHENTICATION_KEY_INFO = 'authentication-key';
 const HKDF_ENCRYPTION_KEY_INFO = 'encryption-key';
+const HKDF_PWD_ENCRYPTION_KEY_INFO = 'pwd-encryption-key';
 
 /**
  * Deterministically derives an secp256k1 keypair intended for authentication.
@@ -33,6 +34,18 @@ export function deriveAuthenticationKeyPair(seed: Uint8Array): KeyPair {
  */
 export function deriveEncryptionKey(seed: Uint8Array): Uint8Array {
   const info = HKDF_ENCRYPTION_KEY_INFO;
+  const k = hkdf(sha256, seed, undefined, info, 32); // Derive 256 bit key.
+  return k;
+}
+
+/**
+ * Deterministically derives an AES-256 key intended for password encryption.
+ *
+ * @param seed The input seed from which the output key is derived from.
+ * @returns The derived key.
+ */
+export function derivePwEncKey(seed: Uint8Array): Uint8Array {
+  const info = HKDF_PWD_ENCRYPTION_KEY_INFO;
   const k = hkdf(sha256, seed, undefined, info, 32); // Derive 256 bit key.
   return k;
 }

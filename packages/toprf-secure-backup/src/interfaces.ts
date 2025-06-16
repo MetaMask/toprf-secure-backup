@@ -128,6 +128,7 @@ export type CreateLocalKeyResult = {
   seed: Uint8Array;
   authKeyPair: KeyPair;
   encKey: Uint8Array;
+  pwEncKey: Uint8Array;
 };
 
 /**
@@ -187,13 +188,19 @@ export type CreateEncryptionKeyParams = {
  * authKeyPair - The authentication key pair which is used to authenticate the user.
  *
  * encKey - The encryption key which is used to encrypt the secret data.
+ *
+ * pwEncKey - The password encryption key which is used to encrypt the password.
  */
 export type CreateEncryptionKeyResult = {
   authKeyPair: KeyPair;
   encKey: Uint8Array;
+  pwEncKey: Uint8Array;
 };
 
-export type BaseAddSecretDataItemParams<SecretDataType> = {
+export type BaseAddSecretDataItemParams<
+  SecretDataType,
+  EncKeyType = Uint8Array,
+> = {
   /**
    * The secret data to be stored.
    */
@@ -202,7 +209,7 @@ export type BaseAddSecretDataItemParams<SecretDataType> = {
   /**
    * The encryption key to be used to encrypt the secret data.
    */
-  encKey: Uint8Array;
+  encKey: EncKeyType;
 
   /**
    * The authentication key to be used to provide valid signature for storing the secret data.
@@ -220,7 +227,8 @@ export type BaseAddSecretDataItemParams<SecretDataType> = {
 export type AddSecretDataItemParams = BaseAddSecretDataItemParams<Uint8Array>;
 
 export type BatchAddSecretDataItemParams = BaseAddSecretDataItemParams<
-  Uint8Array[]
+  Uint8Array[],
+  Uint8Array | Uint8Array[]
 >;
 
 /**
@@ -253,6 +261,7 @@ export type RecoverEncryptionKeyParams = {
 export type RecoverEncryptionKeyResult = {
   authKeyPair: KeyPair;
   encKey: Uint8Array;
+  pwEncKey: Uint8Array;
   keyShareIndex: number;
   rateLimitResetResult: Promise<void>;
 };
@@ -281,6 +290,7 @@ export type ChangeEncryptionKeyParams = {
   authConnectionId: string;
   userId: string;
   oldEncKey: Uint8Array;
+  oldPwEncKey: Uint8Array;
   oldAuthKeyPair: KeyPair;
   newPassword: string;
   newKeyShareIndex: number;
@@ -294,6 +304,7 @@ export type ChangeEncryptionKeyParams = {
 export type ChangeEncryptionKeyResult = {
   authKeyPair: KeyPair;
   encKey: Uint8Array;
+  pwEncKey: Uint8Array;
 };
 
 /**
@@ -342,15 +353,15 @@ export type FetchAuthPubKeyResult = {
   authPubKey: SEC1EncodedPublicKey;
 };
 
-export type RecoverEncKeyFromHistoryParams = {
-  targetPwPubKey: SEC1EncodedPublicKey;
-  curEncKey: Uint8Array;
+export type RecoverPwEncKeyParams = {
+  targetAuthPubKey: SEC1EncodedPublicKey;
+  curPwEncKey: Uint8Array;
   curAuthKeyPair: KeyPair;
   maxPwChainLength?: number;
 };
 
-export type RecoverEncKeyFromHistoryResult = {
-  encKey: Uint8Array;
+export type RecoverPwEncKeyResult = {
+  pwEncKey: Uint8Array;
 };
 
 export type IToprfSecureBackup = {
@@ -472,9 +483,9 @@ export type IToprfSecureBackup = {
    *
    * @returns A promise that resolves to the encryption key of the user.
    */
-  recoverEncKeyFromHistory: (
-    params: RecoverEncKeyFromHistoryParams,
-  ) => Promise<RecoverEncKeyFromHistoryResult>;
+  recoverPwEncKey: (
+    params: RecoverPwEncKeyParams,
+  ) => Promise<RecoverPwEncKeyResult>;
 };
 
 /**
