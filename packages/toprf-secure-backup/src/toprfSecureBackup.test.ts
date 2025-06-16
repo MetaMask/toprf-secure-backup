@@ -67,39 +67,37 @@ function setup(options?: {
   return { authConnectionId, userId, idToken, toprfSecureBackup };
 }
 
+/**
+ * Formats the grouped connection id suffix for the test description.
+ *
+ * @param connectionId - The connection id to be used for the test.
+ * @returns The formatted grouped connection id suffix.
+ */
+function fmtGroupedConnId(connectionId?: string): string {
+  return connectionId
+    ? `(with grouped connection id)`
+    : '(without grouped connection id)';
+}
+
 // TODO: add tests for the scenario when a existing user tries to create a new enc key.
 describe('toprf secret backup', function () {
   describe('authenticate', function () {
-    it('should be able to authenticate user', async function () {
-      const { authConnectionId, userId, idToken, toprfSecureBackup } = setup();
+    [undefined, 'torus-test-health-aggregate'].forEach((groupedConnId) => {
+      it(`should be able to authenticate user ${fmtGroupedConnId(groupedConnId)}`, async function () {
+        const { authConnectionId, userId, idToken, toprfSecureBackup } =
+          setup();
 
-      const result = await toprfSecureBackup.authenticate({
-        idTokens: [idToken],
-        authConnectionId,
-        userId,
+        const result = await toprfSecureBackup.authenticate({
+          idTokens: [idToken],
+          authConnectionId,
+          userId,
+          groupedAuthConnectionId: groupedConnId,
+        });
+        expect(result).toBeDefined();
+        expect(result.nodeAuthTokens).toBeDefined();
+        expect(result.nodeAuthTokens.length).toBeGreaterThan(0);
+        expect(result.isNewUser).toBe(true);
       });
-      expect(result).toBeDefined();
-      expect(result.nodeAuthTokens).toBeDefined();
-      expect(result.nodeAuthTokens.length).toBeGreaterThan(0);
-      expect(result.isNewUser).toBe(true);
-    });
-
-    it('should be able to authenticate user with single id verifier', async function () {
-      const authConnectionId = 'torus-test-health';
-      const groupedAuthConnectionId = 'torus-test-health-aggregate';
-      const { userId, idToken, toprfSecureBackup } = setup();
-
-      const result = await toprfSecureBackup.authenticate({
-        idTokens: [idToken],
-        authConnectionId,
-        userId,
-        groupedAuthConnectionId,
-      });
-
-      expect(result).toBeDefined();
-      expect(result.nodeAuthTokens).toBeDefined();
-      expect(result.nodeAuthTokens.length).toBeGreaterThan(0);
-      expect(result.isNewUser).toBe(true);
     });
 
     it('should return isNewUser as false for existing user', async function () {
@@ -409,53 +407,30 @@ describe('toprf secret backup', function () {
       expect(encKey4.encKey).not.toStrictEqual(encKey.encKey);
     });
 
-    it('should be able to create and persist enc key', async function () {
-      const { authConnectionId, userId, idToken, toprfSecureBackup } = setup();
+    [undefined, 'torus-test-health-aggregate'].forEach((groupedConnId) => {
+      it(`should be able to create and persist enc key ${fmtGroupedConnId(groupedConnId)}`, async function () {
+        const { authConnectionId, userId, idToken, toprfSecureBackup } =
+          setup();
 
-      const result = await toprfSecureBackup.authenticate({
-        idTokens: [idToken],
-        authConnectionId,
-        userId,
+        const result = await toprfSecureBackup.authenticate({
+          idTokens: [idToken],
+          authConnectionId,
+          userId,
+          groupedAuthConnectionId: groupedConnId,
+        });
+        expect(result.isNewUser).toBe(true);
+        const encKey = await toprfSecureBackup.createAndPersistEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          password: generateRandomPassword(),
+          authConnectionId,
+          userId,
+        });
+        expect(encKey).toBeDefined();
+        expect(encKey.authKeyPair).toBeDefined();
+        expect(encKey.authKeyPair.sk).toBeDefined();
+        expect(encKey.authKeyPair.pk).toBeDefined();
+        expect(encKey.encKey).toBeDefined();
       });
-      expect(result.isNewUser).toBe(true);
-      const encKey = await toprfSecureBackup.createAndPersistEncKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        password: generateRandomPassword(),
-        authConnectionId,
-        userId,
-      });
-      expect(encKey).toBeDefined();
-      expect(encKey.authKeyPair).toBeDefined();
-      expect(encKey.authKeyPair.sk).toBeDefined();
-      expect(encKey.authKeyPair.pk).toBeDefined();
-      expect(encKey.encKey).toBeDefined();
-    });
-
-    it('should be able to create and persist enc key with single id verifier', async function () {
-      const authConnectionId = 'torus-test-health';
-      const groupedAuthConnectionId = 'torus-test-health-aggregate';
-      const { userId, idToken, toprfSecureBackup } = setup();
-
-      const result = await toprfSecureBackup.authenticate({
-        idTokens: [idToken],
-        authConnectionId,
-        userId,
-        groupedAuthConnectionId,
-      });
-
-      const encKey = await toprfSecureBackup.createAndPersistEncKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        password: generateRandomPassword(),
-        authConnectionId,
-        userId,
-        groupedAuthConnectionId,
-      });
-
-      expect(encKey).toBeDefined();
-      expect(encKey.authKeyPair).toBeDefined();
-      expect(encKey.authKeyPair.sk).toBeDefined();
-      expect(encKey.authKeyPair.pk).toBeDefined();
-      expect(encKey.encKey).toBeDefined();
     });
 
     it('should throw error if user is not authenticated while creating enc key', async function () {
@@ -511,50 +486,55 @@ describe('toprf secret backup', function () {
     });
   });
   describe('recoverEncKey', function () {
-    it('should be able to recover enc key', async function () {
-      // Test with and without optional key deriver.
-      const keyDerivers = [undefined, keyDeriver];
-      for (const kd of keyDerivers) {
-        const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
-          keyDeriver: kd,
-        });
+    [undefined, 'torus-test-health-aggregate'].forEach((groupedConnId) => {
+      it(`should recover enc key ${fmtGroupedConnId(groupedConnId)}`, async function () {
+        // Test with and without optional key deriver.
+        const keyDerivers = [undefined, keyDeriver];
+        for (const kd of keyDerivers) {
+          const { authConnectionId, userId, idToken, toprfSecureBackup } =
+            setup({
+              keyDeriver: kd,
+            });
 
-        const result = await toprfSecureBackup.authenticate({
-          idTokens: [idToken],
-          authConnectionId,
-          userId,
-        });
+          const result = await toprfSecureBackup.authenticate({
+            idTokens: [idToken],
+            authConnectionId,
+            userId,
+            groupedAuthConnectionId: groupedConnId,
+          });
 
-        const password = generateRandomPassword();
-        const encKey = await toprfSecureBackup.createAndPersistEncKey({
-          nodeAuthTokens: result.nodeAuthTokens,
-          password,
-          authConnectionId,
-          userId,
-        });
+          const password = generateRandomPassword();
+          const encKey = await toprfSecureBackup.createAndPersistEncKey({
+            nodeAuthTokens: result.nodeAuthTokens,
+            password,
+            authConnectionId,
+            userId,
+          });
 
-        const recoveredEncKey = await toprfSecureBackup.recoverEncKey({
-          nodeAuthTokens: result.nodeAuthTokens,
-          password,
-          authConnectionId,
-          userId,
-        });
-        expect(recoveredEncKey).toBeDefined();
-        expect(recoveredEncKey.authKeyPair).toBeDefined();
-        expect(recoveredEncKey.authKeyPair.sk).toBeDefined();
-        expect(recoveredEncKey.authKeyPair.pk).toBeDefined();
-        expect(recoveredEncKey.encKey).toBeDefined();
-        expect(recoveredEncKey.keyShareIndex).toBeDefined();
-        expect(await recoveredEncKey.rateLimitResetResult).toBeUndefined();
+          const recoveredEncKey = await toprfSecureBackup.recoverEncKey({
+            nodeAuthTokens: result.nodeAuthTokens,
+            password,
+            authConnectionId,
+            userId,
+            groupedAuthConnectionId: groupedConnId,
+          });
+          expect(recoveredEncKey).toBeDefined();
+          expect(recoveredEncKey.authKeyPair).toBeDefined();
+          expect(recoveredEncKey.authKeyPair.sk).toBeDefined();
+          expect(recoveredEncKey.authKeyPair.pk).toBeDefined();
+          expect(recoveredEncKey.encKey).toBeDefined();
+          expect(recoveredEncKey.keyShareIndex).toBeDefined();
+          expect(await recoveredEncKey.rateLimitResetResult).toBeUndefined();
 
-        expect(recoveredEncKey.authKeyPair.sk).toStrictEqual(
-          encKey.authKeyPair.sk,
-        );
-        expect(recoveredEncKey.encKey).toStrictEqual(encKey.encKey);
-        expect(recoveredEncKey.authKeyPair.pk).toStrictEqual(
-          encKey.authKeyPair.pk,
-        );
-      }
+          expect(recoveredEncKey.authKeyPair.sk).toStrictEqual(
+            encKey.authKeyPair.sk,
+          );
+          expect(recoveredEncKey.encKey).toStrictEqual(encKey.encKey);
+          expect(recoveredEncKey.authKeyPair.pk).toStrictEqual(
+            encKey.authKeyPair.pk,
+          );
+        }
+      });
     });
 
     it('should recover enc key even when rate limit reset fails', async function () {
@@ -607,51 +587,6 @@ describe('toprf secret backup', function () {
       } finally {
         mockResetRateLimits.mockRestore();
       }
-    });
-
-    it('should recover enc key with single id verifier', async function () {
-      const authConnectionId = 'torus-test-health';
-      const groupedAuthConnectionId = 'torus-test-health-aggregate';
-      const { userId, idToken, toprfSecureBackup } = setup();
-
-      const result = await toprfSecureBackup.authenticate({
-        idTokens: [idToken],
-        authConnectionId,
-        userId,
-        groupedAuthConnectionId,
-      });
-
-      const password = generateRandomPassword();
-      const encKey = await toprfSecureBackup.createAndPersistEncKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        password,
-        authConnectionId,
-        userId,
-        groupedAuthConnectionId,
-      });
-
-      const recoveredEncKey = await toprfSecureBackup.recoverEncKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        password,
-        authConnectionId,
-        userId,
-        groupedAuthConnectionId,
-      });
-      expect(recoveredEncKey).toBeDefined();
-      expect(recoveredEncKey.authKeyPair).toBeDefined();
-      expect(recoveredEncKey.authKeyPair.sk).toBeDefined();
-      expect(recoveredEncKey.authKeyPair.pk).toBeDefined();
-      expect(recoveredEncKey.encKey).toBeDefined();
-      expect(recoveredEncKey.keyShareIndex).toBeDefined();
-      expect(await recoveredEncKey.rateLimitResetResult).toBeUndefined();
-
-      expect(recoveredEncKey.authKeyPair.sk).toStrictEqual(
-        encKey.authKeyPair.sk,
-      );
-      expect(recoveredEncKey.encKey).toStrictEqual(encKey.encKey);
-      expect(recoveredEncKey.authKeyPair.pk).toStrictEqual(
-        encKey.authKeyPair.pk,
-      );
     });
 
     it('should throw `TOPRFError.couldNotDeriveEncryptionKey` when the incorrect password is provided', async function () {
@@ -779,332 +714,178 @@ describe('toprf secret backup', function () {
   });
 
   describe('changeEncKey', function () {
-    it('should be able to change encryption key and recover password', async function () {
-      const secretData = utf8ToBytes('test-secret-data-for-key-change');
-      const { authConnectionId, userId, idToken, toprfSecureBackup } = setup();
+    [undefined, 'torus-test-health-aggregate'].forEach((groupedConnId) => {
+      it(`should be able to change encryption key and recover password ${fmtGroupedConnId(groupedConnId)}`, async function () {
+        const secretData = utf8ToBytes('test-secret-data-for-key-change');
+        const { authConnectionId, userId, idToken, toprfSecureBackup } =
+          setup();
 
-      const result = await toprfSecureBackup.authenticate({
-        idTokens: [idToken],
-        authConnectionId,
-        userId,
-      });
-      expect(result.nodeAuthTokens).toBeDefined();
-      expect(result.nodeAuthTokens.length).toBeGreaterThan(0);
+        const result = await toprfSecureBackup.authenticate({
+          idTokens: [idToken],
+          authConnectionId,
+          userId,
+          groupedAuthConnectionId: groupedConnId,
+        });
+        expect(result.nodeAuthTokens).toBeDefined();
+        expect(result.nodeAuthTokens.length).toBeGreaterThan(0);
 
-      const originalPassword = generateRandomPassword();
-      const originalEncKeyResult =
-        await toprfSecureBackup.createAndPersistEncKey({
+        const originalPassword = generateRandomPassword();
+        const originalEncKeyResult =
+          await toprfSecureBackup.createAndPersistEncKey({
+            nodeAuthTokens: result.nodeAuthTokens,
+            password: originalPassword,
+            authConnectionId,
+            userId,
+          });
+
+        await toprfSecureBackup.addSecretDataItem({
+          encKey: originalEncKeyResult.encKey,
+          secretData,
+          authKeyPair: originalEncKeyResult.authKeyPair,
+        });
+
+        const originalSecretData =
+          await toprfSecureBackup.fetchAllSecretDataItems({
+            decKey: originalEncKeyResult.encKey,
+            authKeyPair: originalEncKeyResult.authKeyPair,
+          });
+        expect(originalSecretData).not.toBeNull();
+        expect(originalSecretData?.length).toBe(1);
+        expect(originalSecretData?.[0]).toStrictEqual(secretData);
+
+        // Recover the original key to get the keyShareIndex
+        const recoveredOriginalKey = await toprfSecureBackup.recoverEncKey({
           nodeAuthTokens: result.nodeAuthTokens,
           password: originalPassword,
           authConnectionId,
           userId,
+          groupedAuthConnectionId: groupedConnId,
         });
 
-      await toprfSecureBackup.addSecretDataItem({
-        encKey: originalEncKeyResult.encKey,
-        secretData,
-        authKeyPair: originalEncKeyResult.authKeyPair,
-      });
+        expect(recoveredOriginalKey.keyShareIndex).toBe(FIRST_KEY_INDEX);
 
-      const originalSecretData =
-        await toprfSecureBackup.fetchAllSecretDataItems({
-          decKey: originalEncKeyResult.encKey,
-          authKeyPair: originalEncKeyResult.authKeyPair,
+        // Fetching password should fail, because password was not backed up yet.
+        await expect(
+          toprfSecureBackup.recoverPassword({
+            targetPwPubKey: recoveredOriginalKey.authKeyPair.pk,
+            curEncKey: originalEncKeyResult.encKey,
+            curAuthKeyPair: originalEncKeyResult.authKeyPair,
+          }),
+        ).rejects.toThrow(
+          TOPRFError.couldNotFetchPassword(
+            'Failed to get previous password and keys',
+          ),
+        );
+
+        // Change to a new encryption key
+        const newPassword = generateRandomPassword();
+        const newEncKeyResult = await toprfSecureBackup.changeEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          authConnectionId,
+          groupedAuthConnectionId: groupedConnId,
+          userId,
+          oldEncKey: originalEncKeyResult.encKey,
+          oldAuthKeyPair: originalEncKeyResult.authKeyPair,
+          oldPassword: originalPassword,
+          newPassword,
+          newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 1,
         });
-      expect(originalSecretData).not.toBeNull();
-      expect(originalSecretData?.length).toBe(1);
-      expect(originalSecretData?.[0]).toStrictEqual(secretData);
+        expect(newEncKeyResult).toBeDefined();
+        expect(newEncKeyResult.authKeyPair).toBeDefined();
+        expect(newEncKeyResult.encKey).toBeDefined();
 
-      // Recover the original key to get the keyShareIndex
-      const recoveredOriginalKey = await toprfSecureBackup.recoverEncKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        password: originalPassword,
-        authConnectionId,
-        userId,
-      });
+        const recoveredNewKey = await toprfSecureBackup.recoverEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          password: newPassword,
+          authConnectionId,
+          userId,
+          groupedAuthConnectionId: groupedConnId,
+        });
 
-      expect(recoveredOriginalKey.keyShareIndex).toBe(FIRST_KEY_INDEX);
+        expect(recoveredNewKey.keyShareIndex).toBe(
+          recoveredOriginalKey.keyShareIndex + 1,
+        );
 
-      // Fetching password should fail, because password was not backed up yet.
-      await expect(
-        toprfSecureBackup.recoverPassword({
-          targetPwPubKey: recoveredOriginalKey.authKeyPair.pk,
-          curEncKey: originalEncKeyResult.encKey,
-          curAuthKeyPair: originalEncKeyResult.authKeyPair,
-        }),
-      ).rejects.toThrow(
-        TOPRFError.couldNotFetchPassword(
-          'Failed to get previous password and keys',
-        ),
-      );
+        // Verify the new key can access the data
+        const newSecretData = await toprfSecureBackup.fetchAllSecretDataItems({
+          decKey: recoveredNewKey.encKey,
+          authKeyPair: recoveredNewKey.authKeyPair,
+        });
+        expect(newSecretData).not.toBeNull();
+        expect(newSecretData?.length).toBe(1);
+        expect(newSecretData?.[0]).toStrictEqual(secretData);
 
-      // Change to a new encryption key
-      const newPassword = generateRandomPassword();
-      const newEncKeyResult = await toprfSecureBackup.changeEncKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        authConnectionId,
-        userId,
-        oldEncKey: originalEncKeyResult.encKey,
-        oldAuthKeyPair: originalEncKeyResult.authKeyPair,
-        oldPassword: originalPassword,
-        newPassword,
-        newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 1,
-      });
-      expect(newEncKeyResult).toBeDefined();
-      expect(newEncKeyResult.authKeyPair).toBeDefined();
-      expect(newEncKeyResult.encKey).toBeDefined();
+        // Verify the key change was actually effective by comparing the recovered keys
+        expect(recoveredNewKey.authKeyPair.sk).toStrictEqual(
+          newEncKeyResult.authKeyPair.sk,
+        );
+        expect(recoveredNewKey.authKeyPair.pk).toStrictEqual(
+          newEncKeyResult.authKeyPair.pk,
+        );
 
-      const recoveredNewKey = await toprfSecureBackup.recoverEncKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        password: newPassword,
-        authConnectionId,
-        userId,
-      });
+        // Verify the old key pair is different from the new key pair
+        expect(recoveredNewKey.authKeyPair.sk).not.toStrictEqual(
+          originalEncKeyResult.authKeyPair.sk,
+        );
+        expect(recoveredNewKey.authKeyPair.pk).not.toStrictEqual(
+          originalEncKeyResult.authKeyPair.pk,
+        );
+        expect(recoveredNewKey.encKey).not.toStrictEqual(
+          originalEncKeyResult.encKey,
+        );
 
-      expect(recoveredNewKey.keyShareIndex).toBe(
-        recoveredOriginalKey.keyShareIndex + 1,
-      );
+        // Verify that we can recover old pw.
+        const recoveredPassword = await toprfSecureBackup.recoverPassword({
+          targetPwPubKey: originalEncKeyResult.authKeyPair.pk,
+          curEncKey: newEncKeyResult.encKey,
+          curAuthKeyPair: newEncKeyResult.authKeyPair,
+        });
+        expect(recoveredPassword.password).toBe(originalPassword);
 
-      // Verify the new key can access the data
-      const newSecretData = await toprfSecureBackup.fetchAllSecretDataItems({
-        decKey: recoveredNewKey.encKey,
-        authKeyPair: recoveredNewKey.authKeyPair,
-      });
-      expect(newSecretData).not.toBeNull();
-      expect(newSecretData?.length).toBe(1);
-      expect(newSecretData?.[0]).toStrictEqual(secretData);
+        // Change password again.
+        const newPassword2 = generateRandomPassword();
+        const newEncKeyResult2 = await toprfSecureBackup.changeEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          authConnectionId,
+          groupedAuthConnectionId: groupedConnId,
+          userId,
+          oldEncKey: newEncKeyResult.encKey,
+          oldAuthKeyPair: newEncKeyResult.authKeyPair,
+          oldPassword: newPassword,
+          newPassword: newPassword2,
+          newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 2,
+        });
 
-      // Verify the key change was actually effective by comparing the recovered keys
-      expect(recoveredNewKey.authKeyPair.sk).toStrictEqual(
-        newEncKeyResult.authKeyPair.sk,
-      );
-      expect(recoveredNewKey.authKeyPair.pk).toStrictEqual(
-        newEncKeyResult.authKeyPair.pk,
-      );
-
-      // Verify the old key pair is different from the new key pair
-      expect(recoveredNewKey.authKeyPair.sk).not.toStrictEqual(
-        originalEncKeyResult.authKeyPair.sk,
-      );
-      expect(recoveredNewKey.authKeyPair.pk).not.toStrictEqual(
-        originalEncKeyResult.authKeyPair.pk,
-      );
-      expect(recoveredNewKey.encKey).not.toStrictEqual(
-        originalEncKeyResult.encKey,
-      );
-
-      // Verify that we can recover old pw.
-      const recoveredPassword = await toprfSecureBackup.recoverPassword({
-        targetPwPubKey: originalEncKeyResult.authKeyPair.pk,
-        curEncKey: newEncKeyResult.encKey,
-        curAuthKeyPair: newEncKeyResult.authKeyPair,
-      });
-      expect(recoveredPassword.password).toBe(originalPassword);
-
-      // Change password again.
-      const newPassword2 = generateRandomPassword();
-      const newEncKeyResult2 = await toprfSecureBackup.changeEncKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        authConnectionId,
-        userId,
-        oldEncKey: newEncKeyResult.encKey,
-        oldAuthKeyPair: newEncKeyResult.authKeyPair,
-        oldPassword: newPassword,
-        newPassword: newPassword2,
-        newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 2,
-      });
-
-      // Verify that we can recover old pw.
-      const recoveredPassword2 = await toprfSecureBackup.recoverPassword({
-        targetPwPubKey: originalEncKeyResult.authKeyPair.pk,
-        curEncKey: newEncKeyResult2.encKey,
-        curAuthKeyPair: newEncKeyResult2.authKeyPair,
-      });
-      expect(recoveredPassword2.password).toBe(originalPassword);
-
-      // Verify that we can recover new pw.
-      const recoveredPassword3 = await toprfSecureBackup.recoverPassword({
-        targetPwPubKey: newEncKeyResult.authKeyPair.pk,
-        curEncKey: newEncKeyResult2.encKey,
-        curAuthKeyPair: newEncKeyResult2.authKeyPair,
-      });
-      expect(recoveredPassword3.password).toBe(newPassword);
-
-      // Password recovery should fail when we limit the password chain length
-      await expect(
-        toprfSecureBackup.recoverPassword({
+        // Verify that we can recover old pw.
+        const recoveredPassword2 = await toprfSecureBackup.recoverPassword({
           targetPwPubKey: originalEncKeyResult.authKeyPair.pk,
           curEncKey: newEncKeyResult2.encKey,
           curAuthKeyPair: newEncKeyResult2.authKeyPair,
-          maxPwChainLength: 1,
-        }),
-      ).rejects.toThrow(
-        TOPRFError.couldNotFetchPassword(
-          'Exceeded maximum password chain length',
-        ),
-      );
-    });
-
-    it('should be able to change encryption key and recover password for aggregate (single id) verifier', async function () {
-      const secretData = utf8ToBytes(
-        'test-secret-data-for-key-change-aggregate',
-      );
-      const authConnectionId = 'torus-test-health';
-      const groupedAuthConnectionId = 'torus-test-health-aggregate';
-      const { userId, idToken, toprfSecureBackup } = setup();
-
-      const result = await toprfSecureBackup.authenticate({
-        idTokens: [idToken],
-        authConnectionId,
-        userId,
-        groupedAuthConnectionId,
-      });
-      expect(result.nodeAuthTokens).toBeDefined();
-      expect(result.nodeAuthTokens.length).toBeGreaterThan(0);
-
-      const originalPassword = generateRandomPassword();
-      const originalEncKeyResult =
-        await toprfSecureBackup.createAndPersistEncKey({
-          nodeAuthTokens: result.nodeAuthTokens,
-          password: originalPassword,
-          authConnectionId,
-          userId,
-          groupedAuthConnectionId,
         });
+        expect(recoveredPassword2.password).toBe(originalPassword);
 
-      await toprfSecureBackup.addSecretDataItem({
-        encKey: originalEncKeyResult.encKey,
-        secretData,
-        authKeyPair: originalEncKeyResult.authKeyPair,
-      });
-
-      const originalSecretData =
-        await toprfSecureBackup.fetchAllSecretDataItems({
-          decKey: originalEncKeyResult.encKey,
-          authKeyPair: originalEncKeyResult.authKeyPair,
+        // Verify that we can recover new pw.
+        const recoveredPassword3 = await toprfSecureBackup.recoverPassword({
+          targetPwPubKey: newEncKeyResult.authKeyPair.pk,
+          curEncKey: newEncKeyResult2.encKey,
+          curAuthKeyPair: newEncKeyResult2.authKeyPair,
         });
-      expect(originalSecretData).not.toBeNull();
-      expect(originalSecretData?.length).toBe(1);
-      expect(originalSecretData?.[0]).toStrictEqual(secretData);
+        expect(recoveredPassword3.password).toBe(newPassword);
 
-      // Recover the original key to get the keyShareIndex
-      const recoveredOriginalKey = await toprfSecureBackup.recoverEncKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        password: originalPassword,
-        authConnectionId,
-        userId,
-        groupedAuthConnectionId,
+        // Password recovery should fail when we limit the password chain length
+        await expect(
+          toprfSecureBackup.recoverPassword({
+            targetPwPubKey: originalEncKeyResult.authKeyPair.pk,
+            curEncKey: newEncKeyResult2.encKey,
+            curAuthKeyPair: newEncKeyResult2.authKeyPair,
+            maxPwChainLength: 1,
+          }),
+        ).rejects.toThrow(
+          TOPRFError.couldNotFetchPassword(
+            'Exceeded maximum password chain length',
+          ),
+        );
       });
-
-      expect(recoveredOriginalKey.keyShareIndex).toBe(FIRST_KEY_INDEX);
-
-      // Fetching password should fail, because password was not backed up yet.
-      await expect(
-        toprfSecureBackup.recoverPassword({
-          targetPwPubKey: recoveredOriginalKey.authKeyPair.pk,
-          curEncKey: originalEncKeyResult.encKey,
-          curAuthKeyPair: originalEncKeyResult.authKeyPair,
-        }),
-      ).rejects.toThrow(
-        TOPRFError.couldNotFetchPassword(
-          'Failed to get previous password and keys',
-        ),
-      );
-
-      // Change to a new encryption key
-      const newPassword = generateRandomPassword();
-      const newEncKeyResult = await toprfSecureBackup.changeEncKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        authConnectionId,
-        groupedAuthConnectionId,
-        userId,
-        oldEncKey: originalEncKeyResult.encKey,
-        oldAuthKeyPair: originalEncKeyResult.authKeyPair,
-        oldPassword: originalPassword,
-        newPassword,
-        newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 1,
-      });
-      expect(newEncKeyResult).toBeDefined();
-      expect(newEncKeyResult.authKeyPair).toBeDefined();
-      expect(newEncKeyResult.encKey).toBeDefined();
-
-      const recoveredNewKey = await toprfSecureBackup.recoverEncKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        password: newPassword,
-        authConnectionId,
-        userId,
-        groupedAuthConnectionId,
-      });
-
-      expect(recoveredNewKey.keyShareIndex).toBe(
-        recoveredOriginalKey.keyShareIndex + 1,
-      );
-
-      // Verify the new key can access the data
-      const newSecretData = await toprfSecureBackup.fetchAllSecretDataItems({
-        decKey: recoveredNewKey.encKey,
-        authKeyPair: recoveredNewKey.authKeyPair,
-      });
-      expect(newSecretData).not.toBeNull();
-      expect(newSecretData?.length).toBe(1);
-      expect(newSecretData?.[0]).toStrictEqual(secretData);
-
-      // Verify the key change was actually effective by comparing the recovered keys
-      expect(recoveredNewKey.authKeyPair.sk).toStrictEqual(
-        newEncKeyResult.authKeyPair.sk,
-      );
-      expect(recoveredNewKey.authKeyPair.pk).toStrictEqual(
-        newEncKeyResult.authKeyPair.pk,
-      );
-
-      // Verify the old key pair is different from the new key pair
-      expect(recoveredNewKey.authKeyPair.sk).not.toStrictEqual(
-        originalEncKeyResult.authKeyPair.sk,
-      );
-      expect(recoveredNewKey.authKeyPair.pk).not.toStrictEqual(
-        originalEncKeyResult.authKeyPair.pk,
-      );
-      expect(recoveredNewKey.encKey).not.toStrictEqual(
-        originalEncKeyResult.encKey,
-      );
-
-      // Verify that we can recover old pw.
-      const recoveredPassword = await toprfSecureBackup.recoverPassword({
-        targetPwPubKey: originalEncKeyResult.authKeyPair.pk,
-        curEncKey: newEncKeyResult.encKey,
-        curAuthKeyPair: newEncKeyResult.authKeyPair,
-      });
-      expect(recoveredPassword.password).toBe(originalPassword);
-
-      // Change password again.
-      const newPassword2 = generateRandomPassword();
-      const newEncKeyResult2 = await toprfSecureBackup.changeEncKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        authConnectionId,
-        groupedAuthConnectionId,
-        userId,
-        oldEncKey: newEncKeyResult.encKey,
-        oldAuthKeyPair: newEncKeyResult.authKeyPair,
-        oldPassword: newPassword,
-        newPassword: newPassword2,
-        newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 2,
-      });
-
-      // Verify that we can recover old pw.
-      const recoveredPassword2 = await toprfSecureBackup.recoverPassword({
-        targetPwPubKey: originalEncKeyResult.authKeyPair.pk,
-        curEncKey: newEncKeyResult2.encKey,
-        curAuthKeyPair: newEncKeyResult2.authKeyPair,
-      });
-      expect(recoveredPassword2.password).toBe(originalPassword);
-
-      // Verify that we can recover new pw.
-      const recoveredPassword3 = await toprfSecureBackup.recoverPassword({
-        targetPwPubKey: newEncKeyResult.authKeyPair.pk,
-        curEncKey: newEncKeyResult2.encKey,
-        curAuthKeyPair: newEncKeyResult2.authKeyPair,
-      });
-      expect(recoveredPassword3.password).toBe(newPassword);
     });
 
     // The metadata lock has a 90 second expiry time and will auto-release after that period,
@@ -1536,61 +1317,37 @@ describe('toprf secret backup', function () {
   });
 
   describe('fetchAuthPubKey', function () {
-    it('should return auth pub key', async function () {
-      const { authConnectionId, userId, idToken, toprfSecureBackup } = setup();
+    [undefined, 'torus-test-health-aggregate'].forEach((groupedConnId) => {
+      it(`should return auth pub key ${fmtGroupedConnId(groupedConnId)}`, async function () {
+        const { authConnectionId, userId, idToken, toprfSecureBackup } =
+          setup();
 
-      const result = await toprfSecureBackup.authenticate({
-        idTokens: [idToken],
-        authConnectionId,
-        userId,
+        const result = await toprfSecureBackup.authenticate({
+          idTokens: [idToken],
+          authConnectionId,
+          userId,
+          groupedAuthConnectionId: groupedConnId,
+        });
+
+        const password = generateRandomPassword();
+        const encKeyResult = await toprfSecureBackup.createAndPersistEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          password,
+          authConnectionId,
+          userId,
+        });
+
+        const authPubKey = await toprfSecureBackup.fetchAuthPubKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          authConnectionId,
+          userId,
+          groupedAuthConnectionId: groupedConnId,
+        });
+        expect(authPubKey.authPubKey).toBeDefined();
+        expect(authPubKey.authPubKey).toStrictEqual(
+          encKeyResult.authKeyPair.pk,
+        );
       });
-
-      const password = generateRandomPassword();
-      const encKeyResult = await toprfSecureBackup.createAndPersistEncKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        password,
-        authConnectionId,
-        userId,
-      });
-
-      const authPubKey = await toprfSecureBackup.fetchAuthPubKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        authConnectionId,
-        userId,
-      });
-      expect(authPubKey.authPubKey).toBeDefined();
-      expect(authPubKey.authPubKey).toStrictEqual(encKeyResult.authKeyPair.pk);
-    });
-
-    it('should return auth pub key for aggregate (single id) verifier', async function () {
-      const authConnectionId = 'torus-test-health';
-      const groupedAuthConnectionId = 'torus-test-health-aggregate';
-      const { userId, idToken, toprfSecureBackup } = setup();
-
-      const result = await toprfSecureBackup.authenticate({
-        idTokens: [idToken],
-        authConnectionId,
-        groupedAuthConnectionId,
-        userId,
-      });
-
-      const password = generateRandomPassword();
-      const encKeyResult = await toprfSecureBackup.createAndPersistEncKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        password,
-        authConnectionId,
-        groupedAuthConnectionId,
-        userId,
-      });
-
-      const authPubKey = await toprfSecureBackup.fetchAuthPubKey({
-        nodeAuthTokens: result.nodeAuthTokens,
-        authConnectionId,
-        groupedAuthConnectionId,
-        userId,
-      });
-      expect(authPubKey.authPubKey).toBeDefined();
-      expect(authPubKey.authPubKey).toStrictEqual(encKeyResult.authKeyPair.pk);
     });
   });
 
