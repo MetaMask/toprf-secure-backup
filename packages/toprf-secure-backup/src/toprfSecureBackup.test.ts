@@ -510,7 +510,6 @@ describe('toprf secret backup', function () {
       ).rejects.toThrow(TOPRFError.invalidAuthToken());
     });
   });
-
   describe('recoverEncKey', function () {
     it('should be able to recover enc key', async function () {
       // Test with and without optional key deriver.
@@ -701,8 +700,8 @@ describe('toprf secret backup', function () {
 
       const incorrectPassword = generateRandomPassword();
 
-      // First 2 attempts with incorrect password should fail normally
-      for (let i = 0; i < 2; i++) {
+      // First 3 attempts with incorrect password should fail normally
+      for (let i = 0; i < 3; i++) {
         await expect(
           toprfSecureBackup.recoverEncKey({
             nodeAuthTokens: authResult.nodeAuthTokens,
@@ -713,7 +712,7 @@ describe('toprf secret backup', function () {
         ).rejects.toThrow(TOPRFError.couldNotDeriveEncryptionKey());
       }
 
-      // 3rd attempt with incorrect password should trigger rate limiting
+      // 4th attempt with incorrect password should trigger rate limiting
       await expect(
         toprfSecureBackup.recoverEncKey({
           nodeAuthTokens: authResult.nodeAuthTokens,

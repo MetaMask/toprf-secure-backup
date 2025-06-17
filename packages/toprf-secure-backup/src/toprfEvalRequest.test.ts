@@ -242,6 +242,8 @@ describe('toprfEvalRequest', () => {
       expect(storeSharesResponse).toBeDefined();
       expect(storeSharesResponse.error).toBeUndefined();
 
+      const incorrectPasswordBytes = toBytes('incorrect-password');
+
       // Make 3 calls - all should succeed without rate limiting
       for (let i = 0; i < 3; i++) {
         const attemptResult = await recoverTOPRFSeed({
@@ -249,7 +251,7 @@ describe('toprfEvalRequest', () => {
           nodeEndpointsMap: selectedEndpointsMap,
           authConnectionId,
           userId,
-          userInput: passwordBytes,
+          userInput: incorrectPasswordBytes,
         });
 
         expect(attemptResult.seed).toBeDefined();
@@ -269,7 +271,7 @@ describe('toprfEvalRequest', () => {
           nodeEndpointsMap: selectedEndpointsMap,
           authConnectionId,
           userId,
-          userInput: passwordBytes,
+          userInput: incorrectPasswordBytes,
         });
       }).rejects.toMatchObject({
         code: TOPRFErrorCode.RateLimitExceeded,
