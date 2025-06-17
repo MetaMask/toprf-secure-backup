@@ -477,11 +477,11 @@ export type IToprfSecureBackup = {
    * This function recovers the password encryption key of the user.
    *
    * @param params - The parameters for recovering the password encryption key.
-   * @param params.targetPwPubKey - The public key of the target encryption key.
-   * @param params.curEncKey - The current encryption key of the user.
+   * @param params.targetAuthPubKey - The public key of the target encryption key.
+   * @param params.curPwEncKey - The current password encryption key of the user.
    * @param params.curAuthKeyPair - The current authentication key pair of the user.
    *
-   * @returns A promise that resolves to the encryption key of the user.
+   * @returns A promise that resolves to the password encryption key of the user.
    */
   recoverPwEncKey: (
     params: RecoverPwEncKeyParams,
