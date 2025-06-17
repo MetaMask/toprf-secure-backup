@@ -1,19 +1,9 @@
-import { secp256k1 } from '@noble/curves/secp256k1';
 import { toBytes } from '@noble/hashes/utils';
-import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
-import { authenticateUser } from './authenticateRequest';
-import { commitIdToken } from './commitRequest';
 import { TOPRF_EVAL_THRESHOLD } from './constants';
-import { TOPRFErrorCode } from './errors';
 import type { NodeAuthTokens } from './interfaces';
 import type { ToprfEvalJRPCResponse } from './jrpcInterfaces';
-import { deriveAuthenticationKeyPair } from './keyDerivation';
-import { OPRF, generateRandomScalar } from './oprf';
-import { storeKeyShares } from './storeSharesRequest';
 import { recoverTOPRFSeed, validateSeed } from './toprfEvalRequest';
-import { createNodeEndpointsMap } from './utils';
-import { generateIdToken, generateRandomUserId } from '../tests/testHelpers';
 
 describe('toprfEvalRequest', () => {
   describe('validateSeed', () => {
