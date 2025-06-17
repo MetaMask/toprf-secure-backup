@@ -474,7 +474,7 @@ export type IToprfSecureBackup = {
   ) => Promise<FetchAuthPubKeyResult>;
 
   /**
-   * This function recovers the encryption key of the user.
+   * This function recovers the password encryption key of the user.
    *
    * @param params - The parameters for recovering the encryption key.
    * @param params.targetPwPubKey - The public key of the target encryption key.
