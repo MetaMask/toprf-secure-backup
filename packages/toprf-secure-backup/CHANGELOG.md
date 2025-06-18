@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Changed `recoverPassword` to `recoverPwEncKey`. ([#125](https://github.com/MetaMask/toprf-secure-backup/pull/125))
+  - Recovering password encryption key instead of password. No longer storing passwords.
+  - Separated password encryption key from encryption key.
+
 ### Security
 
 - Added security documentation with best practices for handling sensitive data. ([#122](https://github.com/MetaMask/toprf-secure-backup/pull/122))

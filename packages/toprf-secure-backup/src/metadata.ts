@@ -5,6 +5,7 @@ import { secp256k1 } from '@noble/curves/secp256k1';
 import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
 import { bytesToHex } from '@noble/hashes/utils';
 
+import { PW_BACKUP_ITEM_ID } from './constants';
 import type {
   IGetSecretDataRequestBody,
   KeyPair,
@@ -44,7 +45,8 @@ export type MetadataAddSecretDataItemParams =
   BaseAddSecretDataItemParams<SecretDataItem>;
 
 export type MetadataBatchAddSecretDataItemParams = BaseAddSecretDataItemParams<
-  SecretDataItem[]
+  SecretDataItem[],
+  Uint8Array | Uint8Array[]
 >;
 
 /**
@@ -273,23 +275,40 @@ export class MetadataStore {
   /**
    * Encrypts the array of secret data and inserts them in the metadata store.
    *
-   * @param params - The parameters for serializing and making batch set secret data request.
+   * @param params - The parameters for serializing and making batch set secret
+   * data request.
    * @param params.secretData - The array of secret data to be stored.
-   * @param params.encKey - The encryption key to be used for encrypting the secret data.
-   * @param params.authKeyPair - The authentication key pair to be used for authenticating the secret data.
-   * @param params.metadataEndpoint - The metadata server endpoint to be used for storing the secret data.
+   * @param params.encKey - The encryption key or keys to be used for encrypting
+   * the secret data. If an array is provided, it must have the same length as
+   * the secret data array.
+   * @param params.authKeyPair - The authentication key pair to be used for
+   * authenticating the secret data.
+   * @param params.metadataEndpoint - The metadata server endpoint to be used
+   * for storing the secret data.
    * @returns A promise that resolves when the secret data is stored.
    */
   async #batchAddData(params: {
     secretData: SecretDataItem[];
-    encKey: Uint8Array;
+    encKey: Uint8Array | Uint8Array[];
     authKeyPair: KeyPair;
     metadataEndpoint: string;
   }): Promise<boolean> {
+    const encKeys = (
+      Array.isArray(params.encKey)
+        ? params.encKey
+        : params.secretData.map(() => params.encKey)
+    ) as Uint8Array[];
+
+    if (encKeys.length !== params.secretData.length) {
+      throw new MetadataStoreError(
+        'encKey must be of same length as secretData',
+      );
+    }
+
     try {
       const url = `${params.metadataEndpoint}/enc_account_data/batch_set`;
-      const encryptedDataArray = params.secretData.map((secret) => ({
-        data: this.#encryptData(secret.data, params.encKey),
+      const encryptedDataArray = params.secretData.map((secret, index) => ({
+        data: this.#encryptData(secret.data, encKeys[index]),
         itemId: secret.itemId,
       }));
       const payload = this.#generatePayloadForSetOrBatchSetSecretDataRequest(
@@ -365,16 +384,22 @@ export class MetadataStore {
         throw new MetadataStoreError('Failed to fetch metadata');
       }
 
-      const secretData: SecretDataItem[] = jsonData.data.map(
-        (data: string, index: number) => {
+      const secretData: SecretDataItem[] = jsonData.data
+        .filter((_data, i) => {
+          if (params.itemId) {
+            return jsonData.ids[i] === params.itemId;
+          }
+          // Exclude password backup item from regular query.
+          return jsonData.ids[i] !== PW_BACKUP_ITEM_ID;
+        })
+        .map((data: string, index: number) => {
           const rawData = new Uint8Array(Buffer.from(data, 'base64'));
           return {
             itemId: jsonData.ids[index],
             data: this.#decryptData(rawData, params.encKey),
           };
-        },
-      );
-      return secretData;
+        });
+      return secretData.filter((data) => data.data.length > 0);
     } catch (error) {
       const errorMessage = (error as Error).message || 'Unknown error';
       throw new MetadataStoreError(`failed to fetch metadata: ${errorMessage}`);

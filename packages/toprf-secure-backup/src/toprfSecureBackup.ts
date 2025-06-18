@@ -36,14 +36,15 @@ import type {
   CreateLocalKeyParams,
   CreateLocalKeyResult,
   BatchAddSecretDataItemParams,
-  RecoverPasswordParams,
+  RecoverPwEncKeyParams,
   KeyPair,
-  RecoverPasswordResult,
+  RecoverPwEncKeyResult,
   NodeDetailsOverride,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
   deriveEncryptionKey,
+  derivePwEncKey,
 } from './keyDerivation';
 import type { SecretDataItem } from './metadata';
 import { MetadataStore } from './metadata';
@@ -198,12 +199,14 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
 
       const authKeyPair = deriveAuthenticationKeyPair(seed);
       const encKey = deriveEncryptionKey(seed);
+      const pwEncKey = derivePwEncKey(seed);
 
       return {
         oprfKey,
         seed,
         authKeyPair,
         encKey,
+        pwEncKey,
       };
     } finally {
       // Clean up sensitive intermediate data
@@ -287,9 +290,10 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     params: CreateEncryptionKeyParams,
   ): Promise<CreateEncryptionKeyResult> {
     const { nodeAuthTokens, password, authConnectionId, userId } = params;
-    const { oprfKey, authKeyPair, encKey } = await this.createLocalKey({
-      password,
-    });
+    const { oprfKey, authKeyPair, encKey, pwEncKey } =
+      await this.createLocalKey({
+        password,
+      });
 
     await this.persistLocalKey({
       nodeAuthTokens,
@@ -305,6 +309,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         pk: authKeyPair.pk,
       },
       encKey,
+      pwEncKey,
     };
   }
 
@@ -352,6 +357,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
 
       const authKeyPair = deriveAuthenticationKeyPair(seed);
       const encKey = deriveEncryptionKey(seed);
+      const pwEncKey = derivePwEncKey(seed);
 
       const rateLimitResetResult = new Promise<void>((resolve, reject) => {
         resetRateLimits({
@@ -373,6 +379,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       return {
         authKeyPair,
         encKey,
+        pwEncKey,
         keyShareIndex,
         rateLimitResetResult,
       };
@@ -416,15 +423,16 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       groupedAuthConnectionId,
       userId,
       oldEncKey,
+      oldPwEncKey,
       oldAuthKeyPair,
-      oldPassword,
       newPassword,
       newKeyShareIndex,
     } = params;
 
-    const { oprfKey, authKeyPair, encKey } = await this.createLocalKey({
-      password: newPassword,
-    });
+    const { oprfKey, authKeyPair, encKey, pwEncKey } =
+      await this.createLocalKey({
+        password: newPassword,
+      });
 
     let metadataStore: MetadataStore | undefined;
     let oldMetadataLockId: string | undefined;
@@ -440,15 +448,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
 
       const existingData = (
         await metadataStore.fetchAllSecretDataItems(oldEncKey, oldAuthKeyPair)
-      )
-        // filter out special items
-        .filter(
-          (dataItem: SecretDataItem) => dataItem.itemId !== PW_BACKUP_ITEM_ID,
-        )
-        // Remove itemId
-        .map((dataItem: SecretDataItem) => ({
-          data: dataItem.data,
-        }));
+      ).map((dataItem) => ({ data: dataItem.data }));
 
       // Validate that this is actually a key change scenario
       if (!existingData || existingData.length === 0) {
@@ -456,13 +456,15 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       }
 
       const pwBackup: SecretDataItem = {
-        data: serializePwBackup(oldPassword, oldEncKey, oldAuthKeyPair),
+        data: serializePwBackup('', oldPwEncKey, oldAuthKeyPair),
         itemId: PW_BACKUP_ITEM_ID,
       };
 
+      const secretDataItems = [pwBackup, ...existingData];
+      const encKeys = [pwEncKey, ...existingData.map(() => encKey)];
       await metadataStore.batchAddSecretData({
-        secretData: [pwBackup, ...existingData],
-        encKey,
+        secretData: secretDataItems,
+        encKey: encKeys,
         authKeyPair,
       });
 
@@ -477,7 +479,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         oldAuthKeyPair,
       });
 
-      return { authKeyPair, encKey };
+      return { authKeyPair, encKey, pwEncKey };
     } finally {
       if (metadataStore && oldMetadataLockId && newMetadataLockId) {
         try {
@@ -569,19 +571,11 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     params: FetchAllSecretDataParams,
   ): Promise<Uint8Array[]> {
     const metadataStore = await this.#createMetadataStore();
-    return (
-      (
-        await metadataStore.fetchAllSecretDataItems(
-          params.decKey,
-          params.authKeyPair,
-        )
-      )
-        // filter out special items
-        .filter(
-          (dataItem: SecretDataItem) => dataItem.itemId !== PW_BACKUP_ITEM_ID,
-        )
-        .map((dataItem: SecretDataItem) => dataItem.data)
+    const dataItems = await metadataStore.fetchAllSecretDataItems(
+      params.decKey,
+      params.authKeyPair,
     );
+    return dataItems.map((dataItem: SecretDataItem) => dataItem.data);
   }
 
   /**
@@ -616,29 +610,31 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
   }
 
   /**
-   * This function fetches the password.
+   * This function looks up a password encryption key from the password
+   * encryption key history.
    *
-   * @param params - The parameters for getting the password.
+   * @param params - The parameters for getting the password encryption key.
    * @param params.targetPwPubKey - The target password public key.
-   * @param params.curEncKey - The current encryption key.
+   * @param params.curPwEncKey - The current password encryption key.
    * @param params.curAuthKeyPair - The current authentication key pair.
-   * @param params.maxPwChainLength - Optional maximum password chain length allowed to be traversed.
+   * @param params.maxPwChainLength - Optional maximum password chain length
+   * allowed to be traversed.
    *
-   * @returns The password.
+   * @returns The password encryption key.
    */
-  async recoverPassword(
-    params: RecoverPasswordParams,
-  ): Promise<RecoverPasswordResult> {
+  async recoverPwEncKey(
+    params: RecoverPwEncKeyParams,
+  ): Promise<RecoverPwEncKeyResult> {
     const {
-      targetPwPubKey,
-      curEncKey,
+      targetAuthPubKey: targetPwPubKey,
+      curPwEncKey,
       curAuthKeyPair,
       maxPwChainLength = MAX_PASSWORD_CHAIN_LENGTH,
     } = params;
 
     let pwAndKeys = {
       password: '',
-      encKey: curEncKey,
+      encKey: curPwEncKey,
       authKeyPair: curAuthKeyPair,
     };
 
@@ -649,7 +645,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
           authKeyPair: pwAndKeys.authKeyPair,
         });
         if (equalBytes(pwAndKeys.authKeyPair.pk, targetPwPubKey)) {
-          return { password: pwAndKeys.password };
+          return { pwEncKey: pwAndKeys.encKey };
         }
       } catch (error) {
         throw TOPRFError.couldNotFetchPassword((error as Error).message);
