@@ -9,11 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.4.0]
 
-### Uncategorized
-
-- simplify grouped connection id tests ([#126](https://github.com/MetaMask/toprf-secure-backup.git/pull/126))
-- fix rate limit tests ([#127](https://github.com/MetaMask/toprf-secure-backup.git/pull/127))
-
 ### Changed
 
 - Changed `recoverPassword` to `recoverPwEncKey`. ([#125](https://github.com/MetaMask/toprf-secure-backup/pull/125))
