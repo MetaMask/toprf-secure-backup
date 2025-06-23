@@ -409,13 +409,15 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * @param params.userId - The user id of the user.
    * @param params.oldEncKey - The old encryption key of the user.
    * @param params.oldAuthKeyPair - The old authentication key pair of the user.
-   * @param params.newPassword - The new password of the user.
+   * @param params.newPassword - The new password of the user, note: if you pass pregeneratedOprfKey, this parameter is ignored.
    * @param params.newKeyShareIndex - The key share index to be used for the new key.
    *
+   * @param pregeneratedOprfKey - Optional pregenerated OPRF key to be used for the key change, if not provided, a new key will be generated from the new password.
    * @returns The new key pair and encryption key.
    */
   async changeEncKey(
     params: ChangeEncryptionKeyParams,
+    pregeneratedOprfKey?: CreateLocalKeyResult,
   ): Promise<ChangeEncryptionKeyResult> {
     const {
       nodeAuthTokens,
@@ -430,10 +432,28 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     } = params;
 
     const { oprfKey, authKeyPair, encKey, pwEncKey } =
-      await this.createLocalKey({
+      pregeneratedOprfKey ??
+      (await this.createLocalKey({
         password: newPassword,
-      });
+      }));
 
+    if (!oprfKey) {
+      throw new Error('OPRF key is required in pregeneratedOprfKey');
+    }
+
+    if (!authKeyPair) {
+      throw new Error('Auth key pair is required in pregeneratedOprfKey');
+    }
+
+    if (!encKey) {
+      throw new Error('Encryption key is required in pregeneratedOprfKey');
+    }
+
+    if (!pwEncKey) {
+      throw new Error(
+        'Password encryption key is required in pregeneratedOprfKey',
+      );
+    }
     let metadataStore: MetadataStore | undefined;
     let oldMetadataLockId: string | undefined;
     let newMetadataLockId: string | undefined;
