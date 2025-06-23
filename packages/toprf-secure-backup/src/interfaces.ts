@@ -279,11 +279,13 @@ export type RecoverEncryptionKeyResult = {
  *
  * oldAuthKeyPair - The old authentication key pair of the user.
  *
- * newPassword - The new password of the user.
- *
  * newKeyShareIndex - The key share index to be used for the new key.
  *
+ * newPassword - Optional new password of the user, either this or pregeneratedOprfKey is required.
+ *
  * groupedAuthConnectionId - Optional grouped auth connection id to be used for the authenticate request with aggregate (single id) verifier.
+ *
+ * pregeneratedOprfKey - Optional pregenerated OPRF key to be used for the key change, if not provided, a new key will be generated from the new password.
  */
 export type ChangeEncryptionKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
@@ -292,9 +294,10 @@ export type ChangeEncryptionKeyParams = {
   oldEncKey: Uint8Array;
   oldPwEncKey: Uint8Array;
   oldAuthKeyPair: KeyPair;
-  newPassword: string;
   newKeyShareIndex: number;
+  newPassword?: string;
   groupedAuthConnectionId?: string;
+  pregeneratedOprfKey?: CreateLocalKeyResult;
 };
 
 /**

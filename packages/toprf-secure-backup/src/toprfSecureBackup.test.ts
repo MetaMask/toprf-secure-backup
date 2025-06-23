@@ -957,20 +957,17 @@ describe('toprf secret backup', function () {
         const pregeneratedOprfKey = await toprfSecureBackup.createLocalKey({
           password: newPassword,
         });
-        const newEncKeyResult = await toprfSecureBackup.changeEncKey(
-          {
-            nodeAuthTokens: result.nodeAuthTokens,
-            authConnectionId,
-            groupedAuthConnectionId: groupedConnId,
-            userId,
-            oldEncKey: originalEncKeyResult.encKey,
-            oldPwEncKey: originalEncKeyResult.pwEncKey,
-            oldAuthKeyPair: originalEncKeyResult.authKeyPair,
-            newPassword,
-            newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 1,
-          },
+        const newEncKeyResult = await toprfSecureBackup.changeEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          authConnectionId,
+          groupedAuthConnectionId: groupedConnId,
+          userId,
+          oldEncKey: originalEncKeyResult.encKey,
+          oldPwEncKey: originalEncKeyResult.pwEncKey,
+          oldAuthKeyPair: originalEncKeyResult.authKeyPair,
           pregeneratedOprfKey,
-        );
+          newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 1,
+        });
         expect(newEncKeyResult).toBeDefined();
         expect(newEncKeyResult.authKeyPair).toBeDefined();
         expect(newEncKeyResult.encKey).toBeDefined();
@@ -1349,6 +1346,60 @@ describe('toprf secret backup', function () {
         }),
       ).rejects.toThrow(
         'failed to fetch metadata: failed to fetch metadata: aes/gcm: invalid ghash tag',
+      );
+    });
+
+    it('should throw error if none of newPassword or pregeneratedOprfKey is provided or if both are provided', async function () {
+      const { authConnectionId, userId, idToken, toprfSecureBackup } = setup();
+
+      const result = await toprfSecureBackup.authenticate({
+        idTokens: [idToken],
+        authConnectionId,
+        userId,
+      });
+
+      // Creating keys but intentionally not storing any secret data
+      const originalPassword = generateRandomPassword();
+      const originalEncKeyResult =
+        await toprfSecureBackup.createAndPersistEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          password: originalPassword,
+          authConnectionId,
+          userId,
+        });
+
+      await expect(
+        toprfSecureBackup.changeEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          authConnectionId,
+          userId,
+          oldEncKey: originalEncKeyResult.encKey,
+          oldPwEncKey: originalEncKeyResult.pwEncKey,
+          oldAuthKeyPair: originalEncKeyResult.authKeyPair,
+          newKeyShareIndex: FIRST_KEY_INDEX + 1,
+        }),
+      ).rejects.toThrow(
+        'Either newPassword or pregeneratedOprfKey is required',
+      );
+
+      const newPassword = generateRandomPassword();
+      const pregeneratedOprfKey = await toprfSecureBackup.createLocalKey({
+        password: newPassword,
+      });
+      await expect(
+        toprfSecureBackup.changeEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          authConnectionId,
+          userId,
+          newPassword,
+          pregeneratedOprfKey,
+          oldEncKey: originalEncKeyResult.encKey,
+          oldPwEncKey: originalEncKeyResult.pwEncKey,
+          oldAuthKeyPair: originalEncKeyResult.authKeyPair,
+          newKeyShareIndex: FIRST_KEY_INDEX + 1,
+        }),
+      ).rejects.toThrow(
+        'Only one of newPassword or pregeneratedOprfKey is allowed',
       );
     });
   });

@@ -409,15 +409,16 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * @param params.userId - The user id of the user.
    * @param params.oldEncKey - The old encryption key of the user.
    * @param params.oldAuthKeyPair - The old authentication key pair of the user.
-   * @param params.newPassword - The new password of the user, note: if you pass pregeneratedOprfKey, this parameter is ignored.
    * @param params.newKeyShareIndex - The key share index to be used for the new key.
+   * @param params.newPassword - Optional new password of the user, either this or pregeneratedOprfKey is required.
+   * @param params.pregeneratedOprfKey - Optional pregenerated OPRF key to be used for the key change, if not provided, a new key will be generated from the new password.
    *
-   * @param pregeneratedOprfKey - Optional pregenerated OPRF key to be used for the key change, if not provided, a new key will be generated from the new password.
    * @returns The new key pair and encryption key.
+   * @throws {Error} If both newPassword and pregeneratedOprfKey are provided.
+   * @throws {Error} If neither newPassword nor pregeneratedOprfKey is provided.
    */
   async changeEncKey(
     params: ChangeEncryptionKeyParams,
-    pregeneratedOprfKey?: CreateLocalKeyResult,
   ): Promise<ChangeEncryptionKeyResult> {
     const {
       nodeAuthTokens,
@@ -429,13 +430,24 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       oldAuthKeyPair,
       newPassword,
       newKeyShareIndex,
+      pregeneratedOprfKey,
     } = params;
 
-    const { oprfKey, authKeyPair, encKey, pwEncKey } =
-      pregeneratedOprfKey ??
-      (await this.createLocalKey({
-        password: newPassword,
-      }));
+    if (!pregeneratedOprfKey && !newPassword) {
+      throw new Error('Either newPassword or pregeneratedOprfKey is required');
+    }
+
+    if (pregeneratedOprfKey && newPassword) {
+      throw new Error(
+        'Only one of newPassword or pregeneratedOprfKey is allowed',
+      );
+    }
+
+    // if newPassword is provided, create a new key from the password
+    // else use the pregeneratedOprfKey, both can't be undefined as per check above.
+    const { oprfKey, authKeyPair, encKey, pwEncKey } = newPassword
+      ? await this.createLocalKey({ password: newPassword })
+      : (pregeneratedOprfKey as CreateLocalKeyResult);
 
     let metadataStore: MetadataStore | undefined;
     let oldMetadataLockId: string | undefined;
