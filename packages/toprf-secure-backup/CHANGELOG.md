@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Either one of `pregeneratedOprfKey` or `newPassword` is required in `changeEncKey`function.
   - `newPassword` is optional param now as well.
 
+### Changed
+
+- Changed `newPassword` param from required to optional in `changeEncKey` function.
+
 ## [0.4.0]
 
 ### Changed
