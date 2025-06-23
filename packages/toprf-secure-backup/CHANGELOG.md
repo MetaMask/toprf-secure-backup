@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add optional `pregeneratedOprfKey` param to `changeEncKey` function in `ToprfSecureBackup` class to allow using pre-generated oprf key while changing enc key. ([#129](https://github.com/MetaMask/toprf-secure-backup/pull/129))
   - Either one of `pregeneratedOprfKey` or `newPassword` is required in `changeEncKey`function.
+  - `newPassword` is optional param now as well.
 
 ## [0.4.0]
 
