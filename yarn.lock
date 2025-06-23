@@ -1294,11 +1294,12 @@ __metadata:
     "@types/bn.js": "npm:^5.1.6"
     "@types/elliptic": "npm:^6"
     "@types/jest": "npm:^29.5.14"
+    "@types/json-stable-stringify-without-jsonify": "npm:^1.0.2"
     bn.js: "npm:^5.2.1"
     deepmerge: "npm:^4.2.2"
     elliptic: "npm:^6.6.1"
     jest: "npm:^29.7.0"
-    json-stable-stringify: "npm:^1.2.1"
+    json-stable-stringify-without-jsonify: "npm:^1.0.1"
     loglevel: "npm:^1.9.2"
     ts-jest: "npm:^29.3.0"
     typedoc: "npm:^0.24.8"
@@ -2060,6 +2061,13 @@ __metadata:
   version: 7.0.15
   resolution: "@types/json-schema@npm:7.0.15"
   checksum: 10/1a3c3e06236e4c4aab89499c428d585527ce50c24fe8259e8b3926d3df4cfbbbcf306cfc73ddfb66cbafc973116efd15967020b0f738f63e09e64c7d260519e7
+  languageName: node
+  linkType: hard
+
+"@types/json-stable-stringify-without-jsonify@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "@types/json-stable-stringify-without-jsonify@npm:1.0.2"
+  checksum: 10/b8822ef38b1e845cca8151ef2baf5c99bc935364e94317b91eb1ffabb9280a0debd791b3b450f99e15bd121c0ecbecae926095b9f6b169e95a4659b4eb59f90f
   languageName: node
   linkType: hard
 
@@ -6524,19 +6532,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"json-stable-stringify@npm:^1.2.1":
-  version: 1.2.1
-  resolution: "json-stable-stringify@npm:1.2.1"
-  dependencies:
-    call-bind: "npm:^1.0.8"
-    call-bound: "npm:^1.0.3"
-    isarray: "npm:^2.0.5"
-    jsonify: "npm:^0.0.1"
-    object-keys: "npm:^1.1.1"
-  checksum: 10/f4600d34605e1da81a615ddf7dc62f021a5a5c822aee38b3c878e9a703bbd72623402944dbd7848140602c9ec54bfa2df65dfe75cc40afcfd79f3f072ca5307b
-  languageName: node
-  linkType: hard
-
 "json5@npm:^1.0.2":
   version: 1.0.2
   resolution: "json5@npm:1.0.2"
@@ -6561,13 +6556,6 @@ __metadata:
   version: 3.3.1
   resolution: "jsonc-parser@npm:3.3.1"
   checksum: 10/9b0dc391f20b47378f843ef1e877e73ec652a5bdc3c5fa1f36af0f119a55091d147a86c1ee86a232296f55c929bba174538c2bf0312610e0817a22de131cc3f4
-  languageName: node
-  linkType: hard
-
-"jsonify@npm:^0.0.1":
-  version: 0.0.1
-  resolution: "jsonify@npm:0.0.1"
-  checksum: 10/7b86b6f4518582ff1d8b7624ed6c6277affd5246445e864615dbdef843a4057ac58587684faf129ea111eeb80e01c15f0a4d9d03820eb3f3985fa67e81b12398
   languageName: node
   linkType: hard
 

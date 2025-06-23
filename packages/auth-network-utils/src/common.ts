@@ -1,6 +1,6 @@
 import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
 import BN from 'bn.js';
-import JsonStringify from 'json-stable-stringify';
+import JsonStringify from 'json-stable-stringify-without-jsonify';
 
 import { SomeError } from './errors';
 import type { JSONRPCError } from './interfaces';

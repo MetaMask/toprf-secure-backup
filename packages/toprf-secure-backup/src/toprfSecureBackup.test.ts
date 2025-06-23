@@ -715,7 +715,7 @@ describe('toprf secret backup', function () {
 
   describe('changeEncKey', function () {
     [undefined, 'torus-test-health-aggregate'].forEach((groupedConnId) => {
-      it(`should be able to change encryption key and recover password ${fmtGroupedConnId(groupedConnId)}`, async function () {
+      it(`should be able to change encryption key and recover password for ${fmtGroupedConnId(groupedConnId) ? 'aggregate' : 'normal'} verifier`, async function () {
         const secretData = utf8ToBytes('test-secret-data-for-key-change');
         const { authConnectionId, userId, idToken, toprfSecureBackup } =
           setup();
@@ -788,6 +788,184 @@ describe('toprf secret backup', function () {
           oldPwEncKey: originalEncKeyResult.pwEncKey,
           oldAuthKeyPair: originalEncKeyResult.authKeyPair,
           newPassword,
+          newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 1,
+        });
+        expect(newEncKeyResult).toBeDefined();
+        expect(newEncKeyResult.authKeyPair).toBeDefined();
+        expect(newEncKeyResult.encKey).toBeDefined();
+
+        const recoveredNewKey = await toprfSecureBackup.recoverEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          password: newPassword,
+          authConnectionId,
+          userId,
+          groupedAuthConnectionId: groupedConnId,
+        });
+
+        expect(recoveredNewKey.keyShareIndex).toBe(
+          recoveredOriginalKey.keyShareIndex + 1,
+        );
+
+        // Verify the new key can access the data
+        const newSecretData = await toprfSecureBackup.fetchAllSecretDataItems({
+          decKey: recoveredNewKey.encKey,
+          authKeyPair: recoveredNewKey.authKeyPair,
+        });
+        expect(newSecretData).not.toBeNull();
+        expect(newSecretData?.length).toBe(1);
+        expect(newSecretData?.[0]).toStrictEqual(secretData);
+
+        // Verify the key change was actually effective by comparing the recovered keys
+        expect(recoveredNewKey.authKeyPair.sk).toStrictEqual(
+          newEncKeyResult.authKeyPair.sk,
+        );
+        expect(recoveredNewKey.authKeyPair.pk).toStrictEqual(
+          newEncKeyResult.authKeyPair.pk,
+        );
+
+        // Verify the old key pair is different from the new key pair
+        expect(recoveredNewKey.authKeyPair.sk).not.toStrictEqual(
+          originalEncKeyResult.authKeyPair.sk,
+        );
+        expect(recoveredNewKey.authKeyPair.pk).not.toStrictEqual(
+          originalEncKeyResult.authKeyPair.pk,
+        );
+        expect(recoveredNewKey.encKey).not.toStrictEqual(
+          originalEncKeyResult.encKey,
+        );
+
+        // Verify that we can recover old enc key.
+        const recoveredKey = await toprfSecureBackup.recoverPwEncKey({
+          targetAuthPubKey: originalEncKeyResult.authKeyPair.pk,
+          curPwEncKey: newEncKeyResult.pwEncKey,
+          curAuthKeyPair: newEncKeyResult.authKeyPair,
+        });
+        expect(recoveredKey.pwEncKey).toStrictEqual(
+          originalEncKeyResult.pwEncKey,
+        );
+
+        // Change password again.
+        const newPassword2 = generateRandomPassword();
+        const newEncKeyResult2 = await toprfSecureBackup.changeEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          authConnectionId,
+          groupedAuthConnectionId: groupedConnId,
+          userId,
+          oldEncKey: newEncKeyResult.encKey,
+          oldPwEncKey: newEncKeyResult.pwEncKey,
+          oldAuthKeyPair: newEncKeyResult.authKeyPair,
+          newPassword: newPassword2,
+          newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 2,
+        });
+
+        // Verify that we can recover old enc key.
+        const recoveredKey2 = await toprfSecureBackup.recoverPwEncKey({
+          targetAuthPubKey: originalEncKeyResult.authKeyPair.pk,
+          curPwEncKey: newEncKeyResult2.pwEncKey,
+          curAuthKeyPair: newEncKeyResult2.authKeyPair,
+        });
+        expect(recoveredKey2.pwEncKey).toStrictEqual(
+          originalEncKeyResult.pwEncKey,
+        );
+
+        // Verify that we can recover new enc key.
+        const recoveredKey3 = await toprfSecureBackup.recoverPwEncKey({
+          targetAuthPubKey: newEncKeyResult.authKeyPair.pk,
+          curPwEncKey: newEncKeyResult2.pwEncKey,
+          curAuthKeyPair: newEncKeyResult2.authKeyPair,
+        });
+        expect(recoveredKey3.pwEncKey).toStrictEqual(newEncKeyResult.pwEncKey);
+
+        // Enc key recovery should fail when we limit the password chain length
+        await expect(
+          toprfSecureBackup.recoverPwEncKey({
+            targetAuthPubKey: originalEncKeyResult.authKeyPair.pk,
+            curPwEncKey: newEncKeyResult2.pwEncKey,
+            curAuthKeyPair: newEncKeyResult2.authKeyPair,
+            maxPwChainLength: 1,
+          }),
+        ).rejects.toThrow(
+          TOPRFError.couldNotFetchPassword(
+            'Exceeded maximum password chain length',
+          ),
+        );
+      });
+      it(`should be able to change encryption key and recover password for ${fmtGroupedConnId(groupedConnId) ? 'aggregate' : 'normal'} verifier using pregenerated OPRF key`, async function () {
+        const secretData = utf8ToBytes('test-secret-data-for-key-change');
+        const { authConnectionId, userId, idToken, toprfSecureBackup } =
+          setup();
+
+        const result = await toprfSecureBackup.authenticate({
+          idTokens: [idToken],
+          authConnectionId,
+          userId,
+          groupedAuthConnectionId: groupedConnId,
+        });
+        expect(result.nodeAuthTokens).toBeDefined();
+        expect(result.nodeAuthTokens.length).toBeGreaterThan(0);
+
+        const originalPassword = generateRandomPassword();
+        const originalEncKeyResult =
+          await toprfSecureBackup.createAndPersistEncKey({
+            nodeAuthTokens: result.nodeAuthTokens,
+            password: originalPassword,
+            authConnectionId,
+            userId,
+          });
+
+        await toprfSecureBackup.addSecretDataItem({
+          encKey: originalEncKeyResult.encKey,
+          secretData,
+          authKeyPair: originalEncKeyResult.authKeyPair,
+        });
+
+        const originalSecretData =
+          await toprfSecureBackup.fetchAllSecretDataItems({
+            decKey: originalEncKeyResult.encKey,
+            authKeyPair: originalEncKeyResult.authKeyPair,
+          });
+        expect(originalSecretData).not.toBeNull();
+        expect(originalSecretData?.length).toBe(1);
+        expect(originalSecretData?.[0]).toStrictEqual(secretData);
+
+        // Recover the original key to get the keyShareIndex
+        const recoveredOriginalKey = await toprfSecureBackup.recoverEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          password: originalPassword,
+          authConnectionId,
+          userId,
+          groupedAuthConnectionId: groupedConnId,
+        });
+
+        expect(recoveredOriginalKey.keyShareIndex).toBe(FIRST_KEY_INDEX);
+
+        // Fetching enc key from history should fail, because enc key was not backed up yet.
+        await expect(
+          toprfSecureBackup.recoverPwEncKey({
+            targetAuthPubKey: recoveredOriginalKey.authKeyPair.pk,
+            curPwEncKey: originalEncKeyResult.pwEncKey,
+            curAuthKeyPair: originalEncKeyResult.authKeyPair,
+          }),
+        ).rejects.toThrow(
+          TOPRFError.couldNotFetchPassword(
+            'Failed to get previous password and keys',
+          ),
+        );
+
+        // Change to a new encryption key
+        const newPassword = generateRandomPassword();
+        const pregeneratedOprfKey = await toprfSecureBackup.createLocalKey({
+          password: newPassword,
+        });
+        const newEncKeyResult = await toprfSecureBackup.changeEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          authConnectionId,
+          groupedAuthConnectionId: groupedConnId,
+          userId,
+          oldEncKey: originalEncKeyResult.encKey,
+          oldPwEncKey: originalEncKeyResult.pwEncKey,
+          oldAuthKeyPair: originalEncKeyResult.authKeyPair,
+          pregeneratedOprfKey,
           newKeyShareIndex: recoveredOriginalKey.keyShareIndex + 1,
         });
         expect(newEncKeyResult).toBeDefined();
@@ -1168,6 +1346,60 @@ describe('toprf secret backup', function () {
         }),
       ).rejects.toThrow(
         'failed to fetch metadata: failed to fetch metadata: aes/gcm: invalid ghash tag',
+      );
+    });
+
+    it('should throw error if none of newPassword or pregeneratedOprfKey is provided or if both are provided', async function () {
+      const { authConnectionId, userId, idToken, toprfSecureBackup } = setup();
+
+      const result = await toprfSecureBackup.authenticate({
+        idTokens: [idToken],
+        authConnectionId,
+        userId,
+      });
+
+      // Creating keys but intentionally not storing any secret data
+      const originalPassword = generateRandomPassword();
+      const originalEncKeyResult =
+        await toprfSecureBackup.createAndPersistEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          password: originalPassword,
+          authConnectionId,
+          userId,
+        });
+
+      await expect(
+        toprfSecureBackup.changeEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          authConnectionId,
+          userId,
+          oldEncKey: originalEncKeyResult.encKey,
+          oldPwEncKey: originalEncKeyResult.pwEncKey,
+          oldAuthKeyPair: originalEncKeyResult.authKeyPair,
+          newKeyShareIndex: FIRST_KEY_INDEX + 1,
+        }),
+      ).rejects.toThrow(
+        'Either newPassword or pregeneratedOprfKey is required',
+      );
+
+      const newPassword = generateRandomPassword();
+      const pregeneratedOprfKey = await toprfSecureBackup.createLocalKey({
+        password: newPassword,
+      });
+      await expect(
+        toprfSecureBackup.changeEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          authConnectionId,
+          userId,
+          newPassword,
+          pregeneratedOprfKey,
+          oldEncKey: originalEncKeyResult.encKey,
+          oldPwEncKey: originalEncKeyResult.pwEncKey,
+          oldAuthKeyPair: originalEncKeyResult.authKeyPair,
+          newKeyShareIndex: FIRST_KEY_INDEX + 1,
+        }),
+      ).rejects.toThrow(
+        'Only one of newPassword or pregeneratedOprfKey is allowed',
       );
     });
   });
