@@ -437,23 +437,6 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         password: newPassword,
       }));
 
-    if (!oprfKey) {
-      throw new Error('OPRF key is required in pregeneratedOprfKey');
-    }
-
-    if (!authKeyPair) {
-      throw new Error('Auth key pair is required in pregeneratedOprfKey');
-    }
-
-    if (!encKey) {
-      throw new Error('Encryption key is required in pregeneratedOprfKey');
-    }
-
-    if (!pwEncKey) {
-      throw new Error(
-        'Password encryption key is required in pregeneratedOprfKey',
-      );
-    }
     let metadataStore: MetadataStore | undefined;
     let oldMetadataLockId: string | undefined;
     let newMetadataLockId: string | undefined;
