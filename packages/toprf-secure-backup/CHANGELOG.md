@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Changed `newPassword` param from required to optional in `changeEncKey` function.
+- Changed `newPassword` param from required to optional in `changeEncKey` function. ([#129](https://github.com/MetaMask/toprf-secure-backup/pull/129))
 
 ## [0.4.0]
 
