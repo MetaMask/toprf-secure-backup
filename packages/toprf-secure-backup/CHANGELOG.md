@@ -85,10 +85,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Add `fetchAuthPubKey` function to fetch current auth public key associated with user's password, helps to check if user password is changed.
   - Add `recoverPassword` function to recover a older password corresponding to provided target auth public key, user can use this function only if they have access to latest password. This function is useful for password syncing across devices.
 
-[Unreleased]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@0.4.0...HEAD
-[0.4.0]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@0.3.2...@metamask/toprf-secure-backup@0.4.0
-[0.3.2]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@0.3.1...@metamask/toprf-secure-backup@0.3.2
-[0.3.1]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@0.3.0...@metamask/toprf-secure-backup@0.3.1
-[0.3.0]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@0.2.0...@metamask/toprf-secure-backup@0.3.0
-[0.2.0]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@0.1.0...@metamask/toprf-secure-backup@0.2.0
-[0.1.0]: https://github.com/MetaMask/toprf-secure-backup/releases/tag/@metamask/toprf-secure-backup@0.1.0
+[Unreleased]: https://github.com/MetaMask/toprf-secure-backup.git/compare/@metamask/toprf-secure-backup@0.4.0...HEAD
+[0.4.0]: https://github.com/MetaMask/toprf-secure-backup.git/compare/@metamask/toprf-secure-backup@0.3.2...@metamask/toprf-secure-backup@0.4.0
+[0.3.2]: https://github.com/MetaMask/toprf-secure-backup.git/compare/@metamask/toprf-secure-backup@0.3.1...@metamask/toprf-secure-backup@0.3.2
+[0.3.1]: https://github.com/MetaMask/toprf-secure-backup.git/compare/@metamask/toprf-secure-backup@0.3.0...@metamask/toprf-secure-backup@0.3.1
+[0.3.0]: https://github.com/MetaMask/toprf-secure-backup.git/compare/@metamask/toprf-secure-backup@0.2.0...@metamask/toprf-secure-backup@0.3.0
+[0.2.0]: https://github.com/MetaMask/toprf-secure-backup.git/compare/@metamask/toprf-secure-backup@0.1.0...@metamask/toprf-secure-backup@0.2.0
+[0.1.0]: https://github.com/MetaMask/toprf-secure-backup.git/releases/tag/@metamask/toprf-secure-backup@0.1.0
