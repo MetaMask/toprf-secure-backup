@@ -588,6 +588,10 @@ export type IBatchAddSecretDataRequestBody =
  */
 export type IGetSecretDataRequestBody = IBaseMetadataRequestBody & {
   /**
+   * The authentication token of the user issued by the SSS services
+   */
+  authToken?: string;
+  /**
    * The signature produced by signing the payload (without pubKey field) using the user's private key.
    *
    * Sample signature: sign(keccak256(feature, authToken, timestamp))

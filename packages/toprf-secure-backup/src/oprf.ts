@@ -11,6 +11,11 @@ export type KeyDeriver = {
   deriveKey(seed: Uint8Array, salt: Uint8Array): Promise<Uint8Array>;
 };
 
+export type FetchMetadataAccessCreds = () => Promise<
+  | { accessToken: string; apiKey?: string }
+  | { accessToken?: string; apiKey: string }
+>;
+
 /**
  * Generates a random scalar value using the secp256k1 curve.
  *

@@ -35,6 +35,15 @@ const keyDeriver = {
 };
 
 /**
+ * Mock function to fetch metadata access credentials.
+ *
+ * @returns The metadata access credentials.
+ */
+const fetchMetadataAccessCreds = async () => ({
+  apiKey: 'test-api-key',
+});
+
+/**
  * Sets up the test environment.
  *
  * @param options - The options for the setup.
@@ -59,8 +68,11 @@ function setup(options?: {
   const userId = options?.userId ?? generateRandomUserId();
   const idToken = generateIdToken(userId, 'ES256');
   const toprfSecureBackup = new ToprfSecureBackup({
+    fetchMetadataAccessCreds,
     network: 'sapphire_devnet',
-    nodeDetailsOverride: options?.nodeDetailsOverride,
+    nodeDetailsOverride: {
+      endpoints: '/sss-beta/jrpc',
+    },
     keyDeriver: options?.keyDeriver,
   });
 

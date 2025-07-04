@@ -18,7 +18,10 @@ import type {
 
 type MetadataStoreOptions = {
   metadataEndpoint: string;
-};
+} & (
+  | { accessToken: string; apiKey?: string }
+  | { accessToken?: string; apiKey: string }
+);
 
 export type MetadataLock = {
   id: string;
@@ -76,14 +79,22 @@ export class MetadataStore {
 
   readonly #metadataEndpoint: string;
 
+  readonly #accessToken?: string;
+
+  readonly #apiKey?: string;
+
   /**
    *
    * @param options - The initialization options for the metadata store.
    * @param options.nodeEndpointsMap - The map of node endpoints which includes node index as key and node endpoint as value.
    * @param options.storageLocation - The storage location of the metadata.
+   * @param options.accessToken - The access token for the metadata store.
+   * @param options.apiKey - The api key for the metadata store.
    */
   constructor(options: MetadataStoreOptions) {
     this.#metadataEndpoint = options.metadataEndpoint;
+    this.#accessToken = options.accessToken;
+    this.#apiKey = options.apiKey;
   }
 
   /**
@@ -251,6 +262,7 @@ export class MetadataStore {
 
       const response = await fetch(url, {
         headers: {
+          'x-api-key': this.#apiKey || '',
           // eslint-disable-next-line @typescript-eslint/naming-convention
           'Content-Type': 'application/json',
         },
@@ -318,6 +330,7 @@ export class MetadataStore {
 
       const response = await fetch(url, {
         headers: {
+          'x-api-key': this.#apiKey || '',
           // eslint-disable-next-line @typescript-eslint/naming-convention
           'Content-Type': 'application/json',
         },
@@ -364,6 +377,7 @@ export class MetadataStore {
 
       const response = await fetch(url, {
         headers: {
+          'x-api-key': this.#apiKey || '',
           // eslint-disable-next-line @typescript-eslint/naming-convention
           'Content-Type': 'application/json',
         },
@@ -528,13 +542,12 @@ export class MetadataStore {
 
     const payload = {
       ...sigPayload,
+      authToken: this.#accessToken,
       signature,
       pubKey,
-    };
+    } as IAddSecretDataRequestBody | IBatchAddSecretDataRequestBody;
 
-    return payload as
-      | IAddSecretDataRequestBody
-      | IBatchAddSecretDataRequestBody;
+    return payload;
   }
 
   /**
@@ -560,6 +573,7 @@ export class MetadataStore {
     const pubKey = bytesToHex(pk);
 
     return {
+      authToken: this.#accessToken,
       feature,
       pubKey,
       timestamp,
