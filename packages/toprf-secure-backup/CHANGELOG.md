@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Changed timestamp format from seconds to milliseconds in reset rate limit requests to minimize nonce collision. ([#133](https://github.com/MetaMask/toprf-secure-backup/pull/133))
+
 ## [0.5.0]
 
 ### Added
