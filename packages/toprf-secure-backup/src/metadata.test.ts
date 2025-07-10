@@ -67,7 +67,11 @@ async function createMetadataStore(nodeEndpointsMap?: {
   const fetchMetadataAccessCreds = async (): Promise<{
     accessToken: string;
   }> => ({
-    accessToken: generateIdToken(userId, 'ES256'),
+    accessToken: generateIdToken(
+      userId,
+      'ES256',
+      'sapphire_devnet/w3a-metadata',
+    ),
   });
   return new MetadataStore({
     metadataEndpoint: node1MetadataEndpoint,

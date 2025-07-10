@@ -510,10 +510,12 @@ export class MetadataStore {
   ): Promise<IAddSecretDataRequestBody | IBatchAddSecretDataRequestBody> {
     const timestamp = Date.now().toString();
     const feature = this.#feature;
+    const { accessToken } = await this.#fetchMetadataAccessCreds();
 
     const sigPayload: Record<string, any> = {
       timestamp,
       feature,
+      authToken: accessToken,
     };
 
     if (Array.isArray(inputData)) {
@@ -533,7 +535,6 @@ export class MetadataStore {
     const signature = this.#generatePayloadSignature(sigPayload, sk);
 
     const pubKey = bytesToHex(pk);
-    const { accessToken } = await this.#fetchMetadataAccessCreds();
     const payload = {
       ...sigPayload,
       authToken: accessToken,
@@ -558,14 +559,14 @@ export class MetadataStore {
     const timestamp = Date.now().toString();
     const feature = this.#feature;
     const { pk, sk } = authKeyPair;
+    const { accessToken } = await this.#fetchMetadataAccessCreds();
 
     const signature = this.#generatePayloadSignature(
-      { feature, timestamp, itemId },
+      { feature, timestamp, itemId, authToken: accessToken },
       sk,
     );
 
     const pubKey = bytesToHex(pk);
-    const { accessToken } = await this.#fetchMetadataAccessCreds();
     return {
       authToken: accessToken,
       feature,

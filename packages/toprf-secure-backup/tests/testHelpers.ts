@@ -12,14 +12,18 @@ const jwtPrivateKey = `-----BEGIN PRIVATE KEY-----\nMEECAQAwEwYHKoZIzj0CAQYIKoZI
  *
  * @param userId - The user id of the user.
  * @param alg - The algorithm.
- *
+ * @param aud - The audience.
  * @returns The id token.
  */
-export const generateIdToken = (userId: string, alg: JwtAlgorithm): string => {
+export const generateIdToken = (
+  userId: string,
+  alg: JwtAlgorithm,
+  aud = 'torus-key-test',
+): string => {
   const iat = Math.floor(Date.now() / 1000);
   const payload = {
     iss: 'torus-key-test',
-    aud: 'torus-key-test',
+    aud,
     name: userId,
     email: userId,
     scope: 'email',

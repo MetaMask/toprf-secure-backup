@@ -66,11 +66,16 @@ function setup(options?: {
   const fetchMetadataAccessCreds = async (): Promise<{
     accessToken: string;
   }> => ({
-    accessToken: generateIdToken(userId, 'ES256'),
+    accessToken: generateIdToken(
+      userId,
+      'ES256',
+      'sapphire_devnet/w3a-metadata',
+    ),
   });
   const toprfSecureBackup = new ToprfSecureBackup({
     fetchMetadataAccessCreds,
     network: 'sapphire_devnet',
+    nodeDetailsOverride: options?.nodeDetailsOverride,
     keyDeriver: options?.keyDeriver,
   });
 
@@ -90,8 +95,7 @@ function fmtGroupedConnId(connectionId?: string): string {
 }
 
 // TODO: add tests for the scenario when a existing user tries to create a new enc key.
-// eslint-disable-next-line jest/no-focused-tests
-describe.only('toprf secret backup', function () {
+describe('toprf secret backup', function () {
   describe('authenticate', function () {
     [undefined, 'torus-test-health-aggregate'].forEach((groupedConnId) => {
       it(`should be able to authenticate user ${fmtGroupedConnId(groupedConnId)}`, async function () {
@@ -111,8 +115,7 @@ describe.only('toprf secret backup', function () {
       });
     });
 
-    // eslint-disable-next-line jest/no-focused-tests
-    it.only('should return isNewUser as false for existing user', async function () {
+    it('should return isNewUser as false for existing user', async function () {
       const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
         userId: EXISTING_USER_ID,
       });
