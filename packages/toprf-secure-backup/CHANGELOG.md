@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Breaking**: Add `fetchMetadataAccessCreds` function option in `ToprfSecureBackup` class constructor.
+  - This function should be used to inject metadata access token for calling metadata apis.
+
 ## [0.5.0]
 
 ### Added
