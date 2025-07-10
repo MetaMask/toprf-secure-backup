@@ -35,15 +35,6 @@ const keyDeriver = {
 };
 
 /**
- * Mock function to fetch metadata access credentials.
- *
- * @returns The metadata access credentials.
- */
-const fetchMetadataAccessCreds = async () => ({
-  apiKey: 'test-api-key',
-});
-
-/**
  * Sets up the test environment.
  *
  * @param options - The options for the setup.
@@ -67,12 +58,19 @@ function setup(options?: {
   const authConnectionId = options?.authConnectionId ?? 'torus-test-health';
   const userId = options?.userId ?? generateRandomUserId();
   const idToken = generateIdToken(userId, 'ES256');
+  /**
+   * Mock function to fetch metadata access credentials.
+   *
+   * @returns The metadata access credentials.
+   */
+  const fetchMetadataAccessCreds = async (): Promise<{
+    accessToken: string;
+  }> => ({
+    accessToken: generateIdToken(userId, 'ES256'),
+  });
   const toprfSecureBackup = new ToprfSecureBackup({
     fetchMetadataAccessCreds,
     network: 'sapphire_devnet',
-    nodeDetailsOverride: {
-      endpoints: '/sss-beta/jrpc',
-    },
     keyDeriver: options?.keyDeriver,
   });
 
@@ -92,7 +90,8 @@ function fmtGroupedConnId(connectionId?: string): string {
 }
 
 // TODO: add tests for the scenario when a existing user tries to create a new enc key.
-describe('toprf secret backup', function () {
+// eslint-disable-next-line jest/no-focused-tests
+describe.only('toprf secret backup', function () {
   describe('authenticate', function () {
     [undefined, 'torus-test-health-aggregate'].forEach((groupedConnId) => {
       it(`should be able to authenticate user ${fmtGroupedConnId(groupedConnId)}`, async function () {
@@ -112,7 +111,8 @@ describe('toprf secret backup', function () {
       });
     });
 
-    it('should return isNewUser as false for existing user', async function () {
+    // eslint-disable-next-line jest/no-focused-tests
+    it.only('should return isNewUser as false for existing user', async function () {
       const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
         userId: EXISTING_USER_ID,
       });

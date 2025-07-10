@@ -40,6 +40,7 @@ import type {
   KeyPair,
   RecoverPwEncKeyResult,
   NodeDetailsOverride,
+  FetchMetadataAccessCreds,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -48,7 +49,7 @@ import {
 } from './keyDerivation';
 import type { SecretDataItem } from './metadata';
 import { MetadataStore } from './metadata';
-import type { FetchMetadataAccessCreds, KeyDeriver } from './oprf';
+import type { KeyDeriver } from './oprf';
 import { OPRF, generateRandomScalar } from './oprf';
 import { resetRateLimits } from './resetRateLimits';
 import { storeKeyShares, changeKeyShares } from './storeSharesRequest';
@@ -85,7 +86,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * like SSS endpoints, indexes, and public keys.
    * @param params.keyDeriver - Optional key deriver to be used for an
    * additional layer of security.
-   * @param params.fetchMetadataAccessCreds - Optional function to fetch metadata access credentials.
+   * @param params.fetchMetadataAccessCreds - Function to fetch metadata access credentials.
    */
   constructor(params: {
     network: TORUS_SAPPHIRE_NETWORK_TYPE;
@@ -736,7 +737,6 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       finalEndpoints,
     );
 
-    console.log('finalEndpoints', finalEndpoints);
     return {
       nodeEndpoints: finalEndpoints,
       nodeEndpointsMap: createNodeEndpointsMap(finalEndpoints, finalIndexes),
@@ -759,19 +759,11 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     const metadataEndpointsMap =
       await this.#getMetadataEndpointsMap(nodeEndpointsMap);
     const node1MetadataEndpoint = metadataEndpointsMap['1'];
-    const { accessToken, apiKey } = await this.#fetchMetadataAccessCreds();
-    if (!accessToken && !apiKey) {
-      throw new Error('No metadata access token or api key found');
-    }
 
-    const metadataStoreOptions = accessToken
-      ? {
-          metadataEndpoint: node1MetadataEndpoint,
-          accessToken,
-        }
-      : { metadataEndpoint: node1MetadataEndpoint, apiKey: apiKey as string };
-
-    const metadataStore = new MetadataStore(metadataStoreOptions);
+    const metadataStore = new MetadataStore({
+      metadataEndpoint: node1MetadataEndpoint,
+      fetchMetadataAccessCreds: this.#fetchMetadataAccessCreds,
+    });
 
     this.#metadataStoreCache = metadataStore;
 

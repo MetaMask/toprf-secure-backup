@@ -629,3 +629,12 @@ export type IMetadataLockRequestBody = {
    */
   id?: string | undefined;
 };
+
+/**
+ * FetchMetadataAccessCreds - The function to fetch the metadata access credentials.
+ *
+ * @returns The metadata access credentials.
+ */
+export type FetchMetadataAccessCreds = () => Promise<{
+  accessToken: string;
+}>;

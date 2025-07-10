@@ -25,6 +25,7 @@ export const generateIdToken = (userId: string, alg: JwtAlgorithm): string => {
     scope: 'email',
     iat,
     eat: iat + 120,
+    env: 'testcases',
   };
 
   const algo = {
