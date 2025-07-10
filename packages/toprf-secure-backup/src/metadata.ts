@@ -537,7 +537,6 @@ export class MetadataStore {
     const pubKey = bytesToHex(pk);
     const payload = {
       ...sigPayload,
-      authToken: accessToken,
       signature,
       pubKey,
     } as IAddSecretDataRequestBody | IBatchAddSecretDataRequestBody;
@@ -560,20 +559,14 @@ export class MetadataStore {
     const feature = this.#feature;
     const { pk, sk } = authKeyPair;
     const { accessToken } = await this.#fetchMetadataAccessCreds();
-
-    const signature = this.#generatePayloadSignature(
-      { feature, timestamp, itemId, authToken: accessToken },
-      sk,
-    );
+    const sigPayload = { feature, timestamp, itemId, authToken: accessToken };
+    const signature = this.#generatePayloadSignature(sigPayload, sk);
 
     const pubKey = bytesToHex(pk);
     return {
-      authToken: accessToken,
-      feature,
+      ...sigPayload,
       pubKey,
-      timestamp,
       signature,
-      itemId,
     };
   }
 
