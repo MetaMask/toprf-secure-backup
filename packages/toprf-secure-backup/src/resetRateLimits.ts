@@ -133,7 +133,7 @@ export const resetRateLimits = async (params: {
   const promises = endpointsWithAuthTokens.map(
     async ({ endpoint, authToken }) => {
       const dataToSign = toSnakeCaseKeys({
-        timestamp: Math.floor(Date.now() / 1000),
+        timestamp: Date.now(),
         nodeIndex: authToken.nodeIndex,
         action: 'reset_ratelimit',
       });
