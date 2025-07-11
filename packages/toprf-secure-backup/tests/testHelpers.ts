@@ -12,19 +12,24 @@ const jwtPrivateKey = `-----BEGIN PRIVATE KEY-----\nMEECAQAwEwYHKoZIzj0CAQYIKoZI
  *
  * @param userId - The user id of the user.
  * @param alg - The algorithm.
- *
+ * @param aud - The audience.
  * @returns The id token.
  */
-export const generateIdToken = (userId: string, alg: JwtAlgorithm): string => {
+export const generateIdToken = (
+  userId: string,
+  alg: JwtAlgorithm,
+  aud = 'torus-key-test',
+): string => {
   const iat = Math.floor(Date.now() / 1000);
   const payload = {
     iss: 'torus-key-test',
-    aud: 'torus-key-test',
+    aud,
     name: userId,
     email: userId,
     scope: 'email',
     iat,
     eat: iat + 120,
+    env: 'testcases',
   };
 
   const algo = {
@@ -62,3 +67,30 @@ export function generateRandomUserId(): string {
  */
 export const sleep = async (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Generates the metadata access token for the given user id.
+ *
+ * @param userId - The user id of the user.
+ * @returns a function that can be used to fetch the metadata access token.
+ */
+export const generateMetadataAccessToken = (
+  userId: string,
+): (() => Promise<{ metadataAccessToken: string }>) => {
+  /**
+   * Mock function to fetch metadata access credentials.
+   *
+   * @returns The metadata access credentials.
+   */
+  const fetchMetadataAccessCreds = async (): Promise<{
+    metadataAccessToken: string;
+  }> => ({
+    metadataAccessToken: generateIdToken(
+      userId,
+      'ES256',
+      'sapphire_devnet/w3a-metadata',
+    ),
+  });
+
+  return fetchMetadataAccessCreds;
+};

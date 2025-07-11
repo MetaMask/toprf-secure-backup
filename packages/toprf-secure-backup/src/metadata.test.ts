@@ -9,6 +9,7 @@ import {
 } from './keyDerivation';
 import { MetadataLockStatus, MetadataStore } from './metadata';
 import { createNodeEndpointsMap } from './utils';
+import { generateMetadataAccessToken } from '../tests/testHelpers';
 
 const secretData = utf8ToBytes('test-secret-data');
 
@@ -57,8 +58,13 @@ async function createMetadataStore(nodeEndpointsMap?: {
   let nodeEndpoints = nodeEndpointsMap;
   nodeEndpoints ??= await getNodeEndpointsMap();
   const node1MetadataEndpoint = nodeEndpoints['1'];
+  const userId = 'test-user';
+  const fetchMetadataAccessCreds = generateMetadataAccessToken(userId);
 
-  return new MetadataStore({ metadataEndpoint: node1MetadataEndpoint });
+  return new MetadataStore({
+    metadataEndpoint: node1MetadataEndpoint,
+    fetchMetadataAccessCreds,
+  });
 }
 
 describe('MetadataStore', () => {

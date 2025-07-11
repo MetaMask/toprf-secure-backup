@@ -14,10 +14,12 @@ import type {
   IMetadataLockRequestBody,
   NodeAuthToken,
   BaseAddSecretDataItemParams,
+  FetchMetadataAccessCreds,
 } from './interfaces';
 
 type MetadataStoreOptions = {
   metadataEndpoint: string;
+  fetchMetadataAccessCreds: FetchMetadataAccessCreds;
 };
 
 export type MetadataLock = {
@@ -76,14 +78,18 @@ export class MetadataStore {
 
   readonly #metadataEndpoint: string;
 
+  readonly #fetchMetadataAccessCreds: FetchMetadataAccessCreds;
+
   /**
    *
    * @param options - The initialization options for the metadata store.
    * @param options.nodeEndpointsMap - The map of node endpoints which includes node index as key and node endpoint as value.
    * @param options.storageLocation - The storage location of the metadata.
+   * @param options.fetchMetadataAccessCreds - The function to fetch the metadata access credentials.
    */
   constructor(options: MetadataStoreOptions) {
     this.#metadataEndpoint = options.metadataEndpoint;
+    this.#fetchMetadataAccessCreds = options.fetchMetadataAccessCreds;
   }
 
   /**
@@ -240,13 +246,14 @@ export class MetadataStore {
         params.secretData.data,
         params.encKey,
       );
-      const payload = this.#generatePayloadForSetOrBatchSetSecretDataRequest(
-        {
-          itemId: params.secretData.itemId,
-          data: encryptedData,
-        },
-        params.authKeyPair,
-      );
+      const payload =
+        await this.#generatePayloadForSetOrBatchSetSecretDataRequest(
+          {
+            itemId: params.secretData.itemId,
+            data: encryptedData,
+          },
+          params.authKeyPair,
+        );
       const requestBody = JSON.stringify(payload);
 
       const response = await fetch(url, {
@@ -311,10 +318,11 @@ export class MetadataStore {
         data: this.#encryptData(secret.data, encKeys[index]),
         itemId: secret.itemId,
       }));
-      const payload = this.#generatePayloadForSetOrBatchSetSecretDataRequest(
-        encryptedDataArray,
-        params.authKeyPair,
-      );
+      const payload =
+        await this.#generatePayloadForSetOrBatchSetSecretDataRequest(
+          encryptedDataArray,
+          params.authKeyPair,
+        );
 
       const response = await fetch(url, {
         headers: {
@@ -357,7 +365,7 @@ export class MetadataStore {
   }): Promise<SecretDataItem[]> {
     try {
       const url = `${params.metadataEndpoint}/enc_account_data/get`;
-      const payload = this.#generatePayloadForGetSecretDataRequest(
+      const payload = await this.#generatePayloadForGetSecretDataRequest(
         params.authKeyPair,
         params.itemId,
       );
@@ -496,16 +504,18 @@ export class MetadataStore {
    * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
    * @returns The payload for the batch set secret data request.
    */
-  #generatePayloadForSetOrBatchSetSecretDataRequest(
+  async #generatePayloadForSetOrBatchSetSecretDataRequest(
     inputData: SecretDataItem | SecretDataItem[],
     authKeyPair: KeyPair,
-  ): IAddSecretDataRequestBody | IBatchAddSecretDataRequestBody {
+  ): Promise<IAddSecretDataRequestBody | IBatchAddSecretDataRequestBody> {
     const timestamp = Date.now().toString();
     const feature = this.#feature;
+    const { metadataAccessToken } = await this.#fetchMetadataAccessCreds();
 
     const sigPayload: Record<string, any> = {
       timestamp,
       feature,
+      authToken: metadataAccessToken,
     };
 
     if (Array.isArray(inputData)) {
@@ -525,16 +535,13 @@ export class MetadataStore {
     const signature = this.#generatePayloadSignature(sigPayload, sk);
 
     const pubKey = bytesToHex(pk);
-
     const payload = {
       ...sigPayload,
       signature,
       pubKey,
-    };
+    } as IAddSecretDataRequestBody | IBatchAddSecretDataRequestBody;
 
-    return payload as
-      | IAddSecretDataRequestBody
-      | IBatchAddSecretDataRequestBody;
+    return payload;
   }
 
   /**
@@ -544,27 +551,27 @@ export class MetadataStore {
    * @param itemId - The item id to be used for fetching the secret data.
    * @returns The payload for the get secret data request.
    */
-  #generatePayloadForGetSecretDataRequest(
+  async #generatePayloadForGetSecretDataRequest(
     authKeyPair: KeyPair,
     itemId?: string,
-  ): IGetSecretDataRequestBody {
+  ): Promise<IGetSecretDataRequestBody> {
     const timestamp = Date.now().toString();
     const feature = this.#feature;
     const { pk, sk } = authKeyPair;
-
-    const signature = this.#generatePayloadSignature(
-      { feature, timestamp, itemId },
-      sk,
-    );
+    const { metadataAccessToken } = await this.#fetchMetadataAccessCreds();
+    const sigPayload = {
+      feature,
+      timestamp,
+      itemId,
+      authToken: metadataAccessToken,
+    };
+    const signature = this.#generatePayloadSignature(sigPayload, sk);
 
     const pubKey = bytesToHex(pk);
-
     return {
-      feature,
+      ...sigPayload,
       pubKey,
-      timestamp,
       signature,
-      itemId,
     };
   }
 

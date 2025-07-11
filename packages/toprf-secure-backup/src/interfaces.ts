@@ -530,7 +530,8 @@ export type IBatchAddData = {
 export type IBaseAddSecretDataRequestBody<DataType> =
   IBaseMetadataRequestBody & {
     /**
-     * The authentication token of the user issued by the SSS services
+     * The authentication token of the user issued by authentication service.
+     * this token is also known as `metadataAccessToken`.
      */
     authToken?: string;
     /**
@@ -588,6 +589,10 @@ export type IBatchAddSecretDataRequestBody =
  */
 export type IGetSecretDataRequestBody = IBaseMetadataRequestBody & {
   /**
+   * The authentication token of the user issued by the SSS services
+   */
+  authToken?: string;
+  /**
    * The signature produced by signing the payload (without pubKey field) using the user's private key.
    *
    * Sample signature: sign(keccak256(feature, authToken, timestamp))
@@ -625,3 +630,12 @@ export type IMetadataLockRequestBody = {
    */
   id?: string | undefined;
 };
+
+/**
+ * FetchMetadataAccessCreds - The function to fetch the metadata access credentials.
+ *
+ * @returns The metadata access credentials.
+ */
+export type FetchMetadataAccessCreds = () => Promise<{
+  metadataAccessToken: string;
+}>;

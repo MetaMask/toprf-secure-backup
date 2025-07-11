@@ -13,6 +13,7 @@ import * as resetRateLimitsModule from './resetRateLimits';
 import { ToprfSecureBackup } from './toprfSecureBackup';
 import {
   generateIdToken,
+  generateMetadataAccessToken,
   generateRandomPassword,
   generateRandomUserId,
   sleep,
@@ -58,7 +59,9 @@ function setup(options?: {
   const authConnectionId = options?.authConnectionId ?? 'torus-test-health';
   const userId = options?.userId ?? generateRandomUserId();
   const idToken = generateIdToken(userId, 'ES256');
+  const fetchMetadataAccessCreds = generateMetadataAccessToken(userId);
   const toprfSecureBackup = new ToprfSecureBackup({
+    fetchMetadataAccessCreds,
     network: 'sapphire_devnet',
     nodeDetailsOverride: options?.nodeDetailsOverride,
     keyDeriver: options?.keyDeriver,

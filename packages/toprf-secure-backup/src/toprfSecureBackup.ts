@@ -40,6 +40,7 @@ import type {
   KeyPair,
   RecoverPwEncKeyResult,
   NodeDetailsOverride,
+  FetchMetadataAccessCreds,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -66,6 +67,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
 
   readonly #keyDeriver?: KeyDeriver;
 
+  readonly #fetchMetadataAccessCreds: FetchMetadataAccessCreds;
+
   #metadataStoreCache: MetadataStore | undefined;
 
   /**
@@ -83,9 +86,11 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * like SSS endpoints, indexes, and public keys.
    * @param params.keyDeriver - Optional key deriver to be used for an
    * additional layer of security.
+   * @param params.fetchMetadataAccessCreds - Function to fetch metadata access credentials.
    */
   constructor(params: {
     network: TORUS_SAPPHIRE_NETWORK_TYPE;
+    fetchMetadataAccessCreds: FetchMetadataAccessCreds;
     nodeDetailsOverride?: NodeDetailsOverride;
     keyDeriver?: KeyDeriver;
   }) {
@@ -94,6 +99,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     });
     this.#nodeDetailsOverride = params.nodeDetailsOverride;
     this.#keyDeriver = params.keyDeriver;
+    this.#fetchMetadataAccessCreds = params.fetchMetadataAccessCreds;
   }
 
   /**
@@ -753,8 +759,10 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     const metadataEndpointsMap =
       await this.#getMetadataEndpointsMap(nodeEndpointsMap);
     const node1MetadataEndpoint = metadataEndpointsMap['1'];
+
     const metadataStore = new MetadataStore({
       metadataEndpoint: node1MetadataEndpoint,
+      fetchMetadataAccessCreds: this.#fetchMetadataAccessCreds,
     });
 
     this.#metadataStoreCache = metadataStore;
