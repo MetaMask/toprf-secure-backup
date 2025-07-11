@@ -74,7 +74,9 @@ export const sleep = async (ms: number): Promise<void> =>
  * @param userId - The user id of the user.
  * @returns a function that can be used to fetch the metadata access token.
  */
-export const generateMetadataAccessToken = (userId: string) => {
+export const generateMetadataAccessToken = (
+  userId: string,
+): (() => Promise<{ metadataAccessToken: string }>) => {
   /**
    * Mock function to fetch metadata access credentials.
    *
