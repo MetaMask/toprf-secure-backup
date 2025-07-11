@@ -530,7 +530,8 @@ export type IBatchAddData = {
 export type IBaseAddSecretDataRequestBody<DataType> =
   IBaseMetadataRequestBody & {
     /**
-     * The authentication token of the user issued by the SSS services
+     * The authentication token of the user issued by authentication service.
+     * this token is also known as `metadataAccessToken`.
      */
     authToken?: string;
     /**
@@ -636,5 +637,5 @@ export type IMetadataLockRequestBody = {
  * @returns The metadata access credentials.
  */
 export type FetchMetadataAccessCreds = () => Promise<{
-  accessToken: string;
+  metadataAccessToken: string;
 }>;

@@ -67,3 +67,28 @@ export function generateRandomUserId(): string {
  */
 export const sleep = async (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Generates the metadata access token for the given user id.
+ *
+ * @param userId - The user id of the user.
+ * @returns a function that can be used to fetch the metadata access token.
+ */
+export const generateMetadataAccessToken = (userId: string) => {
+  /**
+   * Mock function to fetch metadata access credentials.
+   *
+   * @returns The metadata access credentials.
+   */
+  const fetchMetadataAccessCreds = async (): Promise<{
+    metadataAccessToken: string;
+  }> => ({
+    metadataAccessToken: generateIdToken(
+      userId,
+      'ES256',
+      'sapphire_devnet/w3a-metadata',
+    ),
+  });
+
+  return fetchMetadataAccessCreds;
+};

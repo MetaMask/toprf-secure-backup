@@ -85,7 +85,7 @@ export class MetadataStore {
    * @param options - The initialization options for the metadata store.
    * @param options.nodeEndpointsMap - The map of node endpoints which includes node index as key and node endpoint as value.
    * @param options.storageLocation - The storage location of the metadata.
-   * @param options.accessToken - The access token for the metadata store.
+   * @param options.fetchMetadataAccessCreds - The function to fetch the metadata access credentials.
    */
   constructor(options: MetadataStoreOptions) {
     this.#metadataEndpoint = options.metadataEndpoint;
@@ -510,12 +510,12 @@ export class MetadataStore {
   ): Promise<IAddSecretDataRequestBody | IBatchAddSecretDataRequestBody> {
     const timestamp = Date.now().toString();
     const feature = this.#feature;
-    const { accessToken } = await this.#fetchMetadataAccessCreds();
+    const { metadataAccessToken } = await this.#fetchMetadataAccessCreds();
 
     const sigPayload: Record<string, any> = {
       timestamp,
       feature,
-      authToken: accessToken,
+      authToken: metadataAccessToken,
     };
 
     if (Array.isArray(inputData)) {
@@ -558,8 +558,13 @@ export class MetadataStore {
     const timestamp = Date.now().toString();
     const feature = this.#feature;
     const { pk, sk } = authKeyPair;
-    const { accessToken } = await this.#fetchMetadataAccessCreds();
-    const sigPayload = { feature, timestamp, itemId, authToken: accessToken };
+    const { metadataAccessToken } = await this.#fetchMetadataAccessCreds();
+    const sigPayload = {
+      feature,
+      timestamp,
+      itemId,
+      authToken: metadataAccessToken,
+    };
     const signature = this.#generatePayloadSignature(sigPayload, sk);
 
     const pubKey = bytesToHex(pk);

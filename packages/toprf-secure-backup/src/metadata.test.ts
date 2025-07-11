@@ -9,7 +9,7 @@ import {
 } from './keyDerivation';
 import { MetadataLockStatus, MetadataStore } from './metadata';
 import { createNodeEndpointsMap } from './utils';
-import { generateIdToken } from '../tests/testHelpers';
+import { generateMetadataAccessToken } from '../tests/testHelpers';
 
 const secretData = utf8ToBytes('test-secret-data');
 
@@ -59,20 +59,8 @@ async function createMetadataStore(nodeEndpointsMap?: {
   nodeEndpoints ??= await getNodeEndpointsMap();
   const node1MetadataEndpoint = nodeEndpoints['1'];
   const userId = 'test-user';
-  /**
-   * Mock function to fetch metadata access credentials.
-   *
-   * @returns The metadata access credentials.
-   */
-  const fetchMetadataAccessCreds = async (): Promise<{
-    accessToken: string;
-  }> => ({
-    accessToken: generateIdToken(
-      userId,
-      'ES256',
-      'sapphire_devnet/w3a-metadata',
-    ),
-  });
+  const fetchMetadataAccessCreds = generateMetadataAccessToken(userId);
+
   return new MetadataStore({
     metadataEndpoint: node1MetadataEndpoint,
     fetchMetadataAccessCreds,
