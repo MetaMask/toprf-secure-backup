@@ -44,6 +44,7 @@ export enum TOPRFErrorCode {
   JsonRpcError = 1012,
   CouldNotFetchPassword = 1013,
   NoHashedIdToken = 1014,
+  MaxKeyChainLengthExceeded = 1015,
 }
 
 /**
@@ -75,6 +76,8 @@ export class TOPRFError extends Error implements ITOPRFError {
     [TOPRFErrorCode.AuthTokenExpired]: 'Auth token expired.',
     [TOPRFErrorCode.JsonRpcError]: 'Json rpc error.',
     [TOPRFErrorCode.CouldNotFetchPassword]: 'Could not fetch password.',
+    [TOPRFErrorCode.MaxKeyChainLengthExceeded]:
+      'Exceeded maximum key chain length.',
     [TOPRFErrorCode.NoHashedIdToken]:
       'hashedIdToken is required when using single-id(aggregate) verifier.',
   };
@@ -288,6 +291,18 @@ export class TOPRFError extends Error implements ITOPRFError {
   public static couldNotFetchPassword(extraMessage = ''): ITOPRFError {
     return TOPRFError.fromCode(
       TOPRFErrorCode.CouldNotFetchPassword,
+      extraMessage,
+    );
+  }
+
+  /**
+   *
+   * @param extraMessage - The extra message of the error.
+   * @returns - The error instance for max password chain length exceeded.
+   */
+  public static maxKeyChainLengthExceeded(extraMessage = ''): ITOPRFError {
+    return TOPRFError.fromCode(
+      TOPRFErrorCode.MaxKeyChainLengthExceeded,
       extraMessage,
     );
   }

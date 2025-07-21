@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Replaced `couldNotFetchPassword` error with `maxKeyChainLengthExceeded` in `recoverPwEncKey` function.([#136]https://github.com/MetaMask/toprf-secure-backup/pull/136)
+
 ## [0.6.0]
 
 ### Added
