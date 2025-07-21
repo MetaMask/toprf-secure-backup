@@ -139,8 +139,6 @@ describe('toprf secret backup', function () {
           userId,
         }),
       ).rejects.toThrow('Failed to get node details');
-      // it called in constructor and in authenticate
-      // fnd package internally caches results so multiple calls wont degrade performance.
       expect(fndSpy).toHaveBeenCalledTimes(1);
     });
   });
