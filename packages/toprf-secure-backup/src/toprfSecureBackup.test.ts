@@ -887,11 +887,7 @@ describe('toprf secret backup', function () {
             curAuthKeyPair: newEncKeyResult2.authKeyPair,
             maxPwChainLength: 1,
           }),
-        ).rejects.toThrow(
-          TOPRFError.couldNotFetchPassword(
-            'Exceeded maximum password chain length',
-          ),
-        );
+        ).rejects.toThrow(TOPRFError.maxKeyChainLengthExceeded());
       });
       it(`should be able to change encryption key and recover password for ${fmtGroupedConnId(groupedConnId) ? 'aggregate' : 'normal'} verifier using pregenerated OPRF key`, async function () {
         const secretData = utf8ToBytes('test-secret-data-for-key-change');
@@ -1065,11 +1061,7 @@ describe('toprf secret backup', function () {
             curAuthKeyPair: newEncKeyResult2.authKeyPair,
             maxPwChainLength: 1,
           }),
-        ).rejects.toThrow(
-          TOPRFError.couldNotFetchPassword(
-            'Exceeded maximum password chain length',
-          ),
-        );
+        ).rejects.toThrow(TOPRFError.maxKeyChainLengthExceeded());
       });
     });
 
