@@ -100,6 +100,10 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     this.#nodeDetailsOverride = params.nodeDetailsOverride;
     this.#keyDeriver = params.keyDeriver;
     this.#fetchMetadataAccessCreds = params.fetchMetadataAccessCreds;
+    // pre-fetch node details to speed up the first call to authenticate
+    this.#getNodeDetails().catch((error) => {
+      console.error('Error fetching node details', error);
+    });
   }
 
   /**
@@ -673,9 +677,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       }
     }
 
-    throw TOPRFError.couldNotFetchPassword(
-      'Exceeded maximum password chain length',
-    );
+    throw TOPRFError.maxKeyChainLengthExceeded();
   }
 
   /**
