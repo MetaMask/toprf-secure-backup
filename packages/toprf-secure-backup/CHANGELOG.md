@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0]
+
 ### Changed
 
 - Replaced `couldNotFetchPassword` error with `maxKeyChainLengthExceeded` in `recoverPwEncKey` function.([#136]https://github.com/MetaMask/toprf-secure-backup/pull/136)
@@ -102,7 +104,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Add `fetchAuthPubKey` function to fetch current auth public key associated with user's password, helps to check if user password is changed.
   - Add `recoverPassword` function to recover a older password corresponding to provided target auth public key, user can use this function only if they have access to latest password. This function is useful for password syncing across devices.
 
-[Unreleased]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@0.6.0...HEAD
+[Unreleased]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@0.7.0...HEAD
+[0.7.0]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@0.6.0...@metamask/toprf-secure-backup@0.7.0
 [0.6.0]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@0.5.0...@metamask/toprf-secure-backup@0.6.0
 [0.5.0]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@0.4.0...@metamask/toprf-secure-backup@0.5.0
 [0.4.0]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@0.3.2...@metamask/toprf-secure-backup@0.4.0
