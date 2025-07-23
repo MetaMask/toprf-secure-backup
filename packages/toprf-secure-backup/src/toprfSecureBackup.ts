@@ -102,8 +102,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     this.#fetchMetadataAccessCreds = params.fetchMetadataAccessCreds;
     // pre-fetch node details to speed up the first call to authenticate
     // fnd package internally caches results so preloading will speed up subsequent calls.
-    this.#getNodeDetails().catch((error) => {
-      console.error('Error fetching node details', error);
+    this.#getNodeDetails().catch(() => {
+      // ignore error
     });
   }
 
