@@ -8,7 +8,7 @@ import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
 import { GET_PUB_KEY_THRESHOLD, JRPC_METHODS } from './constants';
 import { TOPRFError } from './errors';
-import type { NodeAuthTokens } from './interfaces';
+import type { FetchAuthPubKeyResult, NodeAuthTokens } from './interfaces';
 import type {
   GetPubKeyJRPCRequest,
   GetPubKeyJRPCRequestParams,
@@ -66,10 +66,7 @@ const sendGetPubKeyRequest = async (
  */
 export const validatePubKey = async (
   resultArr: GetPubKeyJRPCResponse[],
-): Promise<{
-  pubKey: Uint8Array;
-  keyIndex: number;
-}> => {
+): Promise<FetchAuthPubKeyResult> => {
   const completedRequests =
     filterCompletedRequests<GetPubKeyJRPCResponse>(resultArr);
 
@@ -78,26 +75,23 @@ export const validatePubKey = async (
       `Insufficient get pub key request results, expected ${GET_PUB_KEY_THRESHOLD} but got ${completedRequests.length}`,
     );
   }
-  const thresholdPubKey = thresholdSame(
-    completedRequests.map((res) => res.result?.pubKey),
+  const thresholdPubKeyData = thresholdSame(
+    completedRequests.map((res) => {
+      return {
+        pubKey: res.result?.pubKey,
+        keyIndex: res.result?.keyIndex,
+      };
+    }),
     GET_PUB_KEY_THRESHOLD,
   );
 
-  if (!thresholdPubKey) {
+  if (!thresholdPubKeyData?.pubKey || !thresholdPubKeyData?.keyIndex) {
     throw TOPRFError.couldNotDeriveThresholdAuthPubKey();
   }
 
-  // find the request with response same as threshold pub key
-  const thresholdRequest = completedRequests.find(
-    (res) => res.result?.pubKey === thresholdPubKey,
-  );
-
-  if (!thresholdRequest?.result?.keyIndex) {
-    throw TOPRFError.couldNotDeriveThresholdAuthPubKey();
-  }
   return {
-    pubKey: hexToBytes(thresholdPubKey),
-    keyIndex: thresholdRequest.result.keyIndex,
+    authPubKey: hexToBytes(thresholdPubKeyData.pubKey),
+    keyIndex: thresholdPubKeyData.keyIndex,
   };
 };
 
@@ -119,10 +113,7 @@ export const getPubKey = async (params: {
   authConnectionId: string;
   userId: string;
   groupedAuthConnectionId?: string;
-}): Promise<{
-  pubKey: Uint8Array;
-  keyIndex: number;
-}> => {
+}): Promise<FetchAuthPubKeyResult> => {
   const {
     authTokens,
     nodeEndpointsMap,
@@ -154,11 +145,8 @@ export const getPubKey = async (params: {
     },
   );
 
-  return Some<
-    GetPubKeyJRPCResponse,
-    {
-      pubKey: Uint8Array;
-      keyIndex: number;
-    }
-  >(promises, async (resultArr) => validatePubKey(resultArr));
+  return Some<GetPubKeyJRPCResponse, FetchAuthPubKeyResult>(
+    promises,
+    async (resultArr) => validatePubKey(resultArr),
+  );
 };

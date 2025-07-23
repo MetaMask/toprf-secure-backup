@@ -29,7 +29,7 @@ describe('getPubKey', () => {
       TOPRFError.couldNotDeriveThresholdAuthPubKey(),
     );
   });
-  it('should fail when key index is not present but pub key is present', async function () {
+  it('should fail if key index is not present but pub key is present', async function () {
     const resultArr = ['1234', '1234', '1234', '1234'].map((pubKey) => ({
       id: 1,
       jsonrpc: '2.0' as JsonRpcVersion,
