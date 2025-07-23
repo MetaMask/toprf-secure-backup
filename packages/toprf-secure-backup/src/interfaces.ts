@@ -354,6 +354,7 @@ export type FetchAuthPubKeyParams = {
 
 export type FetchAuthPubKeyResult = {
   authPubKey: SEC1EncodedPublicKey;
+  keyIndex: number;
 };
 
 export type RecoverPwEncKeyParams = {

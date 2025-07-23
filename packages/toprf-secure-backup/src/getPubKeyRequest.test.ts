@@ -2,6 +2,7 @@ import type { JsonRpcVersion } from '@metamask/auth-network-utils';
 
 import { TOPRFError } from './errors';
 import { getPubKey, validatePubKey } from './getPubKeyRequest';
+import type { GetPubKeyResult } from './jrpcInterfaces';
 
 describe('getPubKey', () => {
   it('should fail with insufficient auth tokens', async function () {
@@ -21,7 +22,18 @@ describe('getPubKey', () => {
     const resultArr = ['1234', '1234', '5678', '5678'].map((pubKey) => ({
       id: 1,
       jsonrpc: '2.0' as JsonRpcVersion,
-      result: { pubKey },
+      result: { pubKey, keyIndex: 1 },
+    }));
+
+    await expect(validatePubKey(resultArr)).rejects.toThrow(
+      TOPRFError.couldNotDeriveThresholdAuthPubKey(),
+    );
+  });
+  it('should fail if key index is not present but pub key is present', async function () {
+    const resultArr = ['1234', '1234', '1234', '1234'].map((pubKey) => ({
+      id: 1,
+      jsonrpc: '2.0' as JsonRpcVersion,
+      result: { pubKey } as GetPubKeyResult,
     }));
 
     await expect(validatePubKey(resultArr)).rejects.toThrow(
