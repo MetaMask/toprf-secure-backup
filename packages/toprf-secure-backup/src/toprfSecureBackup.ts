@@ -625,14 +625,14 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       groupedAuthConnectionId,
     } = params;
     const { nodeEndpointsMap } = await this.#getNodeDetails();
-    const authPubKey = await getPubKey({
+    const { pubKey, keyIndex } = await getPubKey({
       authTokens: nodeAuthTokens,
       nodeEndpointsMap,
       authConnectionId,
       userId,
       groupedAuthConnectionId,
     });
-    return { authPubKey };
+    return { authPubKey: pubKey, keyIndex };
   }
 
   /**

@@ -66,7 +66,10 @@ const sendGetPubKeyRequest = async (
  */
 export const validatePubKey = async (
   resultArr: GetPubKeyJRPCResponse[],
-): Promise<Uint8Array> => {
+): Promise<{
+  pubKey: Uint8Array;
+  keyIndex: number;
+}> => {
   const completedRequests =
     filterCompletedRequests<GetPubKeyJRPCResponse>(resultArr);
 
@@ -84,7 +87,18 @@ export const validatePubKey = async (
     throw TOPRFError.couldNotDeriveThresholdAuthPubKey();
   }
 
-  return hexToBytes(thresholdPubKey);
+  // find the request with response same as threshold pub key
+  const thresholdRequest = completedRequests.find(
+    (res) => res.result?.pubKey === thresholdPubKey,
+  );
+
+  if (!thresholdRequest?.result?.keyIndex) {
+    throw TOPRFError.couldNotDeriveThresholdAuthPubKey();
+  }
+  return {
+    pubKey: hexToBytes(thresholdPubKey),
+    keyIndex: thresholdRequest.result.keyIndex,
+  };
 };
 
 /**
@@ -97,7 +111,7 @@ export const validatePubKey = async (
  * @param params.userId - The user id of the user issued by authentication service.
  * @param params.nodeEndpointsMap - Map of node index to endpoint to be used for the toprf eval request.
  *
- * @returns - A promise that resolves with the key pair seed successfully.
+ * @returns - A promise that resolves with the latest auth pub key and key index successfully.
  */
 export const getPubKey = async (params: {
   authTokens: NodeAuthTokens;
@@ -105,7 +119,10 @@ export const getPubKey = async (params: {
   authConnectionId: string;
   userId: string;
   groupedAuthConnectionId?: string;
-}): Promise<Uint8Array> => {
+}): Promise<{
+  pubKey: Uint8Array;
+  keyIndex: number;
+}> => {
   const {
     authTokens,
     nodeEndpointsMap,
@@ -137,7 +154,11 @@ export const getPubKey = async (params: {
     },
   );
 
-  return Some<GetPubKeyJRPCResponse, Uint8Array>(promises, async (resultArr) =>
-    validatePubKey(resultArr),
-  );
+  return Some<
+    GetPubKeyJRPCResponse,
+    {
+      pubKey: Uint8Array;
+      keyIndex: number;
+    }
+  >(promises, async (resultArr) => validatePubKey(resultArr));
 };

@@ -146,6 +146,7 @@ export type GetPubKeyJRPCRequest = JRPCRequest<GetPubKeyJRPCRequestParams>;
 
 export type GetPubKeyResult = {
   pubKey: string;
+  keyIndex: number;
 };
 
 export type GetPubKeyJRPCResponse = JRPCResponse<GetPubKeyResult>;
