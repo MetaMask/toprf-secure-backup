@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Uncategorized
+
+- chore: dep updates ([#143](https://github.com/MetaMask/toprf-secure-backup/pull/143))
+
 ## [0.3.1]
 
 ### Changed
