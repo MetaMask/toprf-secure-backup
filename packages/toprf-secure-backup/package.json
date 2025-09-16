@@ -1,6 +1,6 @@
 {
   "name": "@metamask/toprf-secure-backup",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "The MetaMask Node module template",
   "keywords": [
     "MetaMask",
@@ -47,7 +47,7 @@
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch"
   },
   "dependencies": {
-    "@metamask/auth-network-utils": "^0.3.1",
+    "@metamask/auth-network-utils": "^0.4.0",
     "@noble/ciphers": "^1.2.1",
     "@noble/curves": "^1.8.1",
     "@noble/hashes": "^1.7.1",
