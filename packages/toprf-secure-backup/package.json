@@ -60,7 +60,7 @@
   },
   "devDependencies": {
     "@babel/runtime": "^7.26.10",
-    "@metamask/auto-changelog": "^3.4.4",
+    "@metamask/auto-changelog": "^5.1.0",
     "@types/bn.js": "^5.1.6",
     "@types/jest": "^29.5.14",
     "@types/jsonwebtoken": "^9.0.9",
