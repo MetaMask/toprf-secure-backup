@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add auth token expired error handling to TOPRF eval request in `recoverTOPRFSeed` ([#147](https://github.com/MetaMask/toprf-secure-backup/pull/147))
+- Add auth token expired error handling to TOPRF eval request in `recoverTOPRFSeed`. ([#147](https://github.com/MetaMask/toprf-secure-backup/pull/147))
 
 ## [0.8.0]
 
