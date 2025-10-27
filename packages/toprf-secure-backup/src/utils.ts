@@ -546,6 +546,28 @@ export function checkRateLimitErrors<Type>(
 }
 
 /**
+ * Checks responses for auth token expired errors.
+ *
+ * @param resultArr - The result array to check for auth token expired errors.
+ * @returns True if auth token expired error is found, false otherwise.
+ */
+export function checkAuthTokenExpiredErrors<Type>(resultArr: Type[]): boolean {
+  const errorResponses = filterErrorResponses(resultArr);
+
+  for (const res of errorResponses) {
+    if (
+      isJSONRPCError(res.error) &&
+      res.error.code === JsonRpcErrorCodes.ErrorCodeInvalidParams &&
+      res.error.message.toLowerCase().includes('auth token expired')
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Merges the auth tokens with the endpoints.
  *
  * @param authTokens - The auth tokens issued by the nodes on authenticating the user.

@@ -5,6 +5,7 @@ import { TOPRFError, TOPRFErrorCode } from './errors';
 import type { ToprfEvalJRPCResponse } from './jrpcInterfaces';
 import {
   checkRateLimitErrors,
+  checkAuthTokenExpiredErrors,
   getMaxRateLimitError,
   extractRateLimitErrorFromResults,
   getTOPRFError,
@@ -218,6 +219,110 @@ describe('checkRateLimitErrors', () => {
     };
 
     expect(checkRateLimitErrors(results)).toStrictEqual(expected);
+  });
+});
+
+describe('checkAuthTokenExpiredErrors', () => {
+  it('should return false for an empty array', () => {
+    expect(checkAuthTokenExpiredErrors([])).toBe(false);
+  });
+
+  it('should return false if no auth token expired errors are found', () => {
+    const results = [
+      { result: 'success' },
+      { error: { code: -32000, message: 'Internal error' } },
+    ];
+
+    expect(checkAuthTokenExpiredErrors(results)).toBe(false);
+  });
+
+  it('should return false for rate limit errors', () => {
+    const results = [
+      {
+        error: {
+          code: -32602,
+          message: 'Rate limit exceeded',
+          data: {
+            message: 'Too many requests',
+            remaining_time: 300,
+          },
+        },
+      },
+    ];
+
+    expect(checkAuthTokenExpiredErrors(results)).toBe(false);
+  });
+
+  it('should return true if a single auth token expired error is found', () => {
+    const results = [
+      { result: 'success' },
+      {
+        error: {
+          code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
+          message: 'Auth token expired',
+        },
+      },
+    ];
+
+    expect(checkAuthTokenExpiredErrors(results)).toBe(true);
+  });
+
+  it('should return true if auth token expired error is found (case insensitive)', () => {
+    const results = [
+      {
+        error: {
+          code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
+          message: 'Error: Invalid auth token: AUTH TOKEN EXPIRED.',
+        },
+      },
+    ];
+
+    expect(checkAuthTokenExpiredErrors(results)).toBe(true);
+  });
+
+  it('should return true if multiple auth token expired errors are found', () => {
+    const results = [
+      {
+        error: {
+          code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
+          message: 'Auth token expired',
+        },
+      },
+      {
+        error: {
+          code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
+          message: 'Invalid auth token: auth token expired',
+        },
+      },
+    ];
+
+    expect(checkAuthTokenExpiredErrors(results)).toBe(true);
+  });
+
+  it('should return false for invalid auth token errors that are not expired', () => {
+    const results = [
+      {
+        error: {
+          code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
+          message: 'Invalid auth token',
+        },
+      },
+    ];
+
+    expect(checkAuthTokenExpiredErrors(results)).toBe(false);
+  });
+
+  it('should return false when auth token expired appears but with wrong error code', () => {
+    const results = [
+      {
+        error: {
+          code: -32000, // Wrong error code
+          message: 'Auth token expired',
+        },
+      },
+    ];
+
+    expect(checkAuthTokenExpiredErrors(results)).toBe(false);
   });
 
   describe('parseJsonRpcError', () => {
