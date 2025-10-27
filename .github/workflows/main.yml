@@ -7,7 +7,7 @@ on:
 jobs:
   check-workflows:
     name: Check workflows
-    runs-on: ubuntu-latest
+    runs-on: gha-mm-scale-set-ubuntu-22.04-amd64-med
     steps:
       - uses: actions/checkout@v4
       - name: Download actionlint
@@ -39,7 +39,7 @@ jobs:
     name: Determine whether this is a release merge commit
     needs: lint-build-test
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: gha-mm-scale-set-ubuntu-22.04-amd64-med
     outputs:
       IS_RELEASE: ${{ steps.is-release.outputs.IS_RELEASE }}
     steps:
@@ -69,7 +69,7 @@ jobs:
 
   all-jobs-complete:
     name: All jobs complete
-    runs-on: ubuntu-latest
+    runs-on: gha-mm-scale-set-ubuntu-22.04-amd64-med
     needs:
       - analyse-code
       - lint-build-test
@@ -83,7 +83,7 @@ jobs:
   all-jobs-pass:
     name: All jobs pass
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: gha-mm-scale-set-ubuntu-22.04-amd64-med
     needs: all-jobs-complete
     steps:
       - name: Check that all jobs have passed
