@@ -549,21 +549,23 @@ export function checkRateLimitErrors<Type>(
  * Checks responses for auth token expired errors.
  *
  * @param resultArr - The result array to check for auth token expired errors.
- * @returns True if auth token expired error is found, false otherwise.
+ * @returns The parsed error if auth token expired error is found, undefined otherwise.
  */
-export function checkAuthTokenExpiredErrors<Type>(resultArr: Type[]): boolean {
+export function checkAuthTokenExpiredErrors<Type>(
+  resultArr: Type[],
+): ITOPRFError | undefined {
   const errorResponses = filterErrorResponses(resultArr);
 
   for (const res of errorResponses) {
     if (isJSONRPCError(res.error)) {
       const parsedError = parseJsonRpcError(res.error);
       if (parsedError.code === TOPRFErrorCode.AuthTokenExpired) {
-        return true;
+        return parsedError;
       }
     }
   }
 
-  return false;
+  return undefined;
 }
 
 /**

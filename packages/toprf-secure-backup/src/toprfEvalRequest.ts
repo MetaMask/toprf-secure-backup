@@ -189,8 +189,9 @@ export const validateSeed = async (
   keyDeriver?: KeyDeriver,
 ): Promise<{ seed: Uint8Array; keyShareIndex: number }> => {
   // Check for auth token expired errors before filtering responses
-  if (checkAuthTokenExpiredErrors(resultArr)) {
-    throw TOPRFError.authTokenExpired();
+  const authTokenError = checkAuthTokenExpiredErrors(resultArr);
+  if (authTokenError) {
+    throw authTokenError;
   }
 
   // Check for rate limit errors before filtering responses

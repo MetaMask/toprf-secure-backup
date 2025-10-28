@@ -223,20 +223,20 @@ describe('checkRateLimitErrors', () => {
 });
 
 describe('checkAuthTokenExpiredErrors', () => {
-  it('should return false for an empty array', () => {
-    expect(checkAuthTokenExpiredErrors([])).toBe(false);
+  it('should return undefined for an empty array', () => {
+    expect(checkAuthTokenExpiredErrors([])).toBeUndefined();
   });
 
-  it('should return false if no auth token expired errors are found', () => {
+  it('should return undefined if no auth token expired errors are found', () => {
     const results = [
       { result: 'success' },
       { error: { code: -32000, message: 'Internal error' } },
     ];
 
-    expect(checkAuthTokenExpiredErrors(results)).toBe(false);
+    expect(checkAuthTokenExpiredErrors(results)).toBeUndefined();
   });
 
-  it('should return false for rate limit errors', () => {
+  it('should return undefined for rate limit errors', () => {
     const results = [
       {
         error: {
@@ -250,10 +250,10 @@ describe('checkAuthTokenExpiredErrors', () => {
       },
     ];
 
-    expect(checkAuthTokenExpiredErrors(results)).toBe(false);
+    expect(checkAuthTokenExpiredErrors(results)).toBeUndefined();
   });
 
-  it('should return true if a single auth token expired error is found', () => {
+  it('should return error if a single auth token expired error is found', () => {
     const results = [
       { result: 'success' },
       {
@@ -264,10 +264,12 @@ describe('checkAuthTokenExpiredErrors', () => {
       },
     ];
 
-    expect(checkAuthTokenExpiredErrors(results)).toBe(true);
+    const error = checkAuthTokenExpiredErrors(results);
+    expect(error).toBeDefined();
+    expect(error?.code).toBe(TOPRFErrorCode.AuthTokenExpired);
   });
 
-  it('should return true if auth token expired error is found (case insensitive)', () => {
+  it('should return error if auth token expired error is found (case insensitive)', () => {
     const results = [
       {
         error: {
@@ -277,10 +279,12 @@ describe('checkAuthTokenExpiredErrors', () => {
       },
     ];
 
-    expect(checkAuthTokenExpiredErrors(results)).toBe(true);
+    const error = checkAuthTokenExpiredErrors(results);
+    expect(error).toBeDefined();
+    expect(error?.code).toBe(TOPRFErrorCode.AuthTokenExpired);
   });
 
-  it('should return true if multiple auth token expired errors are found', () => {
+  it('should return error if multiple auth token expired errors are found', () => {
     const results = [
       {
         error: {
@@ -296,10 +300,12 @@ describe('checkAuthTokenExpiredErrors', () => {
       },
     ];
 
-    expect(checkAuthTokenExpiredErrors(results)).toBe(true);
+    const error = checkAuthTokenExpiredErrors(results);
+    expect(error).toBeDefined();
+    expect(error?.code).toBe(TOPRFErrorCode.AuthTokenExpired);
   });
 
-  it('should return false for invalid auth token errors that are not expired', () => {
+  it('should return undefined for invalid auth token errors that are not expired', () => {
     const results = [
       {
         error: {
@@ -309,10 +315,10 @@ describe('checkAuthTokenExpiredErrors', () => {
       },
     ];
 
-    expect(checkAuthTokenExpiredErrors(results)).toBe(false);
+    expect(checkAuthTokenExpiredErrors(results)).toBeUndefined();
   });
 
-  it('should return false when auth token expired appears but with wrong error code', () => {
+  it('should return undefined when auth token expired appears but with wrong error code', () => {
     const results = [
       {
         error: {
@@ -322,7 +328,7 @@ describe('checkAuthTokenExpiredErrors', () => {
       },
     ];
 
-    expect(checkAuthTokenExpiredErrors(results)).toBe(false);
+    expect(checkAuthTokenExpiredErrors(results)).toBeUndefined();
   });
 
   describe('parseJsonRpcError', () => {
