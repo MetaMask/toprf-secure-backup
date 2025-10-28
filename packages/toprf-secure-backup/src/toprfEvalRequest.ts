@@ -22,7 +22,7 @@ import { deriveAuthenticationKeyPair } from './keyDerivation';
 import { OPRF, type KeyDeriver } from './oprf';
 import {
   checkRateLimitErrors,
-  checkAuthTokenExpiredErrors,
+  checkAuthTokenErrors,
   mergeEndpointsWithAuthTokens,
   postJRPCRequest,
   getTOPRFError,
@@ -188,8 +188,8 @@ export const validateSeed = async (
   resultArr: ToprfEvalJRPCResponse[],
   keyDeriver?: KeyDeriver,
 ): Promise<{ seed: Uint8Array; keyShareIndex: number }> => {
-  // Check for auth token expired errors before filtering responses
-  const authTokenError = checkAuthTokenExpiredErrors(resultArr);
+  // Check for auth token errors before filtering responses
+  const authTokenError = checkAuthTokenErrors(resultArr);
   if (authTokenError) {
     throw authTokenError;
   }
