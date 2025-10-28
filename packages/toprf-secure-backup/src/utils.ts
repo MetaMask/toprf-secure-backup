@@ -24,7 +24,7 @@ import BN from 'bn.js';
 import type * as EC from 'elliptic';
 
 import { GENERATE_SHARE_THRESHOLD, JsonRpcErrorCodes } from './constants';
-import { TOPRFError } from './errors';
+import { TOPRFError, TOPRFErrorCode } from './errors';
 import type { ITOPRFError, RateLimitErrorData } from './errors';
 import type {
   KeyChangeProof,
@@ -555,12 +555,11 @@ export function checkAuthTokenExpiredErrors<Type>(resultArr: Type[]): boolean {
   const errorResponses = filterErrorResponses(resultArr);
 
   for (const res of errorResponses) {
-    if (
-      isJSONRPCError(res.error) &&
-      res.error.code === JsonRpcErrorCodes.ErrorCodeInvalidParams &&
-      res.error.message.toLowerCase().includes('auth token expired')
-    ) {
-      return true;
+    if (isJSONRPCError(res.error)) {
+      const parsedError = parseJsonRpcError(res.error);
+      if (parsedError.code === TOPRFErrorCode.AuthTokenExpired) {
+        return true;
+      }
     }
   }
 
