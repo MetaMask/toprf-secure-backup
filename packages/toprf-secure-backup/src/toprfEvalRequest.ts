@@ -22,6 +22,7 @@ import { deriveAuthenticationKeyPair } from './keyDerivation';
 import { OPRF, type KeyDeriver } from './oprf';
 import {
   checkRateLimitErrors,
+  checkAuthTokenErrors,
   mergeEndpointsWithAuthTokens,
   postJRPCRequest,
   getTOPRFError,
@@ -187,6 +188,12 @@ export const validateSeed = async (
   resultArr: ToprfEvalJRPCResponse[],
   keyDeriver?: KeyDeriver,
 ): Promise<{ seed: Uint8Array; keyShareIndex: number }> => {
+  // Check for auth token errors before filtering responses
+  const authTokenError = checkAuthTokenErrors(resultArr);
+  if (authTokenError) {
+    throw authTokenError;
+  }
+
   // Check for rate limit errors before filtering responses
   let rateLimitDetails = checkRateLimitErrors(resultArr);
   if (rateLimitDetails) {

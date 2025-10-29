@@ -1,6 +1,7 @@
 import { toBytes } from '@noble/hashes/utils';
 
-import { TOPRF_EVAL_THRESHOLD } from './constants';
+import { TOPRF_EVAL_THRESHOLD, JsonRpcErrorCodes } from './constants';
+import { TOPRFErrorCode } from './errors';
 import type { NodeAuthTokens } from './interfaces';
 import type { ToprfEvalJRPCResponse } from './jrpcInterfaces';
 import { recoverTOPRFSeed, validateSeed } from './toprfEvalRequest';
@@ -109,6 +110,105 @@ describe('toprfEvalRequest', () => {
       ).rejects.toThrow(
         `Insufficient valid blinded outputs, expected: ${TOPRF_EVAL_THRESHOLD}, received: ${TOPRF_EVAL_THRESHOLD - 1}`,
       );
+    });
+
+    it('should throw auth token expired error when found in responses', async () => {
+      const responsesWithExpiredToken: ToprfEvalJRPCResponse[] = [
+        {
+          jsonrpc: '2.0',
+          id: 1,
+          error: {
+            code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
+            message: 'Auth token expired',
+          },
+        },
+        {
+          jsonrpc: '2.0',
+          id: 2,
+          result: {
+            blindedOutputX: 'abc',
+            blindedOutputY: 'def',
+            nodeIndex: 1,
+            keyShareIndex: 1,
+            pubKey: 'pubKey',
+            guessCount: 1,
+            lockTimeSeconds: 0,
+          },
+        },
+        {
+          jsonrpc: '2.0',
+          id: 3,
+          result: {
+            blindedOutputX: 'abc',
+            blindedOutputY: 'def',
+            nodeIndex: 2,
+            keyShareIndex: 1,
+            pubKey: 'pubKey',
+            guessCount: 1,
+            lockTimeSeconds: 0,
+          },
+        },
+      ];
+
+      const userInput = toBytes('test-password');
+      const randomScalar = 1n;
+
+      await expect(
+        validateSeed(userInput, randomScalar, responsesWithExpiredToken),
+      ).rejects.toMatchObject({
+        code: TOPRFErrorCode.AuthTokenExpired,
+        message: expect.stringContaining('Auth token expired'),
+      });
+    });
+
+    it('should throw auth token expired error before rate limit error when both are present', async () => {
+      const responsesWithBothErrors: ToprfEvalJRPCResponse[] = [
+        {
+          jsonrpc: '2.0',
+          id: 1,
+          error: {
+            code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
+            message: 'Auth token expired',
+          },
+        },
+        {
+          jsonrpc: '2.0',
+          id: 2,
+          error: {
+            code: -32602,
+            message: 'Rate limit exceeded',
+            data: {
+              message: 'Too many requests',
+              remaining_time: 300,
+              lock_time: 60,
+              guess_count: 5,
+            },
+          },
+        },
+        {
+          jsonrpc: '2.0',
+          id: 3,
+          result: {
+            blindedOutputX: 'abc',
+            blindedOutputY: 'def',
+            nodeIndex: 1,
+            keyShareIndex: 1,
+            pubKey: 'pubKey',
+            guessCount: 1,
+            lockTimeSeconds: 0,
+          },
+        },
+      ];
+
+      const userInput = toBytes('test-password');
+      const randomScalar = 1n;
+
+      await expect(
+        validateSeed(userInput, randomScalar, responsesWithBothErrors),
+      ).rejects.toMatchObject({
+        code: TOPRFErrorCode.AuthTokenExpired,
+        message: expect.stringContaining('Auth token expired'),
+      });
     });
   });
 

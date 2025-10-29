@@ -24,7 +24,7 @@ import BN from 'bn.js';
 import type * as EC from 'elliptic';
 
 import { GENERATE_SHARE_THRESHOLD, JsonRpcErrorCodes } from './constants';
-import { TOPRFError } from './errors';
+import { TOPRFError, TOPRFErrorCode } from './errors';
 import type { ITOPRFError, RateLimitErrorData } from './errors';
 import type {
   KeyChangeProof,
@@ -543,6 +543,32 @@ export function checkRateLimitErrors<Type>(
   }
 
   return maxRateLimit;
+}
+
+/**
+ * Checks responses for auth token errors (expired or invalid).
+ *
+ * @param resultArr - The result array to check for auth token errors.
+ * @returns The parsed error if auth token error is found, undefined otherwise.
+ */
+export function checkAuthTokenErrors<Type>(
+  resultArr: Type[],
+): ITOPRFError | undefined {
+  const errorResponses = filterErrorResponses(resultArr);
+
+  for (const res of errorResponses) {
+    if (isJSONRPCError(res.error)) {
+      const parsedError = parseJsonRpcError(res.error);
+      if (
+        parsedError.code === TOPRFErrorCode.AuthTokenExpired ||
+        parsedError.code === TOPRFErrorCode.InvalidAuthToken
+      ) {
+        return parsedError;
+      }
+    }
+  }
+
+  return undefined;
 }
 
 /**

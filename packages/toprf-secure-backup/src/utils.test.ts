@@ -5,6 +5,7 @@ import { TOPRFError, TOPRFErrorCode } from './errors';
 import type { ToprfEvalJRPCResponse } from './jrpcInterfaces';
 import {
   checkRateLimitErrors,
+  checkAuthTokenErrors,
   getMaxRateLimitError,
   extractRateLimitErrorFromResults,
   getTOPRFError,
@@ -218,6 +219,140 @@ describe('checkRateLimitErrors', () => {
     };
 
     expect(checkRateLimitErrors(results)).toStrictEqual(expected);
+  });
+});
+
+describe('checkAuthTokenErrors', () => {
+  it('should return undefined for an empty array', () => {
+    expect(checkAuthTokenErrors([])).toBeUndefined();
+  });
+
+  it('should return undefined if no auth token errors are found', () => {
+    const results = [
+      { result: 'success' },
+      { error: { code: -32000, message: 'Internal error' } },
+    ];
+
+    expect(checkAuthTokenErrors(results)).toBeUndefined();
+  });
+
+  it('should return undefined for rate limit errors', () => {
+    const results = [
+      {
+        error: {
+          code: -32602,
+          message: 'Rate limit exceeded',
+          data: {
+            message: 'Too many requests',
+            remaining_time: 300,
+          },
+        },
+      },
+    ];
+
+    expect(checkAuthTokenErrors(results)).toBeUndefined();
+  });
+
+  it('should return error if a single auth token expired error is found', () => {
+    const results = [
+      { result: 'success' },
+      {
+        error: {
+          code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
+          message: 'Auth token expired',
+        },
+      },
+    ];
+
+    const error = checkAuthTokenErrors(results);
+    expect(error).toBeDefined();
+    expect(error?.code).toBe(TOPRFErrorCode.AuthTokenExpired);
+  });
+
+  it('should return error if auth token expired error is found (case insensitive)', () => {
+    const results = [
+      {
+        error: {
+          code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
+          message: 'Error: Invalid auth token: AUTH TOKEN EXPIRED.',
+        },
+      },
+    ];
+
+    const error = checkAuthTokenErrors(results);
+    expect(error).toBeDefined();
+    expect(error?.code).toBe(TOPRFErrorCode.AuthTokenExpired);
+  });
+
+  it('should return error if multiple auth token expired errors are found', () => {
+    const results = [
+      {
+        error: {
+          code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
+          message: 'Auth token expired',
+        },
+      },
+      {
+        error: {
+          code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
+          message: 'Invalid auth token: auth token expired',
+        },
+      },
+    ];
+
+    const error = checkAuthTokenErrors(results);
+    expect(error).toBeDefined();
+    expect(error?.code).toBe(TOPRFErrorCode.AuthTokenExpired);
+  });
+
+  it('should return error for invalid auth token errors', () => {
+    const results = [
+      {
+        error: {
+          code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
+          message: 'Invalid auth token',
+        },
+      },
+    ];
+
+    const error = checkAuthTokenErrors(results);
+    expect(error).toBeDefined();
+    expect(error?.code).toBe(TOPRFErrorCode.InvalidAuthToken);
+  });
+
+  it('should return undefined when auth token expired appears but with wrong error code', () => {
+    const results = [
+      {
+        error: {
+          code: -32000, // Wrong error code
+          message: 'Auth token expired',
+        },
+      },
+    ];
+
+    expect(checkAuthTokenErrors(results)).toBeUndefined();
+  });
+
+  it('should return first auth token error when multiple types are present', () => {
+    const results = [
+      {
+        error: {
+          code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
+          message: 'Invalid auth token',
+        },
+      },
+      {
+        error: {
+          code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
+          message: 'Auth token expired',
+        },
+      },
+    ];
+
+    const error = checkAuthTokenErrors(results);
+    expect(error).toBeDefined();
+    // Should return the first auth token error found (invalid in this case)
+    expect(error?.code).toBe(TOPRFErrorCode.InvalidAuthToken);
   });
 
   describe('parseJsonRpcError', () => {
