@@ -5,7 +5,8 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
-import { TOPRFError } from './errors';
+import { JsonRpcErrorCodes } from './constants';
+import { TOPRFError, TOPRFErrorCode } from './errors';
 import { deriveAuthenticationKeyPair } from './keyDerivation';
 import { generateRandomScalar, OPRF } from './oprf';
 import {
@@ -291,6 +292,60 @@ describe('validateThresholdResetRateLimitResponses', () => {
       TOPRFError.insufficientValidResponses(
         `invalid reset rate limit results, expected ${threshold} but got 2`,
       ),
+    );
+  });
+
+  it('should throw auth token expired error when present in responses', () => {
+    const resultArr = [
+      {
+        id: 1,
+        jsonrpc: '2.0' as JsonRpcVersion,
+        result: true,
+      },
+      {
+        jsonrpc: '2.0' as JsonRpcVersion,
+        id: 2,
+        error: {
+          code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
+          message: 'Auth token expired',
+        },
+      },
+    ];
+
+    const threshold = 2;
+    expect(() =>
+      validateThresholdResetRateLimitResponses(resultArr, threshold),
+    ).toThrow(
+      expect.objectContaining({
+        code: TOPRFErrorCode.AuthTokenExpired,
+      }),
+    );
+  });
+
+  it('should throw invalid auth token error when present in responses', () => {
+    const resultArr = [
+      {
+        id: 1,
+        jsonrpc: '2.0' as JsonRpcVersion,
+        result: true,
+      },
+      {
+        jsonrpc: '2.0' as JsonRpcVersion,
+        id: 2,
+        error: {
+          code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
+          message: 'Invalid auth token',
+        },
+      },
+    ];
+
+    const threshold = 2;
+    expect(() =>
+      validateThresholdResetRateLimitResponses(resultArr, threshold),
+    ).toThrow(
+      expect.objectContaining({
+        code: TOPRFErrorCode.InvalidAuthToken,
+      }),
     );
   });
 });

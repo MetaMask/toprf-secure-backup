@@ -16,6 +16,7 @@ import type {
   ResetRateLimitJRPCResponse,
 } from './jrpcInterfaces';
 import {
+  checkAuthTokenErrors,
   createEthereumSignature,
   mergeEndpointsWithAuthTokens,
   postJRPCRequest,
@@ -85,6 +86,12 @@ export const validateThresholdResetRateLimitResponses = (
   resultArr: ResetRateLimitJRPCResponse[],
   threshold: number,
 ): boolean => {
+  // Check for auth token errors before filtering responses
+  const authTokenError = checkAuthTokenErrors(resultArr);
+  if (authTokenError) {
+    throw authTokenError;
+  }
+
   const completedRequests =
     filterCompletedRequests<ResetRateLimitJRPCResponse>(resultArr);
   if (completedRequests.length < threshold) {

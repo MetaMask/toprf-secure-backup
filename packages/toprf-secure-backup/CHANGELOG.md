@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- feat: Extend auth token error handling to `fetchAuthPubKey` and `resetRateLimits` ([#150](https://github.com/MetaMask/toprf-secure-backup/pull/150))
+
 ## [0.9.0]
 
 ### Added
