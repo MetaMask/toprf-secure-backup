@@ -1,6 +1,7 @@
 import type { JsonRpcVersion } from '@metamask/auth-network-utils';
 
-import { TOPRFError } from './errors';
+import { JsonRpcErrorCodes } from './constants';
+import { TOPRFError, TOPRFErrorCode } from './errors';
 import { getPubKey, validatePubKey } from './getPubKeyRequest';
 import type { GetPubKeyResult } from './jrpcInterfaces';
 
@@ -39,5 +40,49 @@ describe('getPubKey', () => {
     await expect(validatePubKey(resultArr)).rejects.toThrow(
       TOPRFError.couldNotDeriveThresholdAuthPubKey(),
     );
+  });
+
+  it('should throw auth token expired error when present in responses', async function () {
+    const resultArr = [
+      {
+        id: 1,
+        jsonrpc: '2.0' as JsonRpcVersion,
+        result: { pubKey: '1234', keyIndex: 1 },
+      },
+      {
+        id: 2,
+        jsonrpc: '2.0' as JsonRpcVersion,
+        error: {
+          code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
+          message: 'Auth token expired',
+        },
+      },
+    ];
+
+    await expect(validatePubKey(resultArr)).rejects.toMatchObject({
+      code: TOPRFErrorCode.AuthTokenExpired,
+    });
+  });
+
+  it('should throw invalid auth token error when present in responses', async function () {
+    const resultArr = [
+      {
+        id: 1,
+        jsonrpc: '2.0' as JsonRpcVersion,
+        result: { pubKey: '1234', keyIndex: 1 },
+      },
+      {
+        id: 2,
+        jsonrpc: '2.0' as JsonRpcVersion,
+        error: {
+          code: JsonRpcErrorCodes.ErrorCodeInvalidParams,
+          message: 'Invalid auth token',
+        },
+      },
+    ];
+
+    await expect(validatePubKey(resultArr)).rejects.toMatchObject({
+      code: TOPRFErrorCode.InvalidAuthToken,
+    });
   });
 });

@@ -14,7 +14,11 @@ import type {
   GetPubKeyJRPCRequestParams,
   GetPubKeyJRPCResponse,
 } from './jrpcInterfaces';
-import { mergeEndpointsWithAuthTokens, postJRPCRequest } from './utils';
+import {
+  checkAuthTokenErrors,
+  mergeEndpointsWithAuthTokens,
+  postJRPCRequest,
+} from './utils';
 
 /**
  * Creates the parameters for the get pub key request
@@ -67,6 +71,12 @@ const sendGetPubKeyRequest = async (
 export const validatePubKey = async (
   resultArr: GetPubKeyJRPCResponse[],
 ): Promise<FetchAuthPubKeyResult> => {
+  // Check for auth token errors before filtering responses
+  const authTokenError = checkAuthTokenErrors(resultArr);
+  if (authTokenError) {
+    throw authTokenError;
+  }
+
   const completedRequests =
     filterCompletedRequests<GetPubKeyJRPCResponse>(resultArr);
 
