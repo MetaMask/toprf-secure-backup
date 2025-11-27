@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- removed node-details fetch call from the constructor. ([#153](https://github.com/MetaMask/toprf-secure-backup/pull/153))
+  - we should not start calling to the external endpoints until user gives consent.
+
 ## [0.10.0]
 
 ### Added
