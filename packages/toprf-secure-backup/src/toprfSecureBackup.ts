@@ -677,6 +677,21 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
 
   /**
    * Gets the node details.
+   * This function can be called to get the node endpoints, indexes and pubkeys and cache them locally.
+   *
+   * @returns The node details containing the node endpoints, indexes and pubkeys.
+   */
+  async getNodeDetails(): Promise<{
+    nodeEndpoints: string[];
+    nodeEndpointsMap: Record<number, string>;
+    nodeIndexes: number[];
+    nodePubkeys: INodePub[];
+  }> {
+    return this.#getNodeDetails();
+  }
+
+  /**
+   * Gets the node details.
    *
    * @returns The node details containing the node endpoints, indexes and pubkeys.
    */

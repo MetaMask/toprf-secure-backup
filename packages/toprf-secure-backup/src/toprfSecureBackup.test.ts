@@ -353,6 +353,25 @@ describe('toprf secret backup', function () {
 
         expect(fndSpy).toHaveBeenCalledTimes(1);
       });
+
+      it('should be able to get node details', async () => {
+        const { toprfSecureBackup } = setup();
+
+        fndSpy.mockResolvedValue({
+          torusNodeSSSEndpoints: MOCK_ENDPOINTS_5, // Using the live URLs as base
+          torusIndexes: MOCK_INDEXES_5,
+          torusNodePub: MOCK_PUBKEYS_5,
+          currentEpoch: '1',
+        });
+
+        const nodeDetails = await toprfSecureBackup.getNodeDetails();
+
+        expect(nodeDetails).toBeDefined();
+        expect(nodeDetails.nodeEndpoints).toStrictEqual(MOCK_ENDPOINTS_5);
+        expect(nodeDetails.nodeIndexes).toStrictEqual(MOCK_INDEXES_5);
+        expect(nodeDetails.nodePubkeys).toStrictEqual(MOCK_PUBKEYS_5);
+        expect(fndSpy).toHaveBeenCalledTimes(1);
+      });
     });
   });
 
