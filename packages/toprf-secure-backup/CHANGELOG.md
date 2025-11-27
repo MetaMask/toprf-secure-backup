@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- added `getNodeDetails` method to `ToprfSecureBackup` class. ([#155](https://github.com/MetaMask/toprf-secure-backup/pull/155))
+  - we can use this method to fetch the node details required for the other public requests.
+
 ## [0.10.1]
 
 ### Changed
