@@ -351,7 +351,7 @@ describe('toprf secret backup', function () {
           /Node details arrays .* must have equal lengths/iu,
         );
 
-        expect(fndSpy).toHaveBeenCalledTimes(2);
+        expect(fndSpy).toHaveBeenCalledTimes(1);
       });
     });
   });
