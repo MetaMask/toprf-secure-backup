@@ -1,6 +1,6 @@
 {
   "name": "@metamask/toprf-secure-backup",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "description": "The MetaMask Node module template",
   "keywords": [
     "MetaMask",
