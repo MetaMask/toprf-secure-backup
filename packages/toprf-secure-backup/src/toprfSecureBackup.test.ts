@@ -772,7 +772,7 @@ describe('toprf secret backup', function () {
           });
         expect(originalSecretData).not.toBeNull();
         expect(originalSecretData?.length).toBe(1);
-        expect(originalSecretData?.[0]).toStrictEqual(secretData);
+        expect(originalSecretData?.[0].data).toStrictEqual(secretData);
 
         // Recover the original key to get the keyShareIndex
         const recoveredOriginalKey = await toprfSecureBackup.recoverEncKey({
@@ -834,7 +834,7 @@ describe('toprf secret backup', function () {
         });
         expect(newSecretData).not.toBeNull();
         expect(newSecretData?.length).toBe(1);
-        expect(newSecretData?.[0]).toStrictEqual(secretData);
+        expect(newSecretData?.[0].data).toStrictEqual(secretData);
 
         // Verify the key change was actually effective by comparing the recovered keys
         expect(recoveredNewKey.authKeyPair.sk).toStrictEqual(
@@ -943,7 +943,7 @@ describe('toprf secret backup', function () {
           });
         expect(originalSecretData).not.toBeNull();
         expect(originalSecretData?.length).toBe(1);
-        expect(originalSecretData?.[0]).toStrictEqual(secretData);
+        expect(originalSecretData?.[0].data).toStrictEqual(secretData);
 
         // Recover the original key to get the keyShareIndex
         const recoveredOriginalKey = await toprfSecureBackup.recoverEncKey({
@@ -1008,7 +1008,7 @@ describe('toprf secret backup', function () {
         });
         expect(newSecretData).not.toBeNull();
         expect(newSecretData?.length).toBe(1);
-        expect(newSecretData?.[0]).toStrictEqual(secretData);
+        expect(newSecretData?.[0].data).toStrictEqual(secretData);
 
         // Verify the key change was actually effective by comparing the recovered keys
         expect(recoveredNewKey.authKeyPair.sk).toStrictEqual(
@@ -1438,6 +1438,7 @@ describe('toprf secret backup', function () {
         encKey: encKeyResult.encKey,
         secretData,
         authKeyPair: encKeyResult.authKeyPair,
+        dataType: EncAccountDataType.PrimarySrp,
       });
 
       const fetchedSecretData = await toprfSecureBackup.fetchAllSecretDataItems(
@@ -1447,15 +1448,24 @@ describe('toprf secret backup', function () {
         },
       );
       expect(fetchedSecretData).not.toBeNull();
-      expect(fetchedSecretData?.[0]).toStrictEqual(secretData);
+      expect(fetchedSecretData?.[0].data).toStrictEqual(secretData);
+      expect(fetchedSecretData?.[0].dataType).toBe(
+        EncAccountDataType.PrimarySrp,
+      );
     });
   });
 
   describe('batchAddSecretDataItems', function () {
     const secretDataArray = [
-      utf8ToBytes('test-secret-data-1'),
-      utf8ToBytes('test-secret-data-2'),
-      utf8ToBytes('test-secret-data-3'),
+      {
+        data: utf8ToBytes('test-secret-data-1'),
+        dataType: EncAccountDataType.PrimarySrp,
+      },
+      {
+        data: utf8ToBytes('test-secret-data-2'),
+        dataType: EncAccountDataType.ImportedSrp,
+      },
+      { data: utf8ToBytes('test-secret-data-3') },
     ];
     const password = generateRandomPassword();
 
@@ -1494,8 +1504,8 @@ describe('toprf secret backup', function () {
 
     it('should be able to store secret data in batch', async function () {
       await toprfSecureBackup.batchAddSecretDataItems({
+        items: secretDataArray,
         encKey,
-        secretData: secretDataArray,
         authKeyPair,
       });
 
@@ -1506,15 +1516,40 @@ describe('toprf secret backup', function () {
         },
       );
 
-      // should have the same length as the secret data array
       expect(fetchedSecretData).toHaveLength(secretDataArray.length);
 
-      // since all the secret items are added at once, they might have the same creation timestamp in the backend
-      // so, we cannot assume that the fetched secret data is in the same order as the secret data array
-      // hence we sort both arrays and then compare
-      const sortedSecretDataArray = [...secretDataArray].sort();
-      const sortedFetchedSecretData = [...fetchedSecretData].sort();
+      // Since all the secret items are added at once, they might have the same creation timestamp in the backend.
+      // So, we cannot assume that the fetched secret data is in the same order as the secret data array.
+      // Hence we sort both arrays and then compare.
+      const sortedSecretDataArray = secretDataArray
+        .map((item) => item.data)
+        .sort();
+      const sortedFetchedSecretData = fetchedSecretData
+        .map((item) => item.data)
+        .sort();
       expect(sortedFetchedSecretData).toStrictEqual(sortedSecretDataArray);
+
+      // Verify dataType values
+      const itemsWithDataType = fetchedSecretData.filter(
+        (item) => item.dataType !== undefined,
+      );
+      expect(itemsWithDataType).toHaveLength(2);
+      expect(
+        itemsWithDataType.some(
+          (item) => item.dataType === EncAccountDataType.PrimarySrp,
+        ),
+      ).toBe(true);
+      expect(
+        itemsWithDataType.some(
+          (item) => item.dataType === EncAccountDataType.ImportedSrp,
+        ),
+      ).toBe(true);
+
+      // Verify one item has no dataType
+      const itemsWithoutDataType = fetchedSecretData.filter(
+        (item) => item.dataType === undefined,
+      );
+      expect(itemsWithoutDataType).toHaveLength(1);
     });
 
     it('should throw an error when failed to acquire metadata lock', async function () {
@@ -1524,8 +1559,8 @@ describe('toprf secret backup', function () {
 
       await expect(
         toprfSecureBackup.batchAddSecretDataItems({
+          items: secretDataArray,
           encKey,
-          secretData: secretDataArray,
           authKeyPair,
         }),
       ).rejects.toThrow('Failed to acquire metadata lock');
@@ -1541,8 +1576,8 @@ describe('toprf secret backup', function () {
         .mockRejectedValue(new Error('Failed to release metadata lock'));
 
       await toprfSecureBackup.batchAddSecretDataItems({
+        items: secretDataArray,
         encKey,
-        secretData: secretDataArray,
         authKeyPair,
       });
 
@@ -1553,15 +1588,24 @@ describe('toprf secret backup', function () {
         },
       );
 
-      // should have the same length as the secret data array
       expect(fetchedSecretData).toHaveLength(secretDataArray.length);
 
-      // since all the secret items are added at once, they might have the same creation timestamp in the backend
-      // so, we cannot assume that the fetched secret data is in the same order as the secret data array
-      // hence we sort both arrays and then compare
-      const sortedSecretDataArray = [...secretDataArray].sort();
-      const sortedFetchedSecretData = [...fetchedSecretData].sort();
+      // Since all the secret items are added at once, they might have the same creation timestamp in the backend.
+      // So, we cannot assume that the fetched secret data is in the same order as the secret data array.
+      // Hence we sort both arrays and then compare.
+      const sortedSecretDataArray = secretDataArray
+        .map((item) => item.data)
+        .sort();
+      const sortedFetchedSecretData = fetchedSecretData
+        .map((item) => item.data)
+        .sort();
       expect(sortedFetchedSecretData).toStrictEqual(sortedSecretDataArray);
+
+      // Verify dataType values
+      const itemsWithDataType = fetchedSecretData.filter(
+        (item) => item.dataType !== undefined,
+      );
+      expect(itemsWithDataType).toHaveLength(2);
     });
   });
 
@@ -1582,30 +1626,42 @@ describe('toprf secret backup', function () {
         userId,
       });
 
+      // Add item without dataType (simulates old data that needs migration)
       await toprfSecureBackup.addSecretDataItem({
         encKey: encKeyResult.encKey,
         secretData,
         authKeyPair: encKeyResult.authKeyPair,
       });
 
-      const fetchedData = await toprfSecureBackup.fetchAllSecretDataItems({
+      const beforeUpdate = await toprfSecureBackup.fetchAllSecretDataItems({
         decKey: encKeyResult.encKey,
         authKeyPair: encKeyResult.authKeyPair,
       });
-      expect(fetchedData).toHaveLength(1);
+      expect(beforeUpdate).toHaveLength(1);
+      expect(beforeUpdate[0].dataType).toBeUndefined();
 
-      const updateResult = await toprfSecureBackup.updateSecretDataItem({
-        itemId: 'test-item-1',
-        dataType: EncAccountDataType.ImportedSrp,
+      // Use the actual itemId returned from fetch (server generates/hashes it)
+      const { itemId } = beforeUpdate[0];
+      expect(itemId).toBeDefined();
+
+      // Update to add dataType (migration scenario)
+      await toprfSecureBackup.updateSecretDataItem({
+        itemId: itemId as string,
+        dataType: EncAccountDataType.PrimarySrp,
         authKeyPair: encKeyResult.authKeyPair,
       });
-      expect(updateResult).toBeUndefined();
+
+      const afterUpdate = await toprfSecureBackup.fetchAllSecretDataItems({
+        decKey: encKeyResult.encKey,
+        authKeyPair: encKeyResult.authKeyPair,
+      });
+      expect(afterUpdate).toHaveLength(1);
+      expect(afterUpdate[0].dataType).toBe(EncAccountDataType.PrimarySrp);
     });
   });
 
   describe('batchUpdateSecretDataItems', function () {
     it('should batch update fields for existing items', async function () {
-      const secretData = utf8ToBytes('test-secret-data');
       const { authConnectionId, userId, idToken, toprfSecureBackup } = setup();
 
       const result = await toprfSecureBackup.authenticate({
@@ -1620,30 +1676,48 @@ describe('toprf secret backup', function () {
         userId,
       });
 
-      await toprfSecureBackup.addSecretDataItem({
+      // Add items without dataType (simulates old data that needs migration)
+      await toprfSecureBackup.batchAddSecretDataItems({
+        items: [
+          { data: utf8ToBytes('data-1') },
+          { data: utf8ToBytes('data-2') },
+        ],
         encKey: encKeyResult.encKey,
-        secretData,
         authKeyPair: encKeyResult.authKeyPair,
       });
 
-      const fetchedData = await toprfSecureBackup.fetchAllSecretDataItems({
+      const beforeUpdate = await toprfSecureBackup.fetchAllSecretDataItems({
         decKey: encKeyResult.encKey,
         authKeyPair: encKeyResult.authKeyPair,
       });
-      expect(fetchedData).toHaveLength(1);
+      expect(beforeUpdate).toHaveLength(2);
+      expect(beforeUpdate[0].dataType).toBeUndefined();
+      expect(beforeUpdate[1].dataType).toBeUndefined();
 
-      const batchUpdateResult =
-        await toprfSecureBackup.batchUpdateSecretDataItems({
-          updateItems: [
-            { itemId: 'item-1', dataType: EncAccountDataType.ImportedSrp },
-            {
-              itemId: 'item-2',
-              dataType: EncAccountDataType.ImportedPrivateKey,
-            },
-          ],
-          authKeyPair: encKeyResult.authKeyPair,
-        });
-      expect(batchUpdateResult).toBeUndefined();
+      // Use actual itemIds returned from fetch (server generates/hashes them)
+      const itemId1 = beforeUpdate[0].itemId as string;
+      const itemId2 = beforeUpdate[1].itemId as string;
+      expect(itemId1).toBeDefined();
+      expect(itemId2).toBeDefined();
+
+      // Update to add dataType (migration scenario)
+      await toprfSecureBackup.batchUpdateSecretDataItems({
+        updateItems: [
+          { itemId: itemId1, dataType: EncAccountDataType.PrimarySrp },
+          { itemId: itemId2, dataType: EncAccountDataType.ImportedSrp },
+        ],
+        authKeyPair: encKeyResult.authKeyPair,
+      });
+
+      const afterUpdate = await toprfSecureBackup.fetchAllSecretDataItems({
+        decKey: encKeyResult.encKey,
+        authKeyPair: encKeyResult.authKeyPair,
+      });
+      expect(afterUpdate).toHaveLength(2);
+      const updatedItem1 = afterUpdate.find((item) => item.itemId === itemId1);
+      const updatedItem2 = afterUpdate.find((item) => item.itemId === itemId2);
+      expect(updatedItem1?.dataType).toBe(EncAccountDataType.PrimarySrp);
+      expect(updatedItem2?.dataType).toBe(EncAccountDataType.ImportedSrp);
     });
   });
 

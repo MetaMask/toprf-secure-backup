@@ -220,18 +220,56 @@ export type BaseAddSecretDataItemParams<
 };
 
 /**
+ * AddSecretDataItemParams - Parameters for adding a secret data item.
+ *
+ * secretData - The secret data to be stored.
+ *
  * encKey - The encryption key to be used to encrypt the secret data before storing it.
  *
  * authKeyPair - The authentication key to be used to provide valid signature for storing the secret data.
  *
- * secretData - The secret data to be stored.
+ * itemId - Optional item ID for the data item.
+ *
+ * dataType - Optional data type for categorizing the secret data.
  */
-export type AddSecretDataItemParams = BaseAddSecretDataItemParams<Uint8Array>;
+export type AddSecretDataItemParams =
+  BaseAddSecretDataItemParams<Uint8Array> & {
+    itemId?: string;
+    dataType?: EncAccountDataType;
+  };
 
-export type BatchAddSecretDataItemParams = BaseAddSecretDataItemParams<
-  Uint8Array[],
-  Uint8Array | Uint8Array[]
->;
+/**
+ * BatchAddSecretDataItem - A single item in a batch add operation.
+ */
+export type BatchAddSecretDataItem = {
+  data: Uint8Array;
+  itemId?: string;
+  dataType?: EncAccountDataType;
+};
+
+/**
+ * BatchAddSecretDataItemParams - Parameters for batch adding secret data items.
+ *
+ * items - Array of items to store, each with data and optional itemId/dataType.
+ *
+ * encKey - The encryption key(s) to be used to encrypt the secret data.
+ *
+ * authKeyPair - The authentication key to be used to provide valid signature for storing the secret data.
+ */
+export type BatchAddSecretDataItemParams = {
+  items: BatchAddSecretDataItem[];
+  encKey: Uint8Array | Uint8Array[];
+  authKeyPair: KeyPair;
+};
+
+/**
+ * FetchedSecretDataItem - A secret data item returned from fetch operations.
+ */
+export type FetchedSecretDataItem = {
+  data: Uint8Array;
+  itemId?: string;
+  dataType?: EncAccountDataType;
+};
 
 /**
  * UpdateSecretDataItemParams - Parameters for updating a secret data item's fields.
@@ -458,7 +496,9 @@ export type IToprfSecureBackup = {
    * @param params - The parameters for registering new secret data.
    * @param params.encKey - The encryption key to be used to encrypt the secret data before storing it.
    * @param params.authKeyPair - The authentication key to be used to provide valid signature for storing the secret data.
-   * @param params.secretData - The array of secret data to be registered.
+   * @param params.secretData - The secret data to be registered.
+   * @param params.itemId - Optional item ID for the data item.
+   * @param params.dataType - Optional data type for categorizing the secret data.
    *
    * @returns A promise that resolves when the secret data is registered.
    */
@@ -468,9 +508,9 @@ export type IToprfSecureBackup = {
    * This function encrypts the array of secret data using the encryption key and stores it in the metadata store in encrypted form as a batch.
    *
    * @param params - The parameters for registering new secret data.
+   * @param params.items - Array of items to store, each with data and optional itemId/dataType.
    * @param params.encKey - The encryption key to be used to encrypt the secret data before storing it.
    * @param params.authKeyPair - The authentication key to be used to provide valid signature for storing the secret data.
-   * @param params.secretData - The array of secret data to be stored.
    *
    * @returns A promise that resolves when the secret data is stored.
    */
@@ -511,11 +551,11 @@ export type IToprfSecureBackup = {
    * @param params.decKey - The decryption key to be used to decrypt the secret data.
    * @param params.authKeyPair - The authentication key to be used to provide valid signature for fetching the secret data.
    *
-   * @returns {Uint8Array[]} A promise that resolves with the array of decrypted secret data.
+   * @returns A promise that resolves with the array of decrypted secret data items.
    */
   fetchAllSecretDataItems: (
     params: FetchAllSecretDataParams,
-  ) => Promise<Uint8Array[]>;
+  ) => Promise<FetchedSecretDataItem[]>;
 
   /**
    * This function fetches the authentication public key.

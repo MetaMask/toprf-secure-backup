@@ -43,6 +43,7 @@ import type {
   FetchMetadataAccessCreds,
   UpdateSecretDataItemParams,
   BatchUpdateSecretDataItemParams,
+  FetchedSecretDataItem,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -525,15 +526,20 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    *
    * @param params - The parameters for registering new secret data.
    * @param params.encKey - The encryption key which is used to encrypt the secret data before storing it.
-   * @param params.secretData - The array of secret data to be registered.
+   * @param params.secretData - The secret data to be registered.
    * @param params.authKeyPair - The authentication key pair which is used to authenticate the user to the storage service.
+   * @param params.itemId - Optional item ID for the data item.
+   * @param params.dataType - Optional data type for categorizing the secret data.
    */
   async addSecretDataItem(params: AddSecretDataItemParams): Promise<void> {
     const metadataStore = await this.#createMetadataStore();
     await metadataStore.addSecretDataItem({
-      ...params,
+      encKey: params.encKey,
+      authKeyPair: params.authKeyPair,
       secretData: {
         data: params.secretData,
+        itemId: params.itemId,
+        dataType: params.dataType,
       },
     });
   }
@@ -542,8 +548,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * This function encrypts the array of secret data using the encryption key and stores in the metadata store in encrypted form as a batch.
    *
    * @param params - The parameters for registering new secret data.
+   * @param params.items - Array of items to store, each with data and optional itemId/dataType.
    * @param params.encKey - The encryption key to be used to encrypt the secret data before storing it.
-   * @param params.secretData - The array of secret data to be stored.
    * @param params.authKeyPair - The authentication key to be used to provide valid signature for storing the secret data.
    */
   async batchAddSecretDataItems(
@@ -560,9 +566,12 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       );
 
       await metadataStore.batchAddSecretData({
-        ...params,
-        secretData: params.secretData.map((data) => ({
-          data,
+        encKey: params.encKey,
+        authKeyPair: params.authKeyPair,
+        secretData: params.items.map((item) => ({
+          data: item.data,
+          itemId: item.itemId,
+          dataType: item.dataType,
         })),
       });
     } finally {
@@ -633,13 +642,17 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    */
   async fetchAllSecretDataItems(
     params: FetchAllSecretDataParams,
-  ): Promise<Uint8Array[]> {
+  ): Promise<FetchedSecretDataItem[]> {
     const metadataStore = await this.#createMetadataStore();
     const dataItems = await metadataStore.fetchAllSecretDataItems(
       params.decKey,
       params.authKeyPair,
     );
-    return dataItems.map((dataItem: SecretDataItem) => dataItem.data);
+    return dataItems.map((dataItem: SecretDataItem) => ({
+      data: dataItem.data,
+      itemId: dataItem.itemId,
+      dataType: dataItem.dataType,
+    }));
   }
 
   /**
