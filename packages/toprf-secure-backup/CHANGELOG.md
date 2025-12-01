@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `EncAccountDataType` enum for categorizing secret data (e.g., `PrimarySrp`, `ImportedSrp`, `ImportedPrivateKey`)
+- Add optional `dataType` field to `SecretDataItem` for insert and fetch operations
+- Add `updateSecretDataItem` method to `MetadataStore` to update `dataType` for existing items by `itemId`
+- Add `batchUpdateSecretData` method to `MetadataStore` to batch update `dataType` for multiple items
+
+### Changed
+
+- `fetchAllSecretDataItems` now returns `dataType` field in results
+
 ## [0.11.0]
 
 ### Added

@@ -5,7 +5,7 @@ import { secp256k1 } from '@noble/curves/secp256k1';
 import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
 import { bytesToHex } from '@noble/hashes/utils';
 
-import { PW_BACKUP_ITEM_ID } from './constants';
+import { PW_BACKUP_ITEM_ID, type EncAccountDataType } from './constants';
 import type {
   IGetSecretDataRequestBody,
   KeyPair,
@@ -15,6 +15,9 @@ import type {
   NodeAuthToken,
   BaseAddSecretDataItemParams,
   FetchMetadataAccessCreds,
+  IUpdateSecretDataRequestBody,
+  IBatchUpdateSecretDataRequestBody,
+  UpdateSecretDataItemFields,
 } from './interfaces';
 
 type MetadataStoreOptions = {
@@ -41,6 +44,12 @@ export type LockAcquiredResponse = { status: MetadataLockStatus; id?: string };
 export type SecretDataItem = {
   itemId?: string;
   data: Uint8Array;
+  dataType?: EncAccountDataType;
+};
+
+export type UpdateSecretDataItem = {
+  itemId: string;
+  fields: UpdateSecretDataItemFields;
 };
 
 export type MetadataAddSecretDataItemParams =
@@ -50,6 +59,16 @@ export type MetadataBatchAddSecretDataItemParams = BaseAddSecretDataItemParams<
   SecretDataItem[],
   Uint8Array | Uint8Array[]
 >;
+
+export type MetadataUpdateSecretDataItemParams = {
+  updateItem: UpdateSecretDataItem;
+  authKeyPair: KeyPair;
+};
+
+export type MetadataBatchUpdateSecretDataItemParams = {
+  updateItems: UpdateSecretDataItem[];
+  authKeyPair: KeyPair;
+};
 
 /**
  * Error class for metadata store.
@@ -176,6 +195,58 @@ export class MetadataStore {
   }
 
   /**
+   * Updates fields for an existing secret data item by itemId.
+   * This does not modify the encrypted data itself, only metadata fields like dataType.
+   *
+   * @param params - The parameters for updating the secret data item.
+   * @param params.updateItem - The item ID and fields to update.
+   * @param params.authKeyPair - The authentication key pair for signing the request.
+   * @returns A promise that resolves when the update is complete.
+   */
+  async updateSecretDataItem(
+    params: MetadataUpdateSecretDataItemParams,
+  ): Promise<void> {
+    try {
+      const { updateItem, authKeyPair } = params;
+      await this.#updateData({
+        updateItem,
+        authKeyPair,
+        metadataEndpoint: this.#metadataEndpoint,
+      });
+    } catch (error) {
+      throw new MetadataStoreError(
+        `failed to update metadata: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  /**
+   * Updates fields for multiple existing secret data items by their itemIds.
+   * This does not modify the encrypted data itself, only metadata fields like dataType.
+   *
+   * @param params - The parameters for updating the secret data items.
+   * @param params.updateItems - Array of items with itemId and fields to update.
+   * @param params.authKeyPair - The authentication key pair for signing the request.
+   * @returns A promise that resolves when all updates are complete.
+   */
+  async batchUpdateSecretData(
+    params: MetadataBatchUpdateSecretDataItemParams,
+  ): Promise<void> {
+    try {
+      const { updateItems, authKeyPair } = params;
+      await this.#batchUpdateData({
+        updateItems,
+        authKeyPair,
+        metadataEndpoint: this.#metadataEndpoint,
+      });
+    } catch (error) {
+      throw new MetadataStoreError(
+        `failed to batch update metadata: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  /**
    * Acquires a lock on the metadata store.
    *
    * @param authKeyPair - The authentication key pair to be used for authenticating the secret data.
@@ -241,6 +312,15 @@ export class MetadataStore {
     metadataEndpoint: string;
   }): Promise<boolean> {
     try {
+      if (
+        params.secretData.itemId === PW_BACKUP_ITEM_ID &&
+        params.secretData.dataType !== undefined
+      ) {
+        throw new MetadataStoreError(
+          'dataType cannot be set for PW_BACKUP item',
+        );
+      }
+
       const url = `${params.metadataEndpoint}/enc_account_data/set`;
       const encryptedData = this.#encryptData(
         params.secretData.data,
@@ -251,6 +331,7 @@ export class MetadataStore {
           {
             itemId: params.secretData.itemId,
             data: encryptedData,
+            dataType: params.secretData.dataType,
           },
           params.authKeyPair,
         );
@@ -312,11 +393,23 @@ export class MetadataStore {
       );
     }
 
+    for (const secret of params.secretData) {
+      if (
+        secret.itemId === PW_BACKUP_ITEM_ID &&
+        secret.dataType !== undefined
+      ) {
+        throw new MetadataStoreError(
+          'dataType cannot be set for PW_BACKUP item',
+        );
+      }
+    }
+
     try {
       const url = `${params.metadataEndpoint}/enc_account_data/batch_set`;
       const encryptedDataArray = params.secretData.map((secret, index) => ({
         data: this.#encryptData(secret.data, encKeys[index]),
         itemId: secret.itemId,
+        dataType: secret.dataType,
       }));
       const payload =
         await this.#generatePayloadForSetOrBatchSetSecretDataRequest(
@@ -343,6 +436,108 @@ export class MetadataStore {
       const errorMessage = (error as Error).message || 'Unknown error';
       throw new MetadataStoreError(
         `failed to upsert metadata: ${errorMessage}`,
+      );
+    }
+  }
+
+  /**
+   * Updates fields for an existing secret data item by itemId (without modifying encrypted data).
+   *
+   * @param params - The parameters for updating the secret data.
+   * @param params.updateItem - The item ID and fields to update.
+   * @param params.authKeyPair - The authentication key pair for signing the request.
+   * @param params.metadataEndpoint - The metadata server endpoint.
+   * @returns A promise that resolves when the update is complete.
+   */
+  async #updateData(params: {
+    updateItem: UpdateSecretDataItem;
+    authKeyPair: KeyPair;
+    metadataEndpoint: string;
+  }): Promise<boolean> {
+    try {
+      if (params.updateItem.itemId === PW_BACKUP_ITEM_ID) {
+        throw new MetadataStoreError(
+          'PW_BACKUP cannot be updated via itemId-only path',
+        );
+      }
+
+      const url = `${params.metadataEndpoint}/enc_account_data/set`;
+      const payload = await this.#generatePayloadForUpdateSecretDataRequest(
+        params.updateItem,
+        params.authKeyPair,
+      );
+
+      const response = await fetch(url, {
+        headers: {
+          // eslint-disable-next-line @typescript-eslint/naming-convention
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const responseBody = await response.json();
+        throw new Error(`HTTP error message: ${responseBody.error}`);
+      }
+      const jsonData = await response.json();
+      return jsonData.success;
+    } catch (error: unknown) {
+      const errorMessage = (error as Error).message || 'Unknown error';
+      throw new MetadataStoreError(
+        `failed to update metadata: ${errorMessage}`,
+      );
+    }
+  }
+
+  /**
+   * Updates fields for multiple existing secret data items by their itemIds.
+   *
+   * @param params - The parameters for batch updating.
+   * @param params.updateItems - Array of items with itemId and fields to update.
+   * @param params.authKeyPair - The authentication key pair for signing the request.
+   * @param params.metadataEndpoint - The metadata server endpoint.
+   * @returns A promise that resolves when all updates are complete.
+   */
+  async #batchUpdateData(params: {
+    updateItems: UpdateSecretDataItem[];
+    authKeyPair: KeyPair;
+    metadataEndpoint: string;
+  }): Promise<boolean> {
+    try {
+      for (const item of params.updateItems) {
+        if (item.itemId === PW_BACKUP_ITEM_ID) {
+          throw new MetadataStoreError(
+            'PW_BACKUP cannot be updated via itemId-only path',
+          );
+        }
+      }
+
+      const url = `${params.metadataEndpoint}/enc_account_data/batch_set`;
+      const payload = await this.#generatePayloadForUpdateSecretDataRequest(
+        params.updateItems,
+        params.authKeyPair,
+      );
+
+      const response = await fetch(url, {
+        headers: {
+          // eslint-disable-next-line @typescript-eslint/naming-convention
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const responseBody = await response.json();
+        throw new Error(`HTTP error message: ${responseBody.error}`);
+      }
+      const jsonData = await response.json();
+      return jsonData.success;
+    } catch (error: unknown) {
+      const errorMessage = (error as Error).message || 'Unknown error';
+      throw new MetadataStoreError(
+        `failed to batch update metadata: ${errorMessage}`,
       );
     }
   }
@@ -387,27 +582,39 @@ export class MetadataStore {
       const jsonData = (await response.json()) as {
         data: string[];
         ids: string[];
+        dataTypes: (number | null)[];
       };
       if (!jsonData.data) {
         throw new MetadataStoreError('Failed to fetch metadata');
       }
 
-      const secretData: SecretDataItem[] = jsonData.data
-        .filter((_data, i) => {
-          if (params.itemId) {
-            return jsonData.ids[i] === params.itemId;
-          }
-          // Exclude password backup item from regular query.
-          return jsonData.ids[i] !== PW_BACKUP_ITEM_ID;
-        })
-        .map((data: string, index: number) => {
-          const rawData = new Uint8Array(Buffer.from(data, 'base64'));
-          return {
-            itemId: jsonData.ids[index],
-            data: this.#decryptData(rawData, params.encKey),
-          };
+      const secretData: SecretDataItem[] = [];
+
+      for (let i = 0; i < jsonData.data.length; i++) {
+        const id = jsonData.ids[i];
+
+        if (params.itemId && id !== params.itemId) {
+          continue;
+        }
+        if (id === PW_BACKUP_ITEM_ID) {
+          continue;
+        }
+
+        const rawData = new Uint8Array(Buffer.from(jsonData.data[i], 'base64'));
+        const decryptedData = this.#decryptData(rawData, params.encKey);
+
+        if (decryptedData.length === 0) {
+          continue;
+        }
+        const dataType = jsonData.dataTypes?.[i];
+        secretData.push({
+          itemId: id,
+          data: decryptedData,
+          dataType: typeof dataType === 'number' ? dataType : undefined,
         });
-      return secretData.filter((data) => data.data.length > 0);
+      }
+
+      return secretData;
     } catch (error) {
       const errorMessage = (error as Error).message || 'Unknown error';
       throw new MetadataStoreError(`failed to fetch metadata: ${errorMessage}`);
@@ -512,23 +719,22 @@ export class MetadataStore {
     const feature = this.#feature;
     const { metadataAccessToken } = await this.#fetchMetadataAccessCreds();
 
-    const sigPayload: Record<string, any> = {
+    const sigPayload: Record<string, unknown> = {
       timestamp,
       feature,
       authToken: metadataAccessToken,
     };
 
     if (Array.isArray(inputData)) {
-      sigPayload.data = inputData.map((item) => {
-        const dataBytes = item.data;
-        return {
-          data: Buffer.from(dataBytes).toString('base64'),
-          itemId: item.itemId,
-        };
-      });
+      sigPayload.data = inputData.map((item) => ({
+        data: Buffer.from(item.data).toString('base64'),
+        itemId: item.itemId,
+        dataType: item.dataType,
+      }));
     } else {
       sigPayload.data = Buffer.from(inputData.data).toString('base64');
       sigPayload.itemId = inputData.itemId;
+      sigPayload.dataType = inputData.dataType;
     }
 
     const { pk, sk } = authKeyPair;
@@ -573,6 +779,58 @@ export class MetadataStore {
       pubKey,
       signature,
     };
+  }
+
+  /**
+   * Generate the payload for updating secret data items by itemId.
+   *
+   * @param inputData - Single update item or array of update items.
+   * @param authKeyPair - The authentication key pair for signing the request.
+   * @returns The payload for the update request.
+   */
+  async #generatePayloadForUpdateSecretDataRequest(
+    inputData: UpdateSecretDataItem | UpdateSecretDataItem[],
+    authKeyPair: KeyPair,
+  ): Promise<IUpdateSecretDataRequestBody | IBatchUpdateSecretDataRequestBody> {
+    const timestamp = Date.now().toString();
+    const feature = this.#feature;
+    const { metadataAccessToken } = await this.#fetchMetadataAccessCreds();
+
+    const sigPayload: Record<string, unknown> = {
+      timestamp,
+      feature,
+      authToken: metadataAccessToken,
+    };
+
+    const items = Array.isArray(inputData) ? inputData : [inputData];
+    const hasEmptyFields = items.some(
+      (item) => item.fields.dataType === undefined,
+    );
+    if (hasEmptyFields) {
+      throw new MetadataStoreError(
+        'At least one field must be provided for update',
+      );
+    }
+
+    if (Array.isArray(inputData)) {
+      sigPayload.data = inputData.map((item) => ({
+        itemId: item.itemId,
+        dataType: item.fields.dataType,
+      }));
+    } else {
+      sigPayload.itemId = inputData.itemId;
+      sigPayload.dataType = inputData.fields.dataType;
+    }
+
+    const { pk, sk } = authKeyPair;
+    const signature = this.#generatePayloadSignature(sigPayload, sk);
+
+    const pubKey = bytesToHex(pk);
+    return {
+      ...sigPayload,
+      signature,
+      pubKey,
+    } as IUpdateSecretDataRequestBody | IBatchUpdateSecretDataRequestBody;
   }
 
   /**

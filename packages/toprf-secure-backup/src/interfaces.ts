@@ -1,5 +1,7 @@
 import type { INodePub } from '@toruslabs/constants';
 
+import type { EncAccountDataType } from './constants';
+
 /**
  * SEC1 encoded public key
  */
@@ -539,6 +541,14 @@ export type IBatchAddData = {
    * The version of the Metadata Store
    */
   version?: string;
+  /**
+   * Optional item id for the data item
+   */
+  itemId?: string;
+  /**
+   * Optional data type for categorizing the secret data
+   */
+  dataType?: EncAccountDataType;
 }[];
 
 /**
@@ -593,6 +603,10 @@ export type IAddSecretDataRequestBody =
      * The item id to be used for storing the secret data.
      */
     itemId?: string;
+    /**
+     * Optional data type for categorizing the secret data
+     */
+    dataType?: EncAccountDataType;
   };
 
 /**
@@ -600,6 +614,60 @@ export type IAddSecretDataRequestBody =
  */
 export type IBatchAddSecretDataRequestBody =
   IBaseAddSecretDataRequestBody<IBatchAddData>;
+
+/**
+ * Fields that can be updated for an existing secret data item.
+ * At least one field must be provided.
+ */
+export type UpdateSecretDataItemFields = {
+  /**
+   * The data type to set for the item
+   */
+  dataType?: EncAccountDataType;
+};
+
+/**
+ * Payload structure for updating secret data fields by itemId
+ */
+export type IUpdateSecretDataRequestBody = IBaseMetadataRequestBody & {
+  /**
+   * The authentication token of the user issued by authentication service.
+   */
+  authToken?: string;
+  /**
+   * The item id of the record to update
+   */
+  itemId: string;
+  /**
+   * Optional data type for categorizing the secret data
+   */
+  dataType?: EncAccountDataType;
+  /**
+   * The signature produced by signing the payload using the user's private key.
+   */
+  signature: string;
+};
+
+/**
+ * Payload structure for batch updating secret data fields by itemId
+ */
+export type IBatchUpdateSecretDataRequestBody = IBaseMetadataRequestBody & {
+  /**
+   * The authentication token of the user issued by authentication service.
+   */
+  authToken?: string;
+  /**
+   * The array of items to update
+   */
+  data: {
+    itemId: string;
+    dataType?: EncAccountDataType;
+  }[];
+  /**
+   * The signature produced by signing the payload using the user's private key.
+   */
+  signature: string;
+};
 
 /**
  * Payload structure for fetching secret data
