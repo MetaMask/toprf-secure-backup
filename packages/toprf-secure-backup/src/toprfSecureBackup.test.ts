@@ -753,7 +753,7 @@ describe('toprf secret backup', function () {
           });
         expect(originalSecretData).not.toBeNull();
         expect(originalSecretData?.length).toBe(1);
-        expect(originalSecretData?.[0]).toStrictEqual(secretData);
+        expect(originalSecretData?.[0].data).toStrictEqual(secretData);
 
         // Recover the original key to get the keyShareIndex
         const recoveredOriginalKey = await toprfSecureBackup.recoverEncKey({
@@ -815,7 +815,7 @@ describe('toprf secret backup', function () {
         });
         expect(newSecretData).not.toBeNull();
         expect(newSecretData?.length).toBe(1);
-        expect(newSecretData?.[0]).toStrictEqual(secretData);
+        expect(newSecretData?.[0].data).toStrictEqual(secretData);
 
         // Verify the key change was actually effective by comparing the recovered keys
         expect(recoveredNewKey.authKeyPair.sk).toStrictEqual(
@@ -924,7 +924,7 @@ describe('toprf secret backup', function () {
           });
         expect(originalSecretData).not.toBeNull();
         expect(originalSecretData?.length).toBe(1);
-        expect(originalSecretData?.[0]).toStrictEqual(secretData);
+        expect(originalSecretData?.[0].data).toStrictEqual(secretData);
 
         // Recover the original key to get the keyShareIndex
         const recoveredOriginalKey = await toprfSecureBackup.recoverEncKey({
@@ -989,7 +989,7 @@ describe('toprf secret backup', function () {
         });
         expect(newSecretData).not.toBeNull();
         expect(newSecretData?.length).toBe(1);
-        expect(newSecretData?.[0]).toStrictEqual(secretData);
+        expect(newSecretData?.[0].data).toStrictEqual(secretData);
 
         // Verify the key change was actually effective by comparing the recovered keys
         expect(recoveredNewKey.authKeyPair.sk).toStrictEqual(
@@ -1428,7 +1428,7 @@ describe('toprf secret backup', function () {
         },
       );
       expect(fetchedSecretData).not.toBeNull();
-      expect(fetchedSecretData?.[0]).toStrictEqual(secretData);
+      expect(fetchedSecretData?.[0].data).toStrictEqual(secretData);
     });
   });
 
@@ -1480,22 +1480,18 @@ describe('toprf secret backup', function () {
         authKeyPair,
       });
 
-      const fetchedSecretData = await toprfSecureBackup.fetchAllSecretDataItems(
-        {
-          decKey: encKey,
-          authKeyPair,
-        },
-      );
+      const fetchedItems = await toprfSecureBackup.fetchAllSecretDataItems({
+        decKey: encKey,
+        authKeyPair,
+      });
 
-      // should have the same length as the secret data array
-      expect(fetchedSecretData).toHaveLength(secretDataArray.length);
+      expect(fetchedItems).toHaveLength(secretDataArray.length);
 
-      // since all the secret items are added at once, they might have the same creation timestamp in the backend
-      // so, we cannot assume that the fetched secret data is in the same order as the secret data array
-      // hence we sort both arrays and then compare
+      // Since all items are added at once, they might have the same timestamp,
+      // so we sort both arrays before comparing
       const sortedSecretDataArray = [...secretDataArray].sort();
-      const sortedFetchedSecretData = [...fetchedSecretData].sort();
-      expect(sortedFetchedSecretData).toStrictEqual(sortedSecretDataArray);
+      const sortedFetchedData = fetchedItems.map((item) => item.data).sort();
+      expect(sortedFetchedData).toStrictEqual(sortedSecretDataArray);
     });
 
     it('should throw an error when failed to acquire metadata lock', async function () {
@@ -1512,10 +1508,7 @@ describe('toprf secret backup', function () {
       ).rejects.toThrow('Failed to acquire metadata lock');
     });
 
-    // The metadata lock has a 90 second expiry time and will auto-release after that period,
-    // regardless of whether the key change succeeded or failed.
-    // While changeEncKey() attempts to manually release the lock after a successful key change,
-    // any failure to release the lock should not impact the overall key change operation.
+    // Metadata lock auto-releases after 90s; failure to release early does not affect key changes.
     it('should `not` throw an error when failed to release metadata lock', async function () {
       jest
         .spyOn(MetadataStore.prototype, 'releaseMetadataLock')
@@ -1527,22 +1520,260 @@ describe('toprf secret backup', function () {
         authKeyPair,
       });
 
-      const fetchedSecretData = await toprfSecureBackup.fetchAllSecretDataItems(
-        {
-          decKey: encKey,
-          authKeyPair,
-        },
+      const fetchedItems = await toprfSecureBackup.fetchAllSecretDataItems({
+        decKey: encKey,
+        authKeyPair,
+      });
+
+      expect(fetchedItems).toHaveLength(secretDataArray.length);
+
+      const sortedSecretDataArray = [...secretDataArray].sort();
+      const sortedFetchedData = fetchedItems.map((item) => item.data).sort();
+      expect(sortedFetchedData).toStrictEqual(sortedSecretDataArray);
+    });
+  });
+
+  describe('deleteSecretDataItem', function () {
+    const password = generateRandomPassword();
+
+    let toprfSecureBackup: ToprfSecureBackup;
+    let encKey: Uint8Array;
+    let authKeyPair: KeyPair;
+
+    beforeEach(async function () {
+      const {
+        authConnectionId,
+        userId,
+        idToken,
+        toprfSecureBackup: _toprfSecureBackup,
+      } = setup();
+      toprfSecureBackup = _toprfSecureBackup;
+
+      const result = await toprfSecureBackup.authenticate({
+        idTokens: [idToken],
+        authConnectionId,
+        userId,
+      });
+
+      const encKeyResult = await toprfSecureBackup.createAndPersistEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        password,
+        authConnectionId,
+        userId,
+      });
+      encKey = encKeyResult.encKey;
+      authKeyPair = encKeyResult.authKeyPair;
+    });
+
+    afterEach(function () {
+      jest.restoreAllMocks();
+    });
+
+    it('should be able to delete a non-default secret data item', async function () {
+      await toprfSecureBackup.addSecretDataItem({
+        encKey,
+        secretData: utf8ToBytes('first-secret-data'),
+        authKeyPair,
+      });
+
+      await sleep(50);
+
+      await toprfSecureBackup.addSecretDataItem({
+        encKey,
+        secretData: utf8ToBytes('second-secret-data'),
+        authKeyPair,
+      });
+
+      const allItems = await toprfSecureBackup.fetchAllSecretDataItems({
+        decKey: encKey,
+        authKeyPair,
+      });
+      expect(allItems).toHaveLength(2);
+
+      const newestItem = allItems.reduce((newest, current) =>
+        current.timestamp > newest.timestamp ? current : newest,
       );
 
-      // should have the same length as the secret data array
-      expect(fetchedSecretData).toHaveLength(secretDataArray.length);
+      await toprfSecureBackup.deleteSecretDataItem({
+        itemId: newestItem.itemId,
+        authKeyPair,
+      });
 
-      // since all the secret items are added at once, they might have the same creation timestamp in the backend
-      // so, we cannot assume that the fetched secret data is in the same order as the secret data array
-      // hence we sort both arrays and then compare
-      const sortedSecretDataArray = [...secretDataArray].sort();
-      const sortedFetchedSecretData = [...fetchedSecretData].sort();
-      expect(sortedFetchedSecretData).toStrictEqual(sortedSecretDataArray);
+      const remainingItems = await toprfSecureBackup.fetchAllSecretDataItems({
+        decKey: encKey,
+        authKeyPair,
+      });
+      expect(remainingItems).toHaveLength(1);
+      expect(remainingItems[0].itemId).not.toBe(newestItem.itemId);
+    });
+
+    it('should reject deleting the oldest (default SRP) item', async function () {
+      await toprfSecureBackup.addSecretDataItem({
+        encKey,
+        secretData: utf8ToBytes('only-secret-data'),
+        authKeyPair,
+      });
+
+      const allItems = await toprfSecureBackup.fetchAllSecretDataItems({
+        decKey: encKey,
+        authKeyPair,
+      });
+
+      await expect(
+        toprfSecureBackup.deleteSecretDataItem({
+          itemId: allItems[0].itemId,
+          authKeyPair,
+        }),
+      ).rejects.toThrow('Cannot delete the default SRP item');
+    });
+  });
+
+  describe('batchDeleteSecretDataItems', function () {
+    const password = generateRandomPassword();
+
+    let toprfSecureBackup: ToprfSecureBackup;
+    let encKey: Uint8Array;
+    let authKeyPair: KeyPair;
+
+    beforeEach(async function () {
+      const {
+        authConnectionId,
+        userId,
+        idToken,
+        toprfSecureBackup: _toprfSecureBackup,
+      } = setup();
+      toprfSecureBackup = _toprfSecureBackup;
+
+      const result = await toprfSecureBackup.authenticate({
+        idTokens: [idToken],
+        authConnectionId,
+        userId,
+      });
+
+      const encKeyResult = await toprfSecureBackup.createAndPersistEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        password,
+        authConnectionId,
+        userId,
+      });
+      encKey = encKeyResult.encKey;
+      authKeyPair = encKeyResult.authKeyPair;
+    });
+
+    afterEach(function () {
+      jest.restoreAllMocks();
+    });
+
+    it('should be able to batch delete non-default secret data items', async function () {
+      await toprfSecureBackup.addSecretDataItem({
+        encKey,
+        secretData: utf8ToBytes('test-secret-data-1'),
+        authKeyPair,
+      });
+
+      await sleep(50);
+
+      await toprfSecureBackup.addSecretDataItem({
+        encKey,
+        secretData: utf8ToBytes('test-secret-data-2'),
+        authKeyPair,
+      });
+
+      await sleep(50);
+
+      await toprfSecureBackup.addSecretDataItem({
+        encKey,
+        secretData: utf8ToBytes('test-secret-data-3'),
+        authKeyPair,
+      });
+
+      const allItems = await toprfSecureBackup.fetchAllSecretDataItems({
+        decKey: encKey,
+        authKeyPair,
+      });
+      expect(allItems).toHaveLength(3);
+
+      const oldestItem = allItems.reduce((oldest, current) =>
+        current.timestamp < oldest.timestamp ? current : oldest,
+      );
+
+      const itemIdsToDelete = allItems
+        .filter((item) => item.itemId !== oldestItem.itemId)
+        .map((item) => item.itemId);
+
+      await toprfSecureBackup.batchDeleteSecretDataItems({
+        itemIds: itemIdsToDelete,
+        authKeyPair,
+      });
+
+      const remainingItems = await toprfSecureBackup.fetchAllSecretDataItems({
+        decKey: encKey,
+        authKeyPair,
+      });
+      expect(remainingItems).toHaveLength(1);
+      expect(remainingItems[0].itemId).toBe(oldestItem.itemId);
+    });
+
+    it('should throw an error when failed to acquire metadata lock', async function () {
+      jest
+        .spyOn(MetadataStore.prototype, 'acquireMetadataLock')
+        .mockRejectedValue(new Error('Failed to acquire metadata lock'));
+
+      await expect(
+        toprfSecureBackup.batchDeleteSecretDataItems({
+          itemIds: ['item-1', 'item-2'],
+          authKeyPair,
+        }),
+      ).rejects.toThrow('Failed to acquire metadata lock');
+    });
+
+    it('should reject batch deleting if it includes the oldest (default SRP) item', async function () {
+      await toprfSecureBackup.addSecretDataItem({
+        encKey,
+        secretData: utf8ToBytes('test-secret-data-1'),
+        authKeyPair,
+      });
+
+      await sleep(50);
+
+      await toprfSecureBackup.addSecretDataItem({
+        encKey,
+        secretData: utf8ToBytes('test-secret-data-2'),
+        authKeyPair,
+      });
+
+      const allItems = await toprfSecureBackup.fetchAllSecretDataItems({
+        decKey: encKey,
+        authKeyPair,
+      });
+      const allItemIds = allItems.map((item) => item.itemId);
+
+      await expect(
+        toprfSecureBackup.batchDeleteSecretDataItems({
+          itemIds: allItemIds,
+          authKeyPair,
+        }),
+      ).rejects.toThrow('Cannot delete the default SRP item');
+    });
+
+    it('should `not` throw an error when failed to release metadata lock', async function () {
+      jest
+        .spyOn(MetadataStore.prototype, 'releaseMetadataLock')
+        .mockRejectedValue(new Error('Failed to release metadata lock'));
+
+      const batchDeleteSpy = jest
+        .spyOn(MetadataStore.prototype, 'batchDeleteSecretDataItems')
+        .mockResolvedValueOnce();
+
+      await toprfSecureBackup.batchDeleteSecretDataItems({
+        itemIds: ['item-1', 'item-2'],
+        authKeyPair,
+      });
+
+      expect(batchDeleteSpy).toHaveBeenCalledWith(
+        ['item-1', 'item-2'],
+        authKeyPair,
+      );
     });
   });
 

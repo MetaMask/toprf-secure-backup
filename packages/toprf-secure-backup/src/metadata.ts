@@ -11,6 +11,8 @@ import type {
   KeyPair,
   IAddSecretDataRequestBody,
   IBatchAddSecretDataRequestBody,
+  IDeleteSecretDataRequestBody,
+  IBatchDeleteSecretDataRequestBody,
   IMetadataLockRequestBody,
   NodeAuthToken,
   BaseAddSecretDataItemParams,
@@ -41,6 +43,7 @@ export type LockAcquiredResponse = { status: MetadataLockStatus; id?: string };
 export type SecretDataItem = {
   itemId?: string;
   data: Uint8Array;
+  timestamp?: number;
 };
 
 export type MetadataAddSecretDataItemParams =
@@ -159,7 +162,7 @@ export class MetadataStore {
     encKey: Uint8Array,
     authKeyPair: KeyPair,
     itemId?: string,
-  ): Promise<SecretDataItem[]> {
+  ): Promise<Required<SecretDataItem>[]> {
     try {
       const result = await this.#getAllDataItems({
         encKey,
@@ -222,6 +225,58 @@ export class MetadataStore {
     }
 
     return lockStatus;
+  }
+
+  /**
+   * Soft deletes a single secret data item from the metadata store.
+   * This does not require acquiring a lock.
+   *
+   * @param itemId - The item id to delete.
+   * @param authKeyPair - The authentication key pair to be used for authenticating the request.
+   * @returns A promise that resolves when the item is deleted.
+   * @throws MetadataStoreError if the item cannot be deleted (e.g., PW_BACKUP or default SRP item).
+   */
+  async deleteSecretDataItem(
+    itemId: string,
+    authKeyPair: KeyPair,
+  ): Promise<void> {
+    try {
+      await this.#deleteData({
+        itemId,
+        authKeyPair,
+        metadataEndpoint: this.#metadataEndpoint,
+      });
+    } catch (error) {
+      throw new MetadataStoreError(
+        `failed to delete metadata: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  /**
+   * Soft deletes multiple secret data items from the metadata store.
+   * This requires acquiring a lock first.
+   *
+   * @param itemIds - The array of item ids to delete.
+   * @param authKeyPair - The authentication key pair to be used for authenticating the request.
+   * @returns A promise that resolves when the items are deleted.
+   * @throws MetadataStoreError if any item cannot be deleted (e.g., PW_BACKUP or default SRP item).
+   */
+  async batchDeleteSecretDataItems(
+    itemIds: string[],
+    authKeyPair: KeyPair,
+  ): Promise<void> {
+    try {
+      await this.#batchDeleteData({
+        itemIds,
+        authKeyPair,
+        metadataEndpoint: this.#metadataEndpoint,
+      });
+    } catch (error) {
+      throw new MetadataStoreError(
+        `failed to batch delete metadata: ${(error as Error).message}`,
+      );
+    }
   }
 
   /**
@@ -362,7 +417,7 @@ export class MetadataStore {
     authKeyPair: KeyPair;
     metadataEndpoint: string;
     itemId?: string;
-  }): Promise<SecretDataItem[]> {
+  }): Promise<Required<SecretDataItem>[]> {
     try {
       const url = `${params.metadataEndpoint}/enc_account_data/get`;
       const payload = await this.#generatePayloadForGetSecretDataRequest(
@@ -387,12 +442,13 @@ export class MetadataStore {
       const jsonData = (await response.json()) as {
         data: string[];
         ids: string[];
+        timestamps: number[];
       };
       if (!jsonData.data) {
         throw new MetadataStoreError('Failed to fetch metadata');
       }
 
-      const secretData: SecretDataItem[] = jsonData.data
+      const secretData: Required<SecretDataItem>[] = jsonData.data
         .filter((_data, i) => {
           if (params.itemId) {
             return jsonData.ids[i] === params.itemId;
@@ -405,6 +461,7 @@ export class MetadataStore {
           return {
             itemId: jsonData.ids[index],
             data: this.#decryptData(rawData, params.encKey),
+            timestamp: jsonData.timestamps[index],
           };
         });
       return secretData.filter((data) => data.data.length > 0);
@@ -498,6 +555,99 @@ export class MetadataStore {
   }
 
   /**
+   * Soft deletes a single secret data item from the metadata store.
+   *
+   * @param params - The parameters for deleting the secret data.
+   * @param params.itemId - The item id to delete.
+   * @param params.authKeyPair - The authentication key pair to be used for authenticating the request.
+   * @param params.metadataEndpoint - The metadata server endpoint.
+   * @returns A promise that resolves when the item is deleted.
+   */
+  async #deleteData(params: {
+    itemId: string;
+    authKeyPair: KeyPair;
+    metadataEndpoint: string;
+  }): Promise<boolean> {
+    try {
+      const url = `${params.metadataEndpoint}/enc_account_data/delete`;
+      const payload = await this.#generatePayloadForDeleteSecretDataRequest(
+        params.itemId,
+        params.authKeyPair,
+      );
+
+      const response = await fetch(url, {
+        headers: {
+          // eslint-disable-next-line @typescript-eslint/naming-convention
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const responseBody = await response.json();
+        throw new Error(
+          `HTTP error message: ${responseBody.error?.message ?? responseBody.error}`,
+        );
+      }
+      const jsonData = await response.json();
+      return jsonData.success;
+    } catch (error: unknown) {
+      const errorMessage = (error as Error).message || 'Unknown error';
+      throw new MetadataStoreError(
+        `failed to delete metadata: ${errorMessage}`,
+      );
+    }
+  }
+
+  /**
+   * Soft deletes multiple secret data items from the metadata store.
+   *
+   * @param params - The parameters for batch deleting the secret data.
+   * @param params.itemIds - The array of item ids to delete.
+   * @param params.authKeyPair - The authentication key pair to be used for authenticating the request.
+   * @param params.metadataEndpoint - The metadata server endpoint.
+   * @returns A promise that resolves when the items are deleted.
+   */
+  async #batchDeleteData(params: {
+    itemIds: string[];
+    authKeyPair: KeyPair;
+    metadataEndpoint: string;
+  }): Promise<boolean> {
+    try {
+      const url = `${params.metadataEndpoint}/enc_account_data/batch_delete`;
+      const payload =
+        await this.#generatePayloadForBatchDeleteSecretDataRequest(
+          params.itemIds,
+          params.authKeyPair,
+        );
+
+      const response = await fetch(url, {
+        headers: {
+          // eslint-disable-next-line @typescript-eslint/naming-convention
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const responseBody = await response.json();
+        throw new Error(
+          `HTTP error message: ${responseBody.error?.message ?? responseBody.error}`,
+        );
+      }
+      const jsonData = await response.json();
+      return jsonData.success;
+    } catch (error: unknown) {
+      const errorMessage = (error as Error).message || 'Unknown error';
+      throw new MetadataStoreError(
+        `failed to batch delete metadata: ${errorMessage}`,
+      );
+    }
+  }
+
+  /**
    * Generate the payload for the set or batch set secret data request and get payload signature.
    *
    * @param inputData - The raw encrypted secret data or batch of encrypted secret data to be stored.
@@ -563,6 +713,68 @@ export class MetadataStore {
       feature,
       timestamp,
       itemId,
+      authToken: metadataAccessToken,
+    };
+    const signature = this.#generatePayloadSignature(sigPayload, sk);
+
+    const pubKey = bytesToHex(pk);
+    return {
+      ...sigPayload,
+      pubKey,
+      signature,
+    };
+  }
+
+  /**
+   * Generate the payload for the delete secret data request.
+   *
+   * @param itemId - The item id to delete.
+   * @param authKeyPair - The authentication key pair to be used for authenticating the request.
+   * @returns The payload for the delete secret data request.
+   */
+  async #generatePayloadForDeleteSecretDataRequest(
+    itemId: string,
+    authKeyPair: KeyPair,
+  ): Promise<IDeleteSecretDataRequestBody> {
+    const timestamp = Date.now().toString();
+    const feature = this.#feature;
+    const { pk, sk } = authKeyPair;
+    const { metadataAccessToken } = await this.#fetchMetadataAccessCreds();
+    const sigPayload = {
+      feature,
+      timestamp,
+      itemId,
+      authToken: metadataAccessToken,
+    };
+    const signature = this.#generatePayloadSignature(sigPayload, sk);
+
+    const pubKey = bytesToHex(pk);
+    return {
+      ...sigPayload,
+      pubKey,
+      signature,
+    };
+  }
+
+  /**
+   * Generate the payload for the batch delete secret data request.
+   *
+   * @param itemIds - The array of item ids to delete.
+   * @param authKeyPair - The authentication key pair to be used for authenticating the request.
+   * @returns The payload for the batch delete secret data request.
+   */
+  async #generatePayloadForBatchDeleteSecretDataRequest(
+    itemIds: string[],
+    authKeyPair: KeyPair,
+  ): Promise<IBatchDeleteSecretDataRequestBody> {
+    const timestamp = Date.now().toString();
+    const feature = this.#feature;
+    const { pk, sk } = authKeyPair;
+    const { metadataAccessToken } = await this.#fetchMetadataAccessCreds();
+    const sigPayload = {
+      feature,
+      timestamp,
+      itemIds,
       authToken: metadataAccessToken,
     };
     const signature = this.#generatePayloadSignature(sigPayload, sk);

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add `deleteSecretDataItem` method to soft delete a single secret data item.
+- Add `batchDeleteSecretDataItems` method to soft delete multiple secret data items.
+- Add `FetchedSecretDataItem` type for fetched secret data items with `itemId`, `data`, and `timestamp`.
+
+### Changed
+
+- **Breaking**: `fetchAllSecretDataItems` now returns `FetchedSecretDataItem[]` instead of `Uint8Array[]`.
+  - Each item now includes `itemId` (string), `data` (Uint8Array), and `timestamp` (number).
+  - To migrate, access the data via `.data` property: `items[0].data` instead of `items[0]`.
+
 ## [0.10.0]
 
 ### Added

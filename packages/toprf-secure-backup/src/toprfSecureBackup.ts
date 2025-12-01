@@ -24,6 +24,7 @@ import type {
   CreateEncryptionKeyParams,
   CreateEncryptionKeyResult,
   FetchAllSecretDataParams,
+  FetchedSecretDataItem,
   IToprfSecureBackup,
   RecoverEncryptionKeyParams,
   RecoverEncryptionKeyResult,
@@ -36,6 +37,8 @@ import type {
   CreateLocalKeyParams,
   CreateLocalKeyResult,
   BatchAddSecretDataItemParams,
+  DeleteSecretDataItemParams,
+  BatchDeleteSecretDataItemParams,
   RecoverPwEncKeyParams,
   KeyPair,
   RecoverPwEncKeyResult,
@@ -584,6 +587,63 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
   }
 
   /**
+   * This function soft deletes a single secret data item from the metadata store.
+   * This does not require acquiring a lock.
+   *
+   * @param params - The parameters for deleting the secret data.
+   * @param params.itemId - The item id of the secret data to delete.
+   * @param params.authKeyPair - The authentication key to be used to provide valid signature for deleting the secret data.
+   * @throws MetadataStoreError if the item cannot be deleted (e.g., PW_BACKUP or default SRP item).
+   */
+  async deleteSecretDataItem(
+    params: DeleteSecretDataItemParams,
+  ): Promise<void> {
+    const metadataStore = await this.#createMetadataStore();
+    await metadataStore.deleteSecretDataItem(params.itemId, params.authKeyPair);
+  }
+
+  /**
+   * This function soft deletes multiple secret data items from the metadata store.
+   * This requires acquiring a lock first.
+   *
+   * @param params - The parameters for batch deleting the secret data.
+   * @param params.itemIds - The array of item ids of the secret data to delete.
+   * @param params.authKeyPair - The authentication key to be used to provide valid signature for deleting the secret data.
+   * @throws MetadataStoreError if any item cannot be deleted (e.g., PW_BACKUP or default SRP item).
+   */
+  async batchDeleteSecretDataItems(
+    params: BatchDeleteSecretDataItemParams,
+  ): Promise<void> {
+    const metadataStore = await this.#createMetadataStore();
+
+    let metadataLockId: string | undefined;
+
+    try {
+      // acquire metadata lock
+      metadataLockId = await metadataStore.acquireMetadataLock(
+        params.authKeyPair,
+      );
+
+      await metadataStore.batchDeleteSecretDataItems(
+        params.itemIds,
+        params.authKeyPair,
+      );
+    } finally {
+      // release metadata lock
+      if (metadataLockId) {
+        try {
+          await metadataStore.releaseMetadataLock(
+            params.authKeyPair,
+            metadataLockId,
+          );
+        } catch (error) {
+          console.error('Failed to release metadata lock:', error);
+        }
+      }
+    }
+  }
+
+  /**
    * This function fetches all secret data items associated with the given
    * auth pub key, decrypts, and returns them.
    *
@@ -595,13 +655,17 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    */
   async fetchAllSecretDataItems(
     params: FetchAllSecretDataParams,
-  ): Promise<Uint8Array[]> {
+  ): Promise<FetchedSecretDataItem[]> {
     const metadataStore = await this.#createMetadataStore();
     const dataItems = await metadataStore.fetchAllSecretDataItems(
       params.decKey,
       params.authKeyPair,
     );
-    return dataItems.map((dataItem: SecretDataItem) => dataItem.data);
+    return dataItems.map((dataItem) => ({
+      itemId: dataItem.itemId,
+      data: dataItem.data,
+      timestamp: dataItem.timestamp,
+    }));
   }
 
   /**

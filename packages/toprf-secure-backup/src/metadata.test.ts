@@ -283,6 +283,17 @@ describe('MetadataStore', () => {
       metadataStore.releaseMetadataLock(authKeyPair, 'LOCK_ID_2'),
     ).rejects.toThrow('Something went wrong!');
 
+    await expect(
+      metadataStore.deleteSecretDataItem('test-item-id', authKeyPair),
+    ).rejects.toThrow('Something went wrong!');
+
+    await expect(
+      metadataStore.batchDeleteSecretDataItems(
+        ['test-item-id-1', 'test-item-id-2'],
+        authKeyPair,
+      ),
+    ).rejects.toThrow('Something went wrong!');
+
     expect(fetchSpy).toHaveBeenCalled();
 
     jest.restoreAllMocks();
@@ -323,6 +334,17 @@ describe('MetadataStore', () => {
 
     await expect(
       metadataStore.fetchAllSecretDataItems(encKey, authKeyPair),
+    ).rejects.toThrow('Unknown error');
+
+    await expect(
+      metadataStore.deleteSecretDataItem('test-item-id', authKeyPair),
+    ).rejects.toThrow('Unknown error');
+
+    await expect(
+      metadataStore.batchDeleteSecretDataItems(
+        ['test-item-id-1', 'test-item-id-2'],
+        authKeyPair,
+      ),
     ).rejects.toThrow('Unknown error');
 
     expect(fetchSpy).toHaveBeenCalled();
@@ -424,6 +446,158 @@ describe('MetadataStore', () => {
           authKeyPair,
         }),
       ).rejects.toThrow('encKey must be of same length as secretData');
+    });
+  });
+
+  describe('deleteSecretDataItem', () => {
+    it('should be able to delete a non-default secret data item', async () => {
+      const metadataStore = await createMetadataStore();
+
+      await metadataStore.addSecretDataItem({
+        secretData: { data: secretData },
+        encKey,
+        authKeyPair,
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      const secondSecretData = utf8ToBytes('second-test-secret-data');
+      await metadataStore.addSecretDataItem({
+        secretData: { data: secondSecretData },
+        encKey,
+        authKeyPair,
+      });
+
+      const allItems = await metadataStore.fetchAllSecretDataItems(
+        encKey,
+        authKeyPair,
+      );
+      expect(allItems).toHaveLength(2);
+
+      // Find the newest item (not the default/oldest) to delete
+      const newestItem = allItems.reduce((newest, current) =>
+        current.timestamp > newest.timestamp ? current : newest,
+      );
+
+      await metadataStore.deleteSecretDataItem(newestItem.itemId, authKeyPair);
+
+      const remainingItems = await metadataStore.fetchAllSecretDataItems(
+        encKey,
+        authKeyPair,
+      );
+      expect(remainingItems).toHaveLength(1);
+      expect(remainingItems[0].itemId).not.toBe(newestItem.itemId);
+    });
+
+    it('should reject deleting the oldest (default SRP) item', async () => {
+      const metadataStore = await createMetadataStore();
+
+      await metadataStore.addSecretDataItem({
+        secretData: { data: secretData },
+        encKey,
+        authKeyPair,
+      });
+
+      const allItems = await metadataStore.fetchAllSecretDataItems(
+        encKey,
+        authKeyPair,
+      );
+      expect(allItems).toHaveLength(1);
+
+      const oldestItemId = allItems[0].itemId;
+
+      await expect(
+        metadataStore.deleteSecretDataItem(oldestItemId, authKeyPair),
+      ).rejects.toThrow('Cannot delete the default SRP item');
+    });
+  });
+
+  describe('batchDeleteSecretDataItems', () => {
+    it('should be able to batch delete non-default secret data items', async () => {
+      const metadataStore = await createMetadataStore();
+
+      await metadataStore.addSecretDataItem({
+        secretData: { data: secretData },
+        encKey,
+        authKeyPair,
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      await metadataStore.addSecretDataItem({
+        secretData: { data: utf8ToBytes('second-data') },
+        encKey,
+        authKeyPair,
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      await metadataStore.addSecretDataItem({
+        secretData: { data: utf8ToBytes('third-data') },
+        encKey,
+        authKeyPair,
+      });
+
+      const allItems = await metadataStore.fetchAllSecretDataItems(
+        encKey,
+        authKeyPair,
+      );
+      expect(allItems).toHaveLength(3);
+
+      const oldestItem = allItems.reduce((oldest, current) =>
+        current.timestamp < oldest.timestamp ? current : oldest,
+      );
+
+      const itemIdsToDelete = allItems
+        .filter((item) => item.itemId !== oldestItem.itemId)
+        .map((item) => item.itemId);
+      expect(itemIdsToDelete).toHaveLength(2);
+
+      const lockId = await metadataStore.acquireMetadataLock(authKeyPair);
+      await metadataStore.batchDeleteSecretDataItems(
+        itemIdsToDelete,
+        authKeyPair,
+      );
+      await metadataStore.releaseMetadataLock(authKeyPair, lockId);
+
+      const remainingItems = await metadataStore.fetchAllSecretDataItems(
+        encKey,
+        authKeyPair,
+      );
+      expect(remainingItems).toHaveLength(1);
+      expect(remainingItems[0].itemId).toBe(oldestItem.itemId);
+    });
+
+    it('should reject batch deleting if it includes the oldest (default SRP) item', async () => {
+      const metadataStore = await createMetadataStore();
+
+      await metadataStore.addSecretDataItem({
+        secretData: { data: secretData },
+        encKey,
+        authKeyPair,
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      await metadataStore.addSecretDataItem({
+        secretData: { data: utf8ToBytes('second-data') },
+        encKey,
+        authKeyPair,
+      });
+
+      const allItems = await metadataStore.fetchAllSecretDataItems(
+        encKey,
+        authKeyPair,
+      );
+      const allItemIds = allItems.map((item) => item.itemId);
+
+      const lockId = await metadataStore.acquireMetadataLock(authKeyPair);
+
+      await expect(
+        metadataStore.batchDeleteSecretDataItems(allItemIds, authKeyPair),
+      ).rejects.toThrow('Cannot delete the default SRP item');
+
+      await metadataStore.releaseMetadataLock(authKeyPair, lockId);
     });
   });
 });
