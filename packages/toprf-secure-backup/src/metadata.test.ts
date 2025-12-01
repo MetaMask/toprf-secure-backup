@@ -508,7 +508,7 @@ describe('MetadataStore', () => {
   });
 
   describe('updateSecretDataItem', () => {
-    it('should update dataType for existing item', async () => {
+    it('should update fields for existing item', async () => {
       const metadataStore = await createMetadataStore();
 
       await metadataStore.addSecretDataItem({
@@ -545,7 +545,7 @@ describe('MetadataStore', () => {
   });
 
   describe('batchUpdateSecretData', () => {
-    it('should batch update dataType for existing items', async () => {
+    it('should batch update fields for existing items', async () => {
       const metadataStore = await createMetadataStore();
 
       const data1 = utf8ToBytes('DATA_1');

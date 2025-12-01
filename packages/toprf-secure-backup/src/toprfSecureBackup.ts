@@ -41,6 +41,8 @@ import type {
   RecoverPwEncKeyResult,
   NodeDetailsOverride,
   FetchMetadataAccessCreds,
+  UpdateSecretDataItemParams,
+  BatchUpdateSecretDataItemParams,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -576,6 +578,47 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         }
       }
     }
+  }
+
+  /**
+   * Updates fields for an existing secret data item by itemId.
+   *
+   * @param params - The parameters for updating the secret data item.
+   * @param params.itemId - The ID of the item to update.
+   * @param params.dataType - The data type to set for the item.
+   * @param params.authKeyPair - The authentication key pair for signing the request.
+   */
+  async updateSecretDataItem(
+    params: UpdateSecretDataItemParams,
+  ): Promise<void> {
+    const metadataStore = await this.#createMetadataStore();
+    await metadataStore.updateSecretDataItem({
+      updateItem: {
+        itemId: params.itemId,
+        fields: { dataType: params.dataType },
+      },
+      authKeyPair: params.authKeyPair,
+    });
+  }
+
+  /**
+   * Updates fields for multiple existing secret data items by their itemIds.
+   *
+   * @param params - The parameters for batch updating the secret data items.
+   * @param params.updateItems - Array of items to update, each with itemId and fields to update.
+   * @param params.authKeyPair - The authentication key pair for signing the request.
+   */
+  async batchUpdateSecretDataItems(
+    params: BatchUpdateSecretDataItemParams,
+  ): Promise<void> {
+    const metadataStore = await this.#createMetadataStore();
+    await metadataStore.batchUpdateSecretData({
+      updateItems: params.updateItems.map((item) => ({
+        itemId: item.itemId,
+        fields: { dataType: item.dataType },
+      })),
+      authKeyPair: params.authKeyPair,
+    });
   }
 
   /**

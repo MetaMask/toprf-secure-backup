@@ -4,7 +4,7 @@ import { sha256 } from '@noble/hashes/sha2';
 import type { INodePub } from '@toruslabs/constants';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
-import { FIRST_KEY_INDEX } from './constants';
+import { EncAccountDataType, FIRST_KEY_INDEX } from './constants';
 import { TOPRFError, TOPRFErrorCode } from './errors';
 import type { KeyPair, NodeDetailsOverride } from './interfaces';
 import { MetadataStore } from './metadata';
@@ -1562,6 +1562,88 @@ describe('toprf secret backup', function () {
       const sortedSecretDataArray = [...secretDataArray].sort();
       const sortedFetchedSecretData = [...fetchedSecretData].sort();
       expect(sortedFetchedSecretData).toStrictEqual(sortedSecretDataArray);
+    });
+  });
+
+  describe('updateSecretDataItem', function () {
+    it('should update fields for existing item', async function () {
+      const secretData = utf8ToBytes('test-secret-data');
+      const { authConnectionId, userId, idToken, toprfSecureBackup } = setup();
+
+      const result = await toprfSecureBackup.authenticate({
+        idTokens: [idToken],
+        authConnectionId,
+        userId,
+      });
+      const encKeyResult = await toprfSecureBackup.createAndPersistEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        password: generateRandomPassword(),
+        authConnectionId,
+        userId,
+      });
+
+      await toprfSecureBackup.addSecretDataItem({
+        encKey: encKeyResult.encKey,
+        secretData,
+        authKeyPair: encKeyResult.authKeyPair,
+      });
+
+      const fetchedData = await toprfSecureBackup.fetchAllSecretDataItems({
+        decKey: encKeyResult.encKey,
+        authKeyPair: encKeyResult.authKeyPair,
+      });
+      expect(fetchedData).toHaveLength(1);
+
+      const updateResult = await toprfSecureBackup.updateSecretDataItem({
+        itemId: 'test-item-1',
+        dataType: EncAccountDataType.ImportedSrp,
+        authKeyPair: encKeyResult.authKeyPair,
+      });
+      expect(updateResult).toBeUndefined();
+    });
+  });
+
+  describe('batchUpdateSecretDataItems', function () {
+    it('should batch update fields for existing items', async function () {
+      const secretData = utf8ToBytes('test-secret-data');
+      const { authConnectionId, userId, idToken, toprfSecureBackup } = setup();
+
+      const result = await toprfSecureBackup.authenticate({
+        idTokens: [idToken],
+        authConnectionId,
+        userId,
+      });
+      const encKeyResult = await toprfSecureBackup.createAndPersistEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        password: generateRandomPassword(),
+        authConnectionId,
+        userId,
+      });
+
+      await toprfSecureBackup.addSecretDataItem({
+        encKey: encKeyResult.encKey,
+        secretData,
+        authKeyPair: encKeyResult.authKeyPair,
+      });
+
+      const fetchedData = await toprfSecureBackup.fetchAllSecretDataItems({
+        decKey: encKeyResult.encKey,
+        authKeyPair: encKeyResult.authKeyPair,
+      });
+      expect(fetchedData).toHaveLength(1);
+
+      const batchUpdateResult =
+        await toprfSecureBackup.batchUpdateSecretDataItems({
+          updateItems: [
+            { itemId: 'item-1', dataType: EncAccountDataType.ImportedSrp },
+            {
+              itemId: 'item-2',
+              dataType: EncAccountDataType.ImportedPrivateKey,
+            },
+          ],
+          authKeyPair: encKeyResult.authKeyPair,
+        });
+      expect(batchUpdateResult).toBeUndefined();
     });
   });
 

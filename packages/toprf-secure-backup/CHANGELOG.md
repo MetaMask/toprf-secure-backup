@@ -11,8 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add `EncAccountDataType` enum for categorizing secret data (e.g., `PrimarySrp`, `ImportedSrp`, `ImportedPrivateKey`)
 - Add optional `dataType` field to `SecretDataItem` for insert and fetch operations
-- Add `updateSecretDataItem` method to `MetadataStore` to update `dataType` for existing items by `itemId`
-- Add `batchUpdateSecretData` method to `MetadataStore` to batch update `dataType` for multiple items
+- Add `updateSecretDataItem` and `batchUpdateSecretDataItems` methods to `ToprfSecureBackup` to update fields for existing items
+- Add `updateSecretDataItem` and `batchUpdateSecretData` methods to `MetadataStore` for lower-level update operations
 
 ### Changed
 

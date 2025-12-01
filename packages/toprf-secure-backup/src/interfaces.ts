@@ -234,6 +234,33 @@ export type BatchAddSecretDataItemParams = BaseAddSecretDataItemParams<
 >;
 
 /**
+ * UpdateSecretDataItemParams - Parameters for updating a secret data item's fields.
+ *
+ * itemId - The ID of the item to update.
+ *
+ * dataType - The data type to set for the item.
+ *
+ * authKeyPair - The authentication key pair for signing the request.
+ */
+export type UpdateSecretDataItemParams = {
+  itemId: string;
+  dataType: EncAccountDataType;
+  authKeyPair: KeyPair;
+};
+
+/**
+ * BatchUpdateSecretDataItemParams - Parameters for batch updating secret data items' fields.
+ *
+ * updateItems - Array of items to update, each with itemId and fields to update.
+ *
+ * authKeyPair - The authentication key pair for signing the request.
+ */
+export type BatchUpdateSecretDataItemParams = {
+  updateItems: { itemId: string; dataType: EncAccountDataType }[];
+  authKeyPair: KeyPair;
+};
+
+/**
  * RecoverEncryptionKeyParams - The parameters for recovering the encryption key.
  *
  * nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
@@ -449,6 +476,31 @@ export type IToprfSecureBackup = {
    */
   batchAddSecretDataItems: (
     params: BatchAddSecretDataItemParams,
+  ) => Promise<void>;
+
+  /**
+   * Updates fields for an existing secret data item by itemId.
+   *
+   * @param params - The parameters for updating the secret data item.
+   * @param params.itemId - The ID of the item to update.
+   * @param params.dataType - The data type to set for the item.
+   * @param params.authKeyPair - The authentication key pair for signing the request.
+   *
+   * @returns A promise that resolves when the update is complete.
+   */
+  updateSecretDataItem: (params: UpdateSecretDataItemParams) => Promise<void>;
+
+  /**
+   * Updates fields for multiple existing secret data items by their itemIds.
+   *
+   * @param params - The parameters for batch updating the secret data items.
+   * @param params.updateItems - Array of items to update, each with itemId and fields to update.
+   * @param params.authKeyPair - The authentication key pair for signing the request.
+   *
+   * @returns A promise that resolves when all updates are complete.
+   */
+  batchUpdateSecretDataItems: (
+    params: BatchUpdateSecretDataItemParams,
   ) => Promise<void>;
 
   /**
