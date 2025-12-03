@@ -95,6 +95,7 @@ describe('MetadataStore', () => {
     expect(result).not.toBeNull();
     expect(result?.[0].data).toStrictEqual(secretData);
     expect(result?.[0].dataType).toBe(EncAccountDataType.PrimarySrp);
+    expect(result?.[0].createdAt).toBeDefined();
   });
 
   it('should be able to store/fetch data with different instances', async () => {
@@ -117,6 +118,7 @@ describe('MetadataStore', () => {
     expect(result).not.toBeNull();
     expect(result?.[0].data).toStrictEqual(secretData);
     expect(result?.[0].dataType).toBe(EncAccountDataType.ImportedSrp);
+    expect(result?.[0].createdAt).toBeDefined();
   });
 
   it('should be able to acquire and release metadata lock', async () => {
@@ -441,7 +443,7 @@ describe('MetadataStore', () => {
       const allSecretDataAfterBatchAdd =
         await metadataStore.fetchAllSecretDataItems(newEncKey, newAuthKeyPair);
 
-      // verify that secretData values before/after batchAdd should be equal
+      // Verify secretData values before/after batchAdd are equal
       expect(allSecretDataAfterBatchAdd).not.toBeNull();
       expect(allSecretDataAfterBatchAdd?.length).toStrictEqual(
         allSecretDataBeforeBatchAdd?.length,
@@ -462,6 +464,11 @@ describe('MetadataStore', () => {
         },
       );
       expect(shouldHaveSameValuesBeforeAfterBatchAdd).toBe(true);
+
+      // Verify all items have createdAt
+      allSecretDataAfterBatchAdd?.forEach((item) => {
+        expect(item.createdAt).toBeDefined();
+      });
 
       // release the metadata lock
       const releaseLockStatus = await metadataStore.releaseMetadataLock(

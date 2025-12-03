@@ -1452,6 +1452,7 @@ describe('toprf secret backup', function () {
       expect(fetchedSecretData?.[0].dataType).toBe(
         EncAccountDataType.PrimarySrp,
       );
+      expect(fetchedSecretData?.[0].createdAt).toBeDefined();
     });
   });
 
@@ -1518,9 +1519,7 @@ describe('toprf secret backup', function () {
 
       expect(fetchedSecretData).toHaveLength(secretDataArray.length);
 
-      // Since all the secret items are added at once, they might have the same creation timestamp in the backend.
-      // So, we cannot assume that the fetched secret data is in the same order as the secret data array.
-      // Hence we sort both arrays and then compare.
+      // Sort both arrays to compare content regardless of order
       const sortedSecretDataArray = secretDataArray
         .map((item) => item.data)
         .sort();
@@ -1550,6 +1549,11 @@ describe('toprf secret backup', function () {
         (item) => item.dataType === undefined,
       );
       expect(itemsWithoutDataType).toHaveLength(1);
+
+      // Verify all items have createdAt
+      fetchedSecretData.forEach((item) => {
+        expect(item.createdAt).toBeDefined();
+      });
     });
 
     it('should throw an error when failed to acquire metadata lock', async function () {
@@ -1590,9 +1594,7 @@ describe('toprf secret backup', function () {
 
       expect(fetchedSecretData).toHaveLength(secretDataArray.length);
 
-      // Since all the secret items are added at once, they might have the same creation timestamp in the backend.
-      // So, we cannot assume that the fetched secret data is in the same order as the secret data array.
-      // Hence we sort both arrays and then compare.
+      // Sort both arrays to compare content regardless of order
       const sortedSecretDataArray = secretDataArray
         .map((item) => item.data)
         .sort();
@@ -1606,6 +1608,11 @@ describe('toprf secret backup', function () {
         (item) => item.dataType !== undefined,
       );
       expect(itemsWithDataType).toHaveLength(2);
+
+      // Verify all items have createdAt
+      fetchedSecretData.forEach((item) => {
+        expect(item.createdAt).toBeDefined();
+      });
     });
   });
 
@@ -1639,9 +1646,10 @@ describe('toprf secret backup', function () {
       });
       expect(beforeUpdate).toHaveLength(1);
       expect(beforeUpdate[0].dataType).toBeUndefined();
+      expect(beforeUpdate[0].createdAt).toBeDefined();
 
       // Use the actual itemId returned from fetch (server generates/hashes it)
-      const { itemId } = beforeUpdate[0];
+      const { itemId, createdAt: originalCreatedAt } = beforeUpdate[0];
       expect(itemId).toBeDefined();
 
       // Update to add dataType (migration scenario)
@@ -1657,6 +1665,7 @@ describe('toprf secret backup', function () {
       });
       expect(afterUpdate).toHaveLength(1);
       expect(afterUpdate[0].dataType).toBe(EncAccountDataType.PrimarySrp);
+      expect(afterUpdate[0].createdAt).toBe(originalCreatedAt);
     });
   });
 
@@ -1693,10 +1702,14 @@ describe('toprf secret backup', function () {
       expect(beforeUpdate).toHaveLength(2);
       expect(beforeUpdate[0].dataType).toBeUndefined();
       expect(beforeUpdate[1].dataType).toBeUndefined();
+      expect(beforeUpdate[0].createdAt).toBeDefined();
+      expect(beforeUpdate[1].createdAt).toBeDefined();
 
       // Use actual itemIds returned from fetch (server generates/hashes them)
       const itemId1 = beforeUpdate[0].itemId as string;
       const itemId2 = beforeUpdate[1].itemId as string;
+      const createdAt1 = beforeUpdate[0].createdAt;
+      const createdAt2 = beforeUpdate[1].createdAt;
       expect(itemId1).toBeDefined();
       expect(itemId2).toBeDefined();
 
@@ -1718,6 +1731,8 @@ describe('toprf secret backup', function () {
       const updatedItem2 = afterUpdate.find((item) => item.itemId === itemId2);
       expect(updatedItem1?.dataType).toBe(EncAccountDataType.PrimarySrp);
       expect(updatedItem2?.dataType).toBe(EncAccountDataType.ImportedSrp);
+      expect(updatedItem1?.createdAt).toBe(createdAt1);
+      expect(updatedItem2?.createdAt).toBe(createdAt2);
     });
   });
 

@@ -45,6 +45,7 @@ export type SecretDataItem = {
   itemId?: string;
   data: Uint8Array;
   dataType?: EncAccountDataType;
+  createdAt?: string;
 };
 
 export type UpdateSecretDataItem = {
@@ -583,6 +584,7 @@ export class MetadataStore {
         data: string[];
         ids: string[];
         dataTypes: (number | null)[];
+        createdAt: (string | null)[];
       };
       if (!jsonData.data) {
         throw new MetadataStoreError('Failed to fetch metadata');
@@ -607,10 +609,12 @@ export class MetadataStore {
           continue;
         }
         const dataType = jsonData.dataTypes?.[i];
+        const createdAt = jsonData.createdAt?.[i];
         secretData.push({
           itemId: id,
           data: decryptedData,
           dataType: typeof dataType === 'number' ? dataType : undefined,
+          createdAt: typeof createdAt === 'string' ? createdAt : undefined,
         });
       }
 

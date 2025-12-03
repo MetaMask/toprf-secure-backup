@@ -652,6 +652,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       data: dataItem.data,
       itemId: dataItem.itemId,
       dataType: dataItem.dataType,
+      createdAt: dataItem.createdAt,
     }));
   }
 

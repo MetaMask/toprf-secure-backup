@@ -269,6 +269,7 @@ export type FetchedSecretDataItem = {
   data: Uint8Array;
   itemId?: string;
   dataType?: EncAccountDataType;
+  createdAt?: string;
 };
 
 /**

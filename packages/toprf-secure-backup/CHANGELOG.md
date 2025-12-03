@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Breaking**: `fetchAllSecretDataItems` now returns `FetchedSecretDataItem[]` instead of `Uint8Array[]`, including `data`, `itemId`, and `dataType` fields
+- **Breaking**: `fetchAllSecretDataItems` now returns `FetchedSecretDataItem[]` instead of `Uint8Array[]`, including `data`, `itemId`, `dataType`, and `createdAt` fields
 - **Breaking**: `batchAddSecretDataItems` now uses `items: [{ data, itemId?, dataType? }]` instead of `secretData: Uint8Array[]`
 
 ## [0.11.0]
