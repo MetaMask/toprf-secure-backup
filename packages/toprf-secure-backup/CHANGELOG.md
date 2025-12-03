@@ -9,15 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add `EncAccountDataType` enum for categorizing secret data (e.g., `PrimarySrp`, `ImportedSrp`, `ImportedPrivateKey`)
-- Add optional `dataType` and `itemId` fields to `addSecretDataItem` and `batchAddSecretDataItems` methods
-- Add `updateSecretDataItem` and `batchUpdateSecretDataItems` methods to `ToprfSecureBackup` to update fields for existing items
-- Add `updateSecretDataItem` and `batchUpdateSecretData` methods to `MetadataStore` for lower-level update operations
+- Add `EncAccountDataType` enum for categorizing secret data (e.g., `PrimarySrp`, `ImportedSrp`, `ImportedPrivateKey`). ([#157](https://github.com/MetaMask/toprf-secure-backup/pull/157))
+- Add optional `dataType`, `itemId`, and `createdAt` fields to secret data items. ([#157](https://github.com/MetaMask/toprf-secure-backup/pull/157))
+- Add `updateSecretDataItem` and `batchUpdateSecretDataItems` methods to `ToprfSecureBackup` to update fields for existing items. ([#157](https://github.com/MetaMask/toprf-secure-backup/pull/157))
 
 ### Changed
 
-- **Breaking**: `fetchAllSecretDataItems` now returns `FetchedSecretDataItem[]` instead of `Uint8Array[]`, including `data`, `itemId`, `dataType`, and `createdAt` fields
-- **Breaking**: `batchAddSecretDataItems` now uses `items: [{ data, itemId?, dataType? }]` instead of `secretData: Uint8Array[]`
+- **Breaking**: `fetchAllSecretDataItems` now returns `FetchedSecretDataItem[]` instead of `Uint8Array[]`, including `data`, `itemId`, `dataType`, and `createdAt` fields. ([#157](https://github.com/MetaMask/toprf-secure-backup/pull/157))
+- **Breaking**: `batchAddSecretDataItems` now uses `items: [{ data, itemId?, dataType? }]` instead of `secretData: Uint8Array[]`. ([#157](https://github.com/MetaMask/toprf-secure-backup/pull/157))
 
 ## [0.11.0]
 
