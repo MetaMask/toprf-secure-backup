@@ -763,6 +763,7 @@ describe('toprf secret backup', function () {
           encKey: originalEncKeyResult.encKey,
           secretData,
           authKeyPair: originalEncKeyResult.authKeyPair,
+          dataType: EncAccountDataType.PrimarySrp,
         });
 
         const originalSecretData =
@@ -773,6 +774,9 @@ describe('toprf secret backup', function () {
         expect(originalSecretData).not.toBeNull();
         expect(originalSecretData?.length).toBe(1);
         expect(originalSecretData?.[0].data).toStrictEqual(secretData);
+        expect(originalSecretData?.[0].dataType).toBe(
+          EncAccountDataType.PrimarySrp,
+        );
 
         // Recover the original key to get the keyShareIndex
         const recoveredOriginalKey = await toprfSecureBackup.recoverEncKey({
@@ -827,7 +831,7 @@ describe('toprf secret backup', function () {
           recoveredOriginalKey.keyShareIndex + 1,
         );
 
-        // Verify the new key can access the data
+        // Verify the new key can access the data with dataType preserved
         const newSecretData = await toprfSecureBackup.fetchAllSecretDataItems({
           decKey: recoveredNewKey.encKey,
           authKeyPair: recoveredNewKey.authKeyPair,
@@ -835,6 +839,7 @@ describe('toprf secret backup', function () {
         expect(newSecretData).not.toBeNull();
         expect(newSecretData?.length).toBe(1);
         expect(newSecretData?.[0].data).toStrictEqual(secretData);
+        expect(newSecretData?.[0].dataType).toBe(EncAccountDataType.PrimarySrp);
 
         // Verify the key change was actually effective by comparing the recovered keys
         expect(recoveredNewKey.authKeyPair.sk).toStrictEqual(
@@ -934,6 +939,7 @@ describe('toprf secret backup', function () {
           encKey: originalEncKeyResult.encKey,
           secretData,
           authKeyPair: originalEncKeyResult.authKeyPair,
+          dataType: EncAccountDataType.PrimarySrp,
         });
 
         const originalSecretData =
@@ -944,6 +950,9 @@ describe('toprf secret backup', function () {
         expect(originalSecretData).not.toBeNull();
         expect(originalSecretData?.length).toBe(1);
         expect(originalSecretData?.[0].data).toStrictEqual(secretData);
+        expect(originalSecretData?.[0].dataType).toBe(
+          EncAccountDataType.PrimarySrp,
+        );
 
         // Recover the original key to get the keyShareIndex
         const recoveredOriginalKey = await toprfSecureBackup.recoverEncKey({
@@ -1001,7 +1010,7 @@ describe('toprf secret backup', function () {
           recoveredOriginalKey.keyShareIndex + 1,
         );
 
-        // Verify the new key can access the data
+        // Verify the new key can access the data with dataType preserved
         const newSecretData = await toprfSecureBackup.fetchAllSecretDataItems({
           decKey: recoveredNewKey.encKey,
           authKeyPair: recoveredNewKey.authKeyPair,
@@ -1009,6 +1018,7 @@ describe('toprf secret backup', function () {
         expect(newSecretData).not.toBeNull();
         expect(newSecretData?.length).toBe(1);
         expect(newSecretData?.[0].data).toStrictEqual(secretData);
+        expect(newSecretData?.[0].dataType).toBe(EncAccountDataType.PrimarySrp);
 
         // Verify the key change was actually effective by comparing the recovered keys
         expect(recoveredNewKey.authKeyPair.sk).toStrictEqual(

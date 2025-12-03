@@ -472,7 +472,10 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
 
       const existingData = (
         await metadataStore.fetchAllSecretDataItems(oldEncKey, oldAuthKeyPair)
-      ).map((dataItem) => ({ data: dataItem.data }));
+      ).map((dataItem) => ({
+        data: dataItem.data,
+        dataType: dataItem.dataType,
+      }));
 
       // Validate that this is actually a key change scenario
       if (!existingData || existingData.length === 0) {
