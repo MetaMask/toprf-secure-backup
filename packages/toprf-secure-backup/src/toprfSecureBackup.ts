@@ -624,13 +624,35 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     params: BatchUpdateSecretDataItemParams,
   ): Promise<void> {
     const metadataStore = await this.#createMetadataStore();
-    await metadataStore.batchUpdateSecretData({
-      updateItems: params.updateItems.map((item) => ({
-        itemId: item.itemId,
-        fields: { dataType: item.dataType },
-      })),
-      authKeyPair: params.authKeyPair,
-    });
+
+    let metadataLockId: string | undefined;
+
+    try {
+      // acquire metadata lock
+      metadataLockId = await metadataStore.acquireMetadataLock(
+        params.authKeyPair,
+      );
+
+      await metadataStore.batchUpdateSecretData({
+        updateItems: params.updateItems.map((item) => ({
+          itemId: item.itemId,
+          fields: { dataType: item.dataType },
+        })),
+        authKeyPair: params.authKeyPair,
+      });
+    } finally {
+      // release metadata lock
+      if (metadataLockId) {
+        try {
+          await metadataStore.releaseMetadataLock(
+            params.authKeyPair,
+            metadataLockId,
+          );
+        } catch (error) {
+          console.error('Failed to release metadata lock:', error);
+        }
+      }
+    }
   }
 
   /**
