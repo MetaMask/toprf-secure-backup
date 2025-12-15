@@ -557,7 +557,7 @@ describe('MetadataStore', () => {
 
       await metadataStore.updateSecretDataItem({
         updateItem: {
-          itemId,
+          itemId: itemId as string,
           fields: { dataType: EncAccountDataType.PrimarySrp },
         },
         authKeyPair,
@@ -600,11 +600,11 @@ describe('MetadataStore', () => {
       await metadataStore.batchUpdateSecretData({
         updateItems: [
           {
-            itemId: beforeUpdate?.[0].itemId,
+            itemId: beforeUpdate?.[0].itemId as string,
             fields: { dataType: EncAccountDataType.PrimarySrp },
           },
           {
-            itemId: beforeUpdate?.[1].itemId,
+            itemId: beforeUpdate?.[1].itemId as string,
             fields: { dataType: EncAccountDataType.ImportedSrp },
           },
         ],
@@ -704,7 +704,10 @@ describe('MetadataStore', () => {
       // The last item in the array is the newest (IMPORTED_SRP)
       const newestItem = allItems[allItems.length - 1];
 
-      await metadataStore.deleteSecretDataItem(newestItem.itemId, authKeyPair);
+      await metadataStore.deleteSecretDataItem(
+        newestItem.itemId as string,
+        authKeyPair,
+      );
 
       const remainingItems = await metadataStore.fetchAllSecretDataItems(
         encKey,
@@ -735,7 +738,10 @@ describe('MetadataStore', () => {
       const primarySrpItemId = allItems[0].itemId;
 
       await expect(
-        metadataStore.deleteSecretDataItem(primarySrpItemId, authKeyPair),
+        metadataStore.deleteSecretDataItem(
+          primarySrpItemId as string,
+          authKeyPair,
+        ),
       ).rejects.toThrow('Cannot delete the PRIMARY_SRP item');
     });
   });
@@ -794,7 +800,7 @@ describe('MetadataStore', () => {
 
       const itemIdsToDelete = allItems
         .filter((item) => item.itemId !== primarySrpItem.itemId)
-        .map((item) => item.itemId);
+        .map((item) => item.itemId) as string[];
       expect(itemIdsToDelete).toHaveLength(2);
 
       const lockId = await metadataStore.acquireMetadataLock(authKeyPair);
@@ -841,7 +847,7 @@ describe('MetadataStore', () => {
         encKey,
         authKeyPair,
       );
-      const allItemIds = allItems.map((item) => item.itemId);
+      const allItemIds = allItems.map((item) => item.itemId) as string[];
 
       const lockId = await metadataStore.acquireMetadataLock(authKeyPair);
 

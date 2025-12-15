@@ -181,7 +181,7 @@ export class MetadataStore {
     encKey: Uint8Array,
     authKeyPair: KeyPair,
     itemId?: string,
-  ): Promise<Required<SecretDataItem>[]> {
+  ): Promise<SecretDataItem[]> {
     try {
       const result = await this.#getAllDataItems({
         encKey,
@@ -612,7 +612,7 @@ export class MetadataStore {
     authKeyPair: KeyPair;
     metadataEndpoint: string;
     itemId?: string;
-  }): Promise<Required<SecretDataItem>[]> {
+  }): Promise<SecretDataItem[]> {
     try {
       const url = `${params.metadataEndpoint}/enc_account_data/get`;
       const payload = await this.#generatePayloadForGetSecretDataRequest(
