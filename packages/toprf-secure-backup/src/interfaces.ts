@@ -562,6 +562,22 @@ export type IToprfSecureBackup = {
   recoverPwEncKey: (
     params: RecoverPwEncKeyParams,
   ) => Promise<RecoverPwEncKeyResult>;
+
+  /**
+   * This function gets the node details.
+   * This function can be called to get the node endpoints, indexes and pubkeys and cache them locally.
+   *
+   * This function is useful when you want to pre-fetch the node details before any TOPRF operations
+   * so that the subsequent calls to the TOPRF operations are faster without waiting for the node details to be fetched.
+   *
+   * @returns The node details containing the node endpoints, indexes and pubkeys.
+   */
+  getNodeDetails: () => Promise<{
+    nodeEndpoints: string[];
+    nodeEndpointsMap: Record<number, string>;
+    nodeIndexes: number[];
+    nodePubkeys: INodePub[];
+  }>;
 };
 
 /**

@@ -103,11 +103,6 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     this.#nodeDetailsOverride = params.nodeDetailsOverride;
     this.#keyDeriver = params.keyDeriver;
     this.#fetchMetadataAccessCreds = params.fetchMetadataAccessCreds;
-    // pre-fetch node details to speed up the first call to authenticate
-    // fnd package internally caches results so preloading will speed up subsequent calls.
-    this.#getNodeDetails().catch(() => {
-      // ignore error
-    });
   }
 
   /**
@@ -746,6 +741,21 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
 
   /**
    * Gets the node details.
+   * This function can be called to get the node endpoints, indexes and pubkeys and cache them locally.
+   *
+   * @returns The node details containing the node endpoints, indexes and pubkeys.
+   */
+  async getNodeDetails(): Promise<{
+    nodeEndpoints: string[];
+    nodeEndpointsMap: Record<number, string>;
+    nodeIndexes: number[];
+    nodePubkeys: INodePub[];
+  }> {
+    return this.#getNodeDetails();
+  }
+
+  /**
+   * Gets the node details.
    *
    * @returns The node details containing the node endpoints, indexes and pubkeys.
    */
@@ -773,6 +783,9 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       };
     }
 
+    // NodeDetailManager has internal caching after first call to getNodeDetails
+    // so we don't need internal caching here.
+    // reference: {@link https://github.com/torusresearch/fetch-node-details/blob/master/packages/fetch-node-details/src/nodeDetailManager.ts#L88}
     const { torusNodeSSSEndpoints, torusIndexes, torusNodePub } =
       await this.#nodeDetailManager.getNodeDetails({
         verifier: 'auth-connection-id',
