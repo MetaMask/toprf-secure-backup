@@ -264,6 +264,14 @@ export type BatchAddSecretDataItemParams = {
 
 /**
  * FetchedSecretDataItem - A secret data item returned from fetch operations.
+ *
+ * itemId - The unique identifier for this secret data item.
+ *
+ * data - The decrypted secret data.
+ *
+ * dataType - Optional data type for categorizing the secret data.
+ *
+ * createdAt - The timestamp when this item was created (TIMEUUID string).
  */
 export type FetchedSecretDataItem = {
   data: Uint8Array;
@@ -415,26 +423,6 @@ export type FetchAllSecretDataParams = {
    * The authentication key to be used to provide valid signature for fetching the secret data.
    */
   authKeyPair: KeyPair;
-};
-
-/**
- * FetchedSecretDataItem - A fetched secret data item with metadata.
- */
-export type FetchedSecretDataItem = {
-  /**
-   * The unique identifier for this secret data item.
-   */
-  itemId: string;
-
-  /**
-   * The decrypted secret data.
-   */
-  data: Uint8Array;
-
-  /**
-   * The timestamp when this item was created.
-   */
-  timestamp: number;
 };
 
 /**

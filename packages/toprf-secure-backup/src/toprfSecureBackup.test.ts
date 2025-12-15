@@ -1780,19 +1780,23 @@ describe('toprf secret backup', function () {
       jest.restoreAllMocks();
     });
 
-    it('should be able to delete a non-default secret data item', async function () {
+    it('should be able to delete a non-PRIMARY_SRP secret data item', async function () {
+      // Add PRIMARY_SRP item first
       await toprfSecureBackup.addSecretDataItem({
         encKey,
-        secretData: utf8ToBytes('first-secret-data'),
+        secretData: utf8ToBytes('primary-srp-data'),
         authKeyPair,
+        dataType: EncAccountDataType.PrimarySrp,
       });
 
       await sleep(50);
 
+      // Add IMPORTED_SRP item second
       await toprfSecureBackup.addSecretDataItem({
         encKey,
-        secretData: utf8ToBytes('second-secret-data'),
+        secretData: utf8ToBytes('imported-srp-data'),
         authKeyPair,
+        dataType: EncAccountDataType.ImportedSrp,
       });
 
       const allItems = await toprfSecureBackup.fetchAllSecretDataItems({
@@ -1801,9 +1805,12 @@ describe('toprf secret backup', function () {
       });
       expect(allItems).toHaveLength(2);
 
-      const newestItem = allItems.reduce((newest, current) =>
-        current.timestamp > newest.timestamp ? current : newest,
-      );
+      // Server returns items sorted by createdAt (oldest first after PRIMARY_SRP)
+      // The last item in the array is the newest (IMPORTED_SRP)
+      const newestItem = allItems[allItems.length - 1];
+      if (!newestItem.itemId) {
+        throw new Error('itemId is required');
+      }
 
       await toprfSecureBackup.deleteSecretDataItem({
         itemId: newestItem.itemId,
@@ -1818,24 +1825,28 @@ describe('toprf secret backup', function () {
       expect(remainingItems[0].itemId).not.toBe(newestItem.itemId);
     });
 
-    it('should reject deleting the oldest (default SRP) item', async function () {
+    it('should reject deleting the PRIMARY_SRP item', async function () {
       await toprfSecureBackup.addSecretDataItem({
         encKey,
-        secretData: utf8ToBytes('only-secret-data'),
+        secretData: utf8ToBytes('primary-srp-data'),
         authKeyPair,
+        dataType: EncAccountDataType.PrimarySrp,
       });
 
       const allItems = await toprfSecureBackup.fetchAllSecretDataItems({
         decKey: encKey,
         authKeyPair,
       });
+      if (!allItems[0].itemId) {
+        throw new Error('itemId is required');
+      }
 
       await expect(
         toprfSecureBackup.deleteSecretDataItem({
           itemId: allItems[0].itemId,
           authKeyPair,
         }),
-      ).rejects.toThrow('Cannot delete the default SRP item');
+      ).rejects.toThrow('Cannot delete the PRIMARY_SRP item');
     });
   });
 
@@ -1875,27 +1886,32 @@ describe('toprf secret backup', function () {
       jest.restoreAllMocks();
     });
 
-    it('should be able to batch delete non-default secret data items', async function () {
+    it('should be able to batch delete non-PRIMARY_SRP secret data items', async function () {
+      // Add PRIMARY_SRP item first
       await toprfSecureBackup.addSecretDataItem({
         encKey,
-        secretData: utf8ToBytes('test-secret-data-1'),
+        secretData: utf8ToBytes('primary-srp-data'),
         authKeyPair,
+        dataType: EncAccountDataType.PrimarySrp,
+      });
+
+      await sleep(50);
+
+      // Add IMPORTED_SRP items
+      await toprfSecureBackup.addSecretDataItem({
+        encKey,
+        secretData: utf8ToBytes('imported-srp-data-1'),
+        authKeyPair,
+        dataType: EncAccountDataType.ImportedSrp,
       });
 
       await sleep(50);
 
       await toprfSecureBackup.addSecretDataItem({
         encKey,
-        secretData: utf8ToBytes('test-secret-data-2'),
+        secretData: utf8ToBytes('imported-srp-data-2'),
         authKeyPair,
-      });
-
-      await sleep(50);
-
-      await toprfSecureBackup.addSecretDataItem({
-        encKey,
-        secretData: utf8ToBytes('test-secret-data-3'),
-        authKeyPair,
+        dataType: EncAccountDataType.ImportedSrp,
       });
 
       const allItems = await toprfSecureBackup.fetchAllSecretDataItems({
@@ -1904,13 +1920,18 @@ describe('toprf secret backup', function () {
       });
       expect(allItems).toHaveLength(3);
 
-      const oldestItem = allItems.reduce((oldest, current) =>
-        current.timestamp < oldest.timestamp ? current : oldest,
+      // Server returns items sorted: PRIMARY_SRP first, then by createdAt (oldest first)
+      // Find the PRIMARY_SRP item to keep
+      const primarySrpItem = allItems.find(
+        (item) => item.dataType === EncAccountDataType.PrimarySrp,
       );
+      if (!primarySrpItem) {
+        throw new Error('PRIMARY_SRP item not found');
+      }
 
       const itemIdsToDelete = allItems
-        .filter((item) => item.itemId !== oldestItem.itemId)
-        .map((item) => item.itemId);
+        .filter((item) => item.itemId !== primarySrpItem.itemId)
+        .map((item) => item.itemId) as string[];
 
       await toprfSecureBackup.batchDeleteSecretDataItems({
         itemIds: itemIdsToDelete,
@@ -1922,7 +1943,7 @@ describe('toprf secret backup', function () {
         authKeyPair,
       });
       expect(remainingItems).toHaveLength(1);
-      expect(remainingItems[0].itemId).toBe(oldestItem.itemId);
+      expect(remainingItems[0].itemId).toBe(primarySrpItem.itemId);
     });
 
     it('should throw an error when failed to acquire metadata lock', async function () {
@@ -1938,33 +1959,37 @@ describe('toprf secret backup', function () {
       ).rejects.toThrow('Failed to acquire metadata lock');
     });
 
-    it('should reject batch deleting if it includes the oldest (default SRP) item', async function () {
+    it('should reject batch deleting if it includes the PRIMARY_SRP item', async function () {
+      // Add PRIMARY_SRP item
       await toprfSecureBackup.addSecretDataItem({
         encKey,
-        secretData: utf8ToBytes('test-secret-data-1'),
+        secretData: utf8ToBytes('primary-srp-data'),
         authKeyPair,
+        dataType: EncAccountDataType.PrimarySrp,
       });
 
       await sleep(50);
 
+      // Add IMPORTED_SRP item
       await toprfSecureBackup.addSecretDataItem({
         encKey,
-        secretData: utf8ToBytes('test-secret-data-2'),
+        secretData: utf8ToBytes('imported-srp-data'),
         authKeyPair,
+        dataType: EncAccountDataType.ImportedSrp,
       });
 
       const allItems = await toprfSecureBackup.fetchAllSecretDataItems({
         decKey: encKey,
         authKeyPair,
       });
-      const allItemIds = allItems.map((item) => item.itemId);
+      const allItemIds = allItems.map((item) => item.itemId) as string[];
 
       await expect(
         toprfSecureBackup.batchDeleteSecretDataItems({
           itemIds: allItemIds,
           authKeyPair,
         }),
-      ).rejects.toThrow('Cannot delete the default SRP item');
+      ).rejects.toThrow('Cannot delete the PRIMARY_SRP item');
     });
 
     it('should `not` throw an error when failed to release metadata lock', async function () {
