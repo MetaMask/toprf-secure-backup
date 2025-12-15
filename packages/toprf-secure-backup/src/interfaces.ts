@@ -1,5 +1,7 @@
 import type { INodePub } from '@toruslabs/constants';
 
+import type { EncAccountDataType } from './constants';
+
 /**
  * SEC1 encoded public key
  */
@@ -218,18 +220,84 @@ export type BaseAddSecretDataItemParams<
 };
 
 /**
+ * AddSecretDataItemParams - Parameters for adding a secret data item.
+ *
+ * secretData - The secret data to be stored.
+ *
  * encKey - The encryption key to be used to encrypt the secret data before storing it.
  *
  * authKeyPair - The authentication key to be used to provide valid signature for storing the secret data.
  *
- * secretData - The secret data to be stored.
+ * itemId - Optional item ID for the data item.
+ *
+ * dataType - Optional data type for categorizing the secret data.
  */
-export type AddSecretDataItemParams = BaseAddSecretDataItemParams<Uint8Array>;
+export type AddSecretDataItemParams =
+  BaseAddSecretDataItemParams<Uint8Array> & {
+    itemId?: string;
+    dataType?: EncAccountDataType;
+  };
 
-export type BatchAddSecretDataItemParams = BaseAddSecretDataItemParams<
-  Uint8Array[],
-  Uint8Array | Uint8Array[]
->;
+/**
+ * BatchAddSecretDataItem - A single item in a batch add operation.
+ */
+export type BatchAddSecretDataItem = {
+  data: Uint8Array;
+  itemId?: string;
+  dataType?: EncAccountDataType;
+};
+
+/**
+ * BatchAddSecretDataItemParams - Parameters for batch adding secret data items.
+ *
+ * items - Array of items to store, each with data and optional itemId/dataType.
+ *
+ * encKey - The encryption key(s) to be used to encrypt the secret data.
+ *
+ * authKeyPair - The authentication key to be used to provide valid signature for storing the secret data.
+ */
+export type BatchAddSecretDataItemParams = {
+  items: BatchAddSecretDataItem[];
+  encKey: Uint8Array | Uint8Array[];
+  authKeyPair: KeyPair;
+};
+
+/**
+ * FetchedSecretDataItem - A secret data item returned from fetch operations.
+ */
+export type FetchedSecretDataItem = {
+  data: Uint8Array;
+  itemId?: string;
+  dataType?: EncAccountDataType;
+  createdAt?: string;
+};
+
+/**
+ * UpdateSecretDataItemParams - Parameters for updating a secret data item's fields.
+ *
+ * itemId - The ID of the item to update.
+ *
+ * dataType - The data type to set for the item.
+ *
+ * authKeyPair - The authentication key pair for signing the request.
+ */
+export type UpdateSecretDataItemParams = {
+  itemId: string;
+  dataType: EncAccountDataType;
+  authKeyPair: KeyPair;
+};
+
+/**
+ * BatchUpdateSecretDataItemParams - Parameters for batch updating secret data items' fields.
+ *
+ * updateItems - Array of items to update, each with itemId and fields to update.
+ *
+ * authKeyPair - The authentication key pair for signing the request.
+ */
+export type BatchUpdateSecretDataItemParams = {
+  updateItems: { itemId: string; dataType: EncAccountDataType }[];
+  authKeyPair: KeyPair;
+};
 
 /**
  * DeleteSecretDataItemParams - The parameters for deleting a single secret data item.
@@ -473,7 +541,9 @@ export type IToprfSecureBackup = {
    * @param params - The parameters for registering new secret data.
    * @param params.encKey - The encryption key to be used to encrypt the secret data before storing it.
    * @param params.authKeyPair - The authentication key to be used to provide valid signature for storing the secret data.
-   * @param params.secretData - The array of secret data to be registered.
+   * @param params.secretData - The secret data to be registered.
+   * @param params.itemId - Optional item ID for the data item.
+   * @param params.dataType - Optional data type for categorizing the secret data.
    *
    * @returns A promise that resolves when the secret data is registered.
    */
@@ -483,14 +553,39 @@ export type IToprfSecureBackup = {
    * This function encrypts the array of secret data using the encryption key and stores it in the metadata store in encrypted form as a batch.
    *
    * @param params - The parameters for registering new secret data.
+   * @param params.items - Array of items to store, each with data and optional itemId/dataType.
    * @param params.encKey - The encryption key to be used to encrypt the secret data before storing it.
    * @param params.authKeyPair - The authentication key to be used to provide valid signature for storing the secret data.
-   * @param params.secretData - The array of secret data to be stored.
    *
    * @returns A promise that resolves when the secret data is stored.
    */
   batchAddSecretDataItems: (
     params: BatchAddSecretDataItemParams,
+  ) => Promise<void>;
+
+  /**
+   * Updates fields for an existing secret data item by itemId.
+   *
+   * @param params - The parameters for updating the secret data item.
+   * @param params.itemId - The ID of the item to update.
+   * @param params.dataType - The data type to set for the item.
+   * @param params.authKeyPair - The authentication key pair for signing the request.
+   *
+   * @returns A promise that resolves when the update is complete.
+   */
+  updateSecretDataItem: (params: UpdateSecretDataItemParams) => Promise<void>;
+
+  /**
+   * Updates fields for multiple existing secret data items by their itemIds.
+   *
+   * @param params - The parameters for batch updating the secret data items.
+   * @param params.updateItems - Array of items to update, each with itemId and fields to update.
+   * @param params.authKeyPair - The authentication key pair for signing the request.
+   *
+   * @returns A promise that resolves when all updates are complete.
+   */
+  batchUpdateSecretDataItems: (
+    params: BatchUpdateSecretDataItemParams,
   ) => Promise<void>;
 
   /**
@@ -501,7 +596,7 @@ export type IToprfSecureBackup = {
    * @param params.decKey - The decryption key to be used to decrypt the secret data.
    * @param params.authKeyPair - The authentication key to be used to provide valid signature for fetching the secret data.
    *
-   * @returns A promise that resolves with the array of fetched secret data items.
+   * @returns A promise that resolves with the array of decrypted secret data items.
    */
   fetchAllSecretDataItems: (
     params: FetchAllSecretDataParams,
@@ -611,6 +706,14 @@ export type IBatchAddData = {
    * The version of the Metadata Store
    */
   version?: string;
+  /**
+   * Optional item id for the data item
+   */
+  itemId?: string;
+  /**
+   * Optional data type for categorizing the secret data
+   */
+  dataType?: EncAccountDataType;
 }[];
 
 /**
@@ -665,6 +768,10 @@ export type IAddSecretDataRequestBody =
      * The item id to be used for storing the secret data.
      */
     itemId?: string;
+    /**
+     * Optional data type for categorizing the secret data
+     */
+    dataType?: EncAccountDataType;
   };
 
 /**
@@ -672,6 +779,60 @@ export type IAddSecretDataRequestBody =
  */
 export type IBatchAddSecretDataRequestBody =
   IBaseAddSecretDataRequestBody<IBatchAddData>;
+
+/**
+ * Fields that can be updated for an existing secret data item.
+ * At least one field must be provided.
+ */
+export type UpdateSecretDataItemFields = {
+  /**
+   * The data type to set for the item
+   */
+  dataType?: EncAccountDataType;
+};
+
+/**
+ * Payload structure for updating secret data fields by itemId
+ */
+export type IUpdateSecretDataRequestBody = IBaseMetadataRequestBody & {
+  /**
+   * The authentication token of the user issued by authentication service.
+   */
+  authToken?: string;
+  /**
+   * The item id of the record to update
+   */
+  itemId: string;
+  /**
+   * Optional data type for categorizing the secret data
+   */
+  dataType?: EncAccountDataType;
+  /**
+   * The signature produced by signing the payload using the user's private key.
+   */
+  signature: string;
+};
+
+/**
+ * Payload structure for batch updating secret data fields by itemId
+ */
+export type IBatchUpdateSecretDataRequestBody = IBaseMetadataRequestBody & {
+  /**
+   * The authentication token of the user issued by authentication service.
+   */
+  authToken?: string;
+  /**
+   * The array of items to update
+   */
+  data: {
+    itemId: string;
+    dataType?: EncAccountDataType;
+  }[];
+  /**
+   * The signature produced by signing the payload using the user's private key.
+   */
+  signature: string;
+};
 
 /**
  * Payload structure for fetching secret data
