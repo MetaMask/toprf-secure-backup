@@ -778,10 +778,11 @@ export class MetadataStore {
   }): Promise<boolean> {
     try {
       const url = `${params.metadataEndpoint}/enc_account_data/delete`;
-      const payload = await this.#generatePayloadForDeleteSecretDataRequest(
-        params.itemId,
-        params.authKeyPair,
-      );
+      const payload =
+        await this.#generatePayloadForDeleteOrBatchDeleteSecretDataRequest(
+          params.itemId,
+          params.authKeyPair,
+        );
 
       const response = await fetch(url, {
         headers: {
@@ -825,7 +826,7 @@ export class MetadataStore {
     try {
       const url = `${params.metadataEndpoint}/enc_account_data/batch_delete`;
       const payload =
-        await this.#generatePayloadForBatchDeleteSecretDataRequest(
+        await this.#generatePayloadForDeleteOrBatchDeleteSecretDataRequest(
           params.itemIds,
           params.authKeyPair,
         );
@@ -985,26 +986,33 @@ export class MetadataStore {
   }
 
   /**
-   * Generate the payload for the delete secret data request.
+   * Generate the payload for the delete or batch delete secret data request.
    *
-   * @param itemId - The item id to delete.
+   * @param itemIdOrIds - The item id or array of item ids to delete.
    * @param authKeyPair - The authentication key pair to be used for authenticating the request.
    * @returns The payload for the delete secret data request.
    */
-  async #generatePayloadForDeleteSecretDataRequest(
-    itemId: string,
+  async #generatePayloadForDeleteOrBatchDeleteSecretDataRequest(
+    itemIdOrIds: string | string[],
     authKeyPair: KeyPair,
-  ): Promise<IDeleteSecretDataRequestBody> {
+  ): Promise<IDeleteSecretDataRequestBody | IBatchDeleteSecretDataRequestBody> {
     const timestamp = Date.now().toString();
     const feature = this.#feature;
     const { pk, sk } = authKeyPair;
     const { metadataAccessToken } = await this.#fetchMetadataAccessCreds();
-    const sigPayload = {
+
+    const sigPayload: Record<string, unknown> = {
       feature,
       timestamp,
-      itemId,
       authToken: metadataAccessToken,
     };
+
+    if (Array.isArray(itemIdOrIds)) {
+      sigPayload.itemIds = itemIdOrIds;
+    } else {
+      sigPayload.itemId = itemIdOrIds;
+    }
+
     const signature = this.#generatePayloadSignature(sigPayload, sk);
 
     const pubKey = bytesToHex(pk);
@@ -1012,38 +1020,7 @@ export class MetadataStore {
       ...sigPayload,
       pubKey,
       signature,
-    };
-  }
-
-  /**
-   * Generate the payload for the batch delete secret data request.
-   *
-   * @param itemIds - The array of item ids to delete.
-   * @param authKeyPair - The authentication key pair to be used for authenticating the request.
-   * @returns The payload for the batch delete secret data request.
-   */
-  async #generatePayloadForBatchDeleteSecretDataRequest(
-    itemIds: string[],
-    authKeyPair: KeyPair,
-  ): Promise<IBatchDeleteSecretDataRequestBody> {
-    const timestamp = Date.now().toString();
-    const feature = this.#feature;
-    const { pk, sk } = authKeyPair;
-    const { metadataAccessToken } = await this.#fetchMetadataAccessCreds();
-    const sigPayload = {
-      feature,
-      timestamp,
-      itemIds,
-      authToken: metadataAccessToken,
-    };
-    const signature = this.#generatePayloadSignature(sigPayload, sk);
-
-    const pubKey = bytesToHex(pk);
-    return {
-      ...sigPayload,
-      pubKey,
-      signature,
-    };
+    } as IDeleteSecretDataRequestBody | IBatchDeleteSecretDataRequestBody;
   }
 
   /**
