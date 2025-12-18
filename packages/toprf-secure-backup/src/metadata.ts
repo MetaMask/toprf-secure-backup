@@ -795,14 +795,6 @@ export class MetadataStore {
     const feature = this.#feature;
     const { metadataAccessToken } = await this.#fetchMetadataAccessCreds();
 
-    const items = Array.isArray(inputData) ? inputData : [inputData];
-    const hasEmptyFields = items.some(
-      (item) => item.fields.dataType === undefined,
-    );
-    if (hasEmptyFields) {
-      throw new MetadataStoreError('dataType is required for update');
-    }
-
     const sigPayload: Record<string, unknown> = {
       timestamp,
       feature,
