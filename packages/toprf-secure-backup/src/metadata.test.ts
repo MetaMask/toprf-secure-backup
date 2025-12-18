@@ -534,7 +534,7 @@ describe('MetadataStore', () => {
 
       await metadataStore.updateSecretDataItem({
         updateItem: {
-          itemId: beforeUpdate[0].itemId as string,
+          itemId: beforeUpdate[0].itemId,
           fields: { dataType: EncAccountDataType.PrimarySrp },
         },
         authKeyPair,
@@ -579,11 +579,11 @@ describe('MetadataStore', () => {
       await metadataStore.batchUpdateSecretData({
         updateItems: [
           {
-            itemId: beforeUpdate[0].itemId as string,
+            itemId: beforeUpdate[0].itemId,
             fields: { dataType: EncAccountDataType.PrimarySrp },
           },
           {
-            itemId: beforeUpdate[1].itemId as string,
+            itemId: beforeUpdate[1].itemId,
             fields: { dataType: EncAccountDataType.ImportedSrp },
           },
         ],

@@ -673,10 +673,9 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       params.decKey,
       params.authKeyPair,
     );
-    // itemId is always present in fetched data from server
     return dataItems.map((dataItem) => ({
       data: dataItem.data,
-      itemId: dataItem.itemId as string,
+      itemId: dataItem.itemId,
       dataType: dataItem.dataType,
       createdAt: dataItem.createdAt,
     }));

@@ -48,16 +48,20 @@ export type SecretDataItem = {
   createdAt?: string;
 };
 
+export type SecretDataItemInput = Omit<SecretDataItem, 'createdAt'>;
+
+export type SecretDataItemOutput = SecretDataItem & { itemId: string };
+
 export type UpdateSecretDataItem = {
   itemId: string;
   fields: UpdateSecretDataItemFields;
 };
 
 export type MetadataAddSecretDataItemParams =
-  BaseAddSecretDataItemParams<SecretDataItem>;
+  BaseAddSecretDataItemParams<SecretDataItemInput>;
 
 export type MetadataBatchAddSecretDataItemParams = BaseAddSecretDataItemParams<
-  SecretDataItem[],
+  SecretDataItemInput[],
   Uint8Array | Uint8Array[]
 >;
 
@@ -179,7 +183,7 @@ export class MetadataStore {
     encKey: Uint8Array,
     authKeyPair: KeyPair,
     itemId?: string,
-  ): Promise<SecretDataItem[]> {
+  ): Promise<SecretDataItemOutput[]> {
     try {
       const result = await this.#getAllDataItems({
         encKey,
@@ -307,7 +311,7 @@ export class MetadataStore {
    * @returns A promise that resolves when the secret data is stored.
    */
   async #addData(params: {
-    secretData: SecretDataItem;
+    secretData: SecretDataItemInput;
     encKey: Uint8Array;
     authKeyPair: KeyPair;
     metadataEndpoint: string;
@@ -377,7 +381,7 @@ export class MetadataStore {
    * @returns A promise that resolves when the secret data is stored.
    */
   async #batchAddData(params: {
-    secretData: SecretDataItem[];
+    secretData: SecretDataItemInput[];
     encKey: Uint8Array | Uint8Array[];
     authKeyPair: KeyPair;
     metadataEndpoint: string;
@@ -554,7 +558,7 @@ export class MetadataStore {
     authKeyPair: KeyPair;
     metadataEndpoint: string;
     itemId?: string;
-  }): Promise<SecretDataItem[]> {
+  }): Promise<SecretDataItemOutput[]> {
     try {
       const url = `${params.metadataEndpoint}/enc_account_data/get`;
       const payload = await this.#generatePayloadForGetSecretDataRequest(
@@ -586,7 +590,7 @@ export class MetadataStore {
         throw new MetadataStoreError('Failed to fetch metadata');
       }
 
-      const secretData: SecretDataItem[] = [];
+      const secretData: SecretDataItemOutput[] = [];
 
       for (let i = 0; i < jsonData.data.length; i++) {
         const id = jsonData.ids[i];
@@ -712,7 +716,7 @@ export class MetadataStore {
    * @returns The payload for the batch set secret data request.
    */
   async #generatePayloadForSetOrBatchSetSecretDataRequest(
-    inputData: SecretDataItem | SecretDataItem[],
+    inputData: SecretDataItemInput | SecretDataItemInput[],
     authKeyPair: KeyPair,
   ): Promise<IAddSecretDataRequestBody | IBatchAddSecretDataRequestBody> {
     const timestamp = Date.now().toString();
