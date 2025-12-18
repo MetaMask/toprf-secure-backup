@@ -24,6 +24,7 @@ import type {
   CreateEncryptionKeyParams,
   CreateEncryptionKeyResult,
   FetchAllSecretDataParams,
+  FetchedSecretDataItem,
   IToprfSecureBackup,
   RecoverEncryptionKeyParams,
   RecoverEncryptionKeyResult,
@@ -36,6 +37,8 @@ import type {
   CreateLocalKeyParams,
   CreateLocalKeyResult,
   BatchAddSecretDataItemParams,
+  DeleteSecretDataItemParams,
+  BatchDeleteSecretDataItemParams,
   RecoverPwEncKeyParams,
   KeyPair,
   RecoverPwEncKeyResult,
@@ -43,7 +46,6 @@ import type {
   FetchMetadataAccessCreds,
   UpdateSecretDataItemParams,
   BatchUpdateSecretDataItemParams,
-  FetchedSecretDataItem,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -640,6 +642,63 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         })),
         authKeyPair: params.authKeyPair,
       });
+    } finally {
+      // release metadata lock
+      if (metadataLockId) {
+        try {
+          await metadataStore.releaseMetadataLock(
+            params.authKeyPair,
+            metadataLockId,
+          );
+        } catch (error) {
+          console.error('Failed to release metadata lock:', error);
+        }
+      }
+    }
+  }
+
+  /**
+   * This function soft deletes a single secret data item from the metadata store.
+   * This does not require acquiring a lock.
+   *
+   * @param params - The parameters for deleting the secret data.
+   * @param params.itemId - The item id of the secret data to delete.
+   * @param params.authKeyPair - The authentication key to be used to provide valid signature for deleting the secret data.
+   * @throws MetadataStoreError if the item cannot be deleted (e.g., PW_BACKUP or default SRP item).
+   */
+  async deleteSecretDataItem(
+    params: DeleteSecretDataItemParams,
+  ): Promise<void> {
+    const metadataStore = await this.#createMetadataStore();
+    await metadataStore.deleteSecretDataItem(params.itemId, params.authKeyPair);
+  }
+
+  /**
+   * This function soft deletes multiple secret data items from the metadata store.
+   * This requires acquiring a lock first.
+   *
+   * @param params - The parameters for batch deleting the secret data.
+   * @param params.itemIds - The array of item ids of the secret data to delete.
+   * @param params.authKeyPair - The authentication key to be used to provide valid signature for deleting the secret data.
+   * @throws MetadataStoreError if any item cannot be deleted (e.g., PW_BACKUP or default SRP item).
+   */
+  async batchDeleteSecretDataItems(
+    params: BatchDeleteSecretDataItemParams,
+  ): Promise<void> {
+    const metadataStore = await this.#createMetadataStore();
+
+    let metadataLockId: string | undefined;
+
+    try {
+      // acquire metadata lock
+      metadataLockId = await metadataStore.acquireMetadataLock(
+        params.authKeyPair,
+      );
+
+      await metadataStore.batchDeleteSecretDataItems(
+        params.itemIds,
+        params.authKeyPair,
+      );
     } finally {
       // release metadata lock
       if (metadataLockId) {

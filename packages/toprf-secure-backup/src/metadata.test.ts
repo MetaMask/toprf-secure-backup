@@ -291,6 +291,17 @@ describe('MetadataStore', () => {
       metadataStore.releaseMetadataLock(authKeyPair, 'LOCK_ID_2'),
     ).rejects.toThrow('Something went wrong!');
 
+    await expect(
+      metadataStore.deleteSecretDataItem('test-item-id', authKeyPair),
+    ).rejects.toThrow('Something went wrong!');
+
+    await expect(
+      metadataStore.batchDeleteSecretDataItems(
+        ['test-item-id-1', 'test-item-id-2'],
+        authKeyPair,
+      ),
+    ).rejects.toThrow('Something went wrong!');
+
     expect(fetchSpy).toHaveBeenCalled();
 
     jest.restoreAllMocks();
@@ -331,6 +342,17 @@ describe('MetadataStore', () => {
 
     await expect(
       metadataStore.fetchAllSecretDataItems(encKey, authKeyPair),
+    ).rejects.toThrow('Unknown error');
+
+    await expect(
+      metadataStore.deleteSecretDataItem('test-item-id', authKeyPair),
+    ).rejects.toThrow('Unknown error');
+
+    await expect(
+      metadataStore.batchDeleteSecretDataItems(
+        ['test-item-id-1', 'test-item-id-2'],
+        authKeyPair,
+      ),
     ).rejects.toThrow('Unknown error');
 
     expect(fetchSpy).toHaveBeenCalled();
@@ -612,6 +634,198 @@ describe('MetadataStore', () => {
           authKeyPair,
         }),
       ).rejects.toThrow('PW_BACKUP cannot be updated');
+    });
+  });
+
+  describe('deleteSecretDataItem', () => {
+    it('should be able to delete a non-PRIMARY_SRP secret data item', async () => {
+      const metadataStore = await createMetadataStore();
+
+      // Add PRIMARY_SRP item first
+      await metadataStore.addSecretDataItem({
+        secretData: {
+          data: secretData,
+          dataType: EncAccountDataType.PrimarySrp,
+        },
+        encKey,
+        authKeyPair,
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Add IMPORTED_SRP item second
+      const secondSecretData = utf8ToBytes('second-test-secret-data');
+      await metadataStore.addSecretDataItem({
+        secretData: {
+          data: secondSecretData,
+          dataType: EncAccountDataType.ImportedSrp,
+        },
+        encKey,
+        authKeyPair,
+      });
+
+      const allItems = await metadataStore.fetchAllSecretDataItems(
+        encKey,
+        authKeyPair,
+      );
+      expect(allItems).toHaveLength(2);
+
+      // Server returns items sorted by createdAt (oldest first after PRIMARY_SRP)
+      // The last item in the array is the newest (IMPORTED_SRP)
+      const newestItem = allItems[allItems.length - 1];
+
+      await metadataStore.deleteSecretDataItem(
+        newestItem.itemId as string,
+        authKeyPair,
+      );
+
+      const remainingItems = await metadataStore.fetchAllSecretDataItems(
+        encKey,
+        authKeyPair,
+      );
+      expect(remainingItems).toHaveLength(1);
+      expect(remainingItems[0].itemId).not.toBe(newestItem.itemId);
+    });
+
+    it('should reject deleting the PRIMARY_SRP item', async () => {
+      const metadataStore = await createMetadataStore();
+
+      await metadataStore.addSecretDataItem({
+        secretData: {
+          data: secretData,
+          dataType: EncAccountDataType.PrimarySrp,
+        },
+        encKey,
+        authKeyPair,
+      });
+
+      const allItems = await metadataStore.fetchAllSecretDataItems(
+        encKey,
+        authKeyPair,
+      );
+      expect(allItems).toHaveLength(1);
+
+      const primarySrpItemId = allItems[0].itemId;
+
+      await expect(
+        metadataStore.deleteSecretDataItem(
+          primarySrpItemId as string,
+          authKeyPair,
+        ),
+      ).rejects.toThrow('Cannot delete the PRIMARY_SRP item');
+    });
+  });
+
+  describe('batchDeleteSecretDataItems', () => {
+    it('should be able to batch delete non-PRIMARY_SRP secret data items', async () => {
+      const metadataStore = await createMetadataStore();
+
+      // Add PRIMARY_SRP item first
+      await metadataStore.addSecretDataItem({
+        secretData: {
+          data: secretData,
+          dataType: EncAccountDataType.PrimarySrp,
+        },
+        encKey,
+        authKeyPair,
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Add IMPORTED_SRP items
+      await metadataStore.addSecretDataItem({
+        secretData: {
+          data: utf8ToBytes('second-data'),
+          dataType: EncAccountDataType.ImportedSrp,
+        },
+        encKey,
+        authKeyPair,
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      await metadataStore.addSecretDataItem({
+        secretData: {
+          data: utf8ToBytes('third-data'),
+          dataType: EncAccountDataType.ImportedSrp,
+        },
+        encKey,
+        authKeyPair,
+      });
+
+      const allItems = await metadataStore.fetchAllSecretDataItems(
+        encKey,
+        authKeyPair,
+      );
+      expect(allItems).toHaveLength(3);
+
+      // Server returns items sorted: PRIMARY_SRP first, then by createdAt (oldest first)
+      // Find the PRIMARY_SRP item to keep
+      const primarySrpItem = allItems.find(
+        (item) => item.dataType === EncAccountDataType.PrimarySrp,
+      );
+      if (!primarySrpItem) {
+        throw new Error('PRIMARY_SRP item not found');
+      }
+
+      const itemIdsToDelete = allItems
+        .filter((item) => item.itemId !== primarySrpItem.itemId)
+        .map((item) => item.itemId) as string[];
+      expect(itemIdsToDelete).toHaveLength(2);
+
+      const lockId = await metadataStore.acquireMetadataLock(authKeyPair);
+      await metadataStore.batchDeleteSecretDataItems(
+        itemIdsToDelete,
+        authKeyPair,
+      );
+      await metadataStore.releaseMetadataLock(authKeyPair, lockId);
+
+      const remainingItems = await metadataStore.fetchAllSecretDataItems(
+        encKey,
+        authKeyPair,
+      );
+      expect(remainingItems).toHaveLength(1);
+      expect(remainingItems[0].itemId).toBe(primarySrpItem.itemId);
+    });
+
+    it('should reject batch deleting if it includes the PRIMARY_SRP item', async () => {
+      const metadataStore = await createMetadataStore();
+
+      // Add PRIMARY_SRP item
+      await metadataStore.addSecretDataItem({
+        secretData: {
+          data: secretData,
+          dataType: EncAccountDataType.PrimarySrp,
+        },
+        encKey,
+        authKeyPair,
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Add IMPORTED_SRP item
+      await metadataStore.addSecretDataItem({
+        secretData: {
+          data: utf8ToBytes('second-data'),
+          dataType: EncAccountDataType.ImportedSrp,
+        },
+        encKey,
+        authKeyPair,
+      });
+
+      const allItems = await metadataStore.fetchAllSecretDataItems(
+        encKey,
+        authKeyPair,
+      );
+      const allItemIds = allItems.map((item) => item.itemId) as string[];
+
+      const lockId = await metadataStore.acquireMetadataLock(authKeyPair);
+
+      await expect(
+        metadataStore.batchDeleteSecretDataItems(allItemIds, authKeyPair),
+      ).rejects.toThrow('Cannot delete the PRIMARY_SRP item');
+
+      await metadataStore.releaseMetadataLock(authKeyPair, lockId);
     });
   });
 });

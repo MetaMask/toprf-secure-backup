@@ -263,6 +263,14 @@ export type BatchAddSecretDataItemParams = BaseAddSecretDataItemParams<
 
 /**
  * FetchedSecretDataItem - A secret data item returned from fetch operations.
+ *
+ * itemId - The unique identifier for this secret data item.
+ *
+ * data - The decrypted secret data.
+ *
+ * dataType - Optional data type for categorizing the secret data.
+ *
+ * createdAt - The timestamp when this item was created (TIMEUUID string).
  */
 export type FetchedSecretDataItem = {
   data: Uint8Array;
@@ -295,6 +303,30 @@ export type UpdateSecretDataItemParams = {
  */
 export type BatchUpdateSecretDataItemParams = {
   updateItems: { itemId: string; dataType: EncAccountDataType }[];
+  authKeyPair: KeyPair;
+};
+
+/**
+ * DeleteSecretDataItemParams - The parameters for deleting a single secret data item.
+ *
+ * itemId - The item id of the secret data to delete.
+ *
+ * authKeyPair - The authentication key to be used to provide valid signature for deleting the secret data.
+ */
+export type DeleteSecretDataItemParams = {
+  itemId: string;
+  authKeyPair: KeyPair;
+};
+
+/**
+ * BatchDeleteSecretDataItemParams - The parameters for batch deleting secret data items.
+ *
+ * itemIds - The array of item ids of the secret data to delete.
+ *
+ * authKeyPair - The authentication key to be used to provide valid signature for deleting the secret data.
+ */
+export type BatchDeleteSecretDataItemParams = {
+  itemIds: string[];
   authKeyPair: KeyPair;
 };
 
@@ -558,6 +590,34 @@ export type IToprfSecureBackup = {
   ) => Promise<FetchedSecretDataItem[]>;
 
   /**
+   * This function soft deletes a single secret data item from the metadata store.
+   * This does not require acquiring a lock.
+   *
+   * @param params - The parameters for deleting the secret data.
+   * @param params.itemId - The item id of the secret data to delete.
+   * @param params.authKeyPair - The authentication key to be used to provide valid signature for deleting the secret data.
+   *
+   * @returns A promise that resolves when the secret data is deleted.
+   * @throws MetadataStoreError if the item cannot be deleted (e.g., PW_BACKUP or default SRP item).
+   */
+  deleteSecretDataItem: (params: DeleteSecretDataItemParams) => Promise<void>;
+
+  /**
+   * This function soft deletes multiple secret data items from the metadata store.
+   * This requires acquiring a lock first.
+   *
+   * @param params - The parameters for batch deleting the secret data.
+   * @param params.itemIds - The array of item ids of the secret data to delete.
+   * @param params.authKeyPair - The authentication key to be used to provide valid signature for deleting the secret data.
+   *
+   * @returns A promise that resolves when the secret data items are deleted.
+   * @throws MetadataStoreError if any item cannot be deleted (e.g., PW_BACKUP or default SRP item).
+   */
+  batchDeleteSecretDataItems: (
+    params: BatchDeleteSecretDataItemParams,
+  ) => Promise<void>;
+
+  /**
    * This function fetches the authentication public key.
    *
    * @param params - The parameters for fetching the authentication public key.
@@ -815,3 +875,39 @@ export type IMetadataLockRequestBody = {
 export type FetchMetadataAccessCreds = () => Promise<{
   metadataAccessToken: string;
 }>;
+
+/**
+ * Payload structure for deleting a single secret data item
+ */
+export type IDeleteSecretDataRequestBody = IBaseMetadataRequestBody & {
+  /**
+   * The authentication token of the user issued by the SSS services.
+   */
+  authToken?: string;
+  /**
+   * The item id of the secret data to delete.
+   */
+  itemId: string;
+  /**
+   * The signature produced by signing the payload (without pubKey field) using the user's private key.
+   */
+  signature: string;
+};
+
+/**
+ * Payload structure for batch deleting secret data items
+ */
+export type IBatchDeleteSecretDataRequestBody = IBaseMetadataRequestBody & {
+  /**
+   * The authentication token of the user issued by the SSS services.
+   */
+  authToken?: string;
+  /**
+   * The array of item ids of the secret data to delete.
+   */
+  itemIds: string[];
+  /**
+   * The signature produced by signing the payload (without pubKey field) using the user's private key.
+   */
+  signature: string;
+};

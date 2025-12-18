@@ -1580,10 +1580,7 @@ describe('toprf secret backup', function () {
       ).rejects.toThrow('Failed to acquire metadata lock');
     });
 
-    // The metadata lock has a 90 second expiry time and will auto-release after that period,
-    // regardless of whether the key change succeeded or failed.
-    // While changeEncKey() attempts to manually release the lock after a successful key change,
-    // any failure to release the lock should not impact the overall key change operation.
+    // Metadata lock auto-releases after 90s; failure to release early does not affect key changes.
     it('should `not` throw an error when failed to release metadata lock', async function () {
       jest
         .spyOn(MetadataStore.prototype, 'releaseMetadataLock')
@@ -1636,6 +1633,7 @@ describe('toprf secret backup', function () {
         authConnectionId,
         userId,
       });
+
       const encKeyResult = await toprfSecureBackup.createAndPersistEncKey({
         nodeAuthTokens: result.nodeAuthTokens,
         password: generateRandomPassword(),
@@ -1743,6 +1741,275 @@ describe('toprf secret backup', function () {
       expect(updatedItem2?.dataType).toBe(EncAccountDataType.ImportedSrp);
       expect(updatedItem1?.createdAt).toBe(createdAt1);
       expect(updatedItem2?.createdAt).toBe(createdAt2);
+    });
+  });
+
+  describe('deleteSecretDataItem', function () {
+    const password = generateRandomPassword();
+
+    let toprfSecureBackup: ToprfSecureBackup;
+    let encKey: Uint8Array;
+    let authKeyPair: KeyPair;
+
+    beforeEach(async function () {
+      const {
+        authConnectionId,
+        userId,
+        idToken,
+        toprfSecureBackup: _toprfSecureBackup,
+      } = setup();
+      toprfSecureBackup = _toprfSecureBackup;
+
+      const result = await toprfSecureBackup.authenticate({
+        idTokens: [idToken],
+        authConnectionId,
+        userId,
+      });
+
+      const encKeyResult = await toprfSecureBackup.createAndPersistEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        password,
+        authConnectionId,
+        userId,
+      });
+      encKey = encKeyResult.encKey;
+      authKeyPair = encKeyResult.authKeyPair;
+    });
+
+    afterEach(function () {
+      jest.restoreAllMocks();
+    });
+
+    it('should be able to delete a non-PRIMARY_SRP secret data item', async function () {
+      // Add PRIMARY_SRP item first
+      await toprfSecureBackup.addSecretDataItem({
+        encKey,
+        secretData: utf8ToBytes('primary-srp-data'),
+        authKeyPair,
+        dataType: EncAccountDataType.PrimarySrp,
+      });
+
+      await sleep(50);
+
+      // Add IMPORTED_SRP item second
+      await toprfSecureBackup.addSecretDataItem({
+        encKey,
+        secretData: utf8ToBytes('imported-srp-data'),
+        authKeyPair,
+        dataType: EncAccountDataType.ImportedSrp,
+      });
+
+      const allItems = await toprfSecureBackup.fetchAllSecretDataItems({
+        decKey: encKey,
+        authKeyPair,
+      });
+      expect(allItems).toHaveLength(2);
+
+      // Server returns items sorted by createdAt (oldest first after PRIMARY_SRP)
+      // The last item in the array is the newest (IMPORTED_SRP)
+      const newestItem = allItems[allItems.length - 1];
+      if (!newestItem.itemId) {
+        throw new Error('itemId is required');
+      }
+
+      await toprfSecureBackup.deleteSecretDataItem({
+        itemId: newestItem.itemId,
+        authKeyPair,
+      });
+
+      const remainingItems = await toprfSecureBackup.fetchAllSecretDataItems({
+        decKey: encKey,
+        authKeyPair,
+      });
+      expect(remainingItems).toHaveLength(1);
+      expect(remainingItems[0].itemId).not.toBe(newestItem.itemId);
+    });
+
+    it('should reject deleting the PRIMARY_SRP item', async function () {
+      await toprfSecureBackup.addSecretDataItem({
+        encKey,
+        secretData: utf8ToBytes('primary-srp-data'),
+        authKeyPair,
+        dataType: EncAccountDataType.PrimarySrp,
+      });
+
+      const allItems = await toprfSecureBackup.fetchAllSecretDataItems({
+        decKey: encKey,
+        authKeyPair,
+      });
+      if (!allItems[0].itemId) {
+        throw new Error('itemId is required');
+      }
+
+      await expect(
+        toprfSecureBackup.deleteSecretDataItem({
+          itemId: allItems[0].itemId,
+          authKeyPair,
+        }),
+      ).rejects.toThrow('Cannot delete the PRIMARY_SRP item');
+    });
+  });
+
+  describe('batchDeleteSecretDataItems', function () {
+    const password = generateRandomPassword();
+
+    let toprfSecureBackup: ToprfSecureBackup;
+    let encKey: Uint8Array;
+    let authKeyPair: KeyPair;
+
+    beforeEach(async function () {
+      const {
+        authConnectionId,
+        userId,
+        idToken,
+        toprfSecureBackup: _toprfSecureBackup,
+      } = setup();
+      toprfSecureBackup = _toprfSecureBackup;
+
+      const result = await toprfSecureBackup.authenticate({
+        idTokens: [idToken],
+        authConnectionId,
+        userId,
+      });
+
+      const encKeyResult = await toprfSecureBackup.createAndPersistEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        password,
+        authConnectionId,
+        userId,
+      });
+      encKey = encKeyResult.encKey;
+      authKeyPair = encKeyResult.authKeyPair;
+    });
+
+    afterEach(function () {
+      jest.restoreAllMocks();
+    });
+
+    it('should be able to batch delete non-PRIMARY_SRP secret data items', async function () {
+      // Add PRIMARY_SRP item first
+      await toprfSecureBackup.addSecretDataItem({
+        encKey,
+        secretData: utf8ToBytes('primary-srp-data'),
+        authKeyPair,
+        dataType: EncAccountDataType.PrimarySrp,
+      });
+
+      await sleep(50);
+
+      // Add IMPORTED_SRP items
+      await toprfSecureBackup.addSecretDataItem({
+        encKey,
+        secretData: utf8ToBytes('imported-srp-data-1'),
+        authKeyPair,
+        dataType: EncAccountDataType.ImportedSrp,
+      });
+
+      await sleep(50);
+
+      await toprfSecureBackup.addSecretDataItem({
+        encKey,
+        secretData: utf8ToBytes('imported-srp-data-2'),
+        authKeyPair,
+        dataType: EncAccountDataType.ImportedSrp,
+      });
+
+      const allItems = await toprfSecureBackup.fetchAllSecretDataItems({
+        decKey: encKey,
+        authKeyPair,
+      });
+      expect(allItems).toHaveLength(3);
+
+      // Server returns items sorted: PRIMARY_SRP first, then by createdAt (oldest first)
+      // Find the PRIMARY_SRP item to keep
+      const primarySrpItem = allItems.find(
+        (item) => item.dataType === EncAccountDataType.PrimarySrp,
+      );
+      if (!primarySrpItem) {
+        throw new Error('PRIMARY_SRP item not found');
+      }
+
+      const itemIdsToDelete = allItems
+        .filter((item) => item.itemId !== primarySrpItem.itemId)
+        .map((item) => item.itemId) as string[];
+
+      await toprfSecureBackup.batchDeleteSecretDataItems({
+        itemIds: itemIdsToDelete,
+        authKeyPair,
+      });
+
+      const remainingItems = await toprfSecureBackup.fetchAllSecretDataItems({
+        decKey: encKey,
+        authKeyPair,
+      });
+      expect(remainingItems).toHaveLength(1);
+      expect(remainingItems[0].itemId).toBe(primarySrpItem.itemId);
+    });
+
+    it('should throw an error when failed to acquire metadata lock', async function () {
+      jest
+        .spyOn(MetadataStore.prototype, 'acquireMetadataLock')
+        .mockRejectedValue(new Error('Failed to acquire metadata lock'));
+
+      await expect(
+        toprfSecureBackup.batchDeleteSecretDataItems({
+          itemIds: ['item-1', 'item-2'],
+          authKeyPair,
+        }),
+      ).rejects.toThrow('Failed to acquire metadata lock');
+    });
+
+    it('should reject batch deleting if it includes the PRIMARY_SRP item', async function () {
+      // Add PRIMARY_SRP item
+      await toprfSecureBackup.addSecretDataItem({
+        encKey,
+        secretData: utf8ToBytes('primary-srp-data'),
+        authKeyPair,
+        dataType: EncAccountDataType.PrimarySrp,
+      });
+
+      await sleep(50);
+
+      // Add IMPORTED_SRP item
+      await toprfSecureBackup.addSecretDataItem({
+        encKey,
+        secretData: utf8ToBytes('imported-srp-data'),
+        authKeyPair,
+        dataType: EncAccountDataType.ImportedSrp,
+      });
+
+      const allItems = await toprfSecureBackup.fetchAllSecretDataItems({
+        decKey: encKey,
+        authKeyPair,
+      });
+      const allItemIds = allItems.map((item) => item.itemId) as string[];
+
+      await expect(
+        toprfSecureBackup.batchDeleteSecretDataItems({
+          itemIds: allItemIds,
+          authKeyPair,
+        }),
+      ).rejects.toThrow('Cannot delete the PRIMARY_SRP item');
+    });
+
+    it('should `not` throw an error when failed to release metadata lock', async function () {
+      jest
+        .spyOn(MetadataStore.prototype, 'releaseMetadataLock')
+        .mockRejectedValue(new Error('Failed to release metadata lock'));
+
+      const batchDeleteSpy = jest
+        .spyOn(MetadataStore.prototype, 'batchDeleteSecretDataItems')
+        .mockResolvedValueOnce();
+
+      await toprfSecureBackup.batchDeleteSecretDataItems({
+        itemIds: ['item-1', 'item-2'],
+        authKeyPair,
+      });
+
+      expect(batchDeleteSpy).toHaveBeenCalledWith(
+        ['item-1', 'item-2'],
+        authKeyPair,
+      );
     });
   });
 

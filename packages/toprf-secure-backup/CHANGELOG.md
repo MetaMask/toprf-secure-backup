@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `EncAccountDataType` enum for categorizing secret data (e.g., `PrimarySrp`, `ImportedSrp`, `ImportedPrivateKey`). ([#157](https://github.com/MetaMask/toprf-secure-backup/pull/157))
 - Add optional `dataType`, `itemId`, and `createdAt` fields to secret data items. ([#157](https://github.com/MetaMask/toprf-secure-backup/pull/157))
 - Add `updateSecretDataItem` and `batchUpdateSecretDataItems` methods to `ToprfSecureBackup` to update fields for existing items. ([#157](https://github.com/MetaMask/toprf-secure-backup/pull/157))
+- Add `deleteSecretDataItem` and `batchDeleteSecretDataItems` methods to soft delete secret data items. ([#158](https://github.com/MetaMask/toprf-secure-backup/pull/158))
 
 ### Changed
 
