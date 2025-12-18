@@ -710,13 +710,12 @@ export type IBatchAddSecretDataRequestBody =
 
 /**
  * Fields that can be updated for an existing secret data item.
- * At least one field must be provided.
  */
 export type UpdateSecretDataItemFields = {
   /**
    * The data type to set for the item
    */
-  dataType?: EncAccountDataType;
+  dataType: EncAccountDataType;
 };
 
 /**
@@ -732,9 +731,9 @@ export type IUpdateSecretDataRequestBody = IBaseMetadataRequestBody & {
    */
   itemId: string;
   /**
-   * Optional data type for categorizing the secret data
+   * The data type for categorizing the secret data
    */
-  dataType?: EncAccountDataType;
+  dataType: EncAccountDataType;
   /**
    * The signature produced by signing the payload using the user's private key.
    */
@@ -752,9 +751,9 @@ export type IBatchUpdateSecretDataRequestBody = IBaseMetadataRequestBody & {
   /**
    * The array of items to update
    */
-  data: {
+  items: {
     itemId: string;
-    dataType?: EncAccountDataType;
+    dataType: EncAccountDataType;
   }[];
   /**
    * The signature produced by signing the payload using the user's private key.

@@ -457,12 +457,10 @@ export class MetadataStore {
   }): Promise<boolean> {
     try {
       if (params.updateItem.itemId === PW_BACKUP_ITEM_ID) {
-        throw new MetadataStoreError(
-          'PW_BACKUP cannot be updated via itemId-only path',
-        );
+        throw new MetadataStoreError('PW_BACKUP cannot be updated');
       }
 
-      const url = `${params.metadataEndpoint}/enc_account_data/set`;
+      const url = `${params.metadataEndpoint}/enc_account_data/update`;
       const payload = await this.#generatePayloadForUpdateSecretDataRequest(
         params.updateItem,
         params.authKeyPair,
@@ -508,13 +506,11 @@ export class MetadataStore {
     try {
       for (const item of params.updateItems) {
         if (item.itemId === PW_BACKUP_ITEM_ID) {
-          throw new MetadataStoreError(
-            'PW_BACKUP cannot be updated via itemId-only path',
-          );
+          throw new MetadataStoreError('PW_BACKUP cannot be updated');
         }
       }
 
-      const url = `${params.metadataEndpoint}/enc_account_data/batch_set`;
+      const url = `${params.metadataEndpoint}/enc_account_data/batch_update`;
       const payload = await this.#generatePayloadForUpdateSecretDataRequest(
         params.updateItems,
         params.authKeyPair,
@@ -800,24 +796,22 @@ export class MetadataStore {
     const feature = this.#feature;
     const { metadataAccessToken } = await this.#fetchMetadataAccessCreds();
 
+    const items = Array.isArray(inputData) ? inputData : [inputData];
+    const hasEmptyFields = items.some(
+      (item) => item.fields.dataType === undefined,
+    );
+    if (hasEmptyFields) {
+      throw new MetadataStoreError('dataType is required for update');
+    }
+
     const sigPayload: Record<string, unknown> = {
       timestamp,
       feature,
       authToken: metadataAccessToken,
     };
 
-    const items = Array.isArray(inputData) ? inputData : [inputData];
-    const hasEmptyFields = items.some(
-      (item) => item.fields.dataType === undefined,
-    );
-    if (hasEmptyFields) {
-      throw new MetadataStoreError(
-        'At least one field must be provided for update',
-      );
-    }
-
     if (Array.isArray(inputData)) {
-      sigPayload.data = inputData.map((item) => ({
+      sigPayload.items = inputData.map((item) => ({
         itemId: item.itemId,
         dataType: item.fields.dataType,
       }));

@@ -3,7 +3,7 @@ import type { TORUS_SAPPHIRE_NETWORK_TYPE } from '@toruslabs/constants';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import { EncAccountDataType } from './constants';
-import type { KeyPair } from './interfaces';
+import type { KeyPair, UpdateSecretDataItemFields } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
   deriveEncryptionKey,
@@ -386,7 +386,7 @@ describe('MetadataStore', () => {
         },
         authKeyPair,
       }),
-    ).rejects.toThrow('PW_BACKUP cannot be updated via itemId-only path');
+    ).rejects.toThrow('PW_BACKUP cannot be updated');
   });
 
   it('should reject update without any fields', async () => {
@@ -396,11 +396,11 @@ describe('MetadataStore', () => {
       metadataStore.updateSecretDataItem({
         updateItem: {
           itemId: 'some-item-id',
-          fields: {},
+          fields: {} as UpdateSecretDataItemFields,
         },
         authKeyPair,
       }),
-    ).rejects.toThrow('At least one field must be provided for update');
+    ).rejects.toThrow('dataType is required for update');
   });
 
   describe('batchAddSecretData', () => {
@@ -624,7 +624,7 @@ describe('MetadataStore', () => {
           ],
           authKeyPair,
         }),
-      ).rejects.toThrow('PW_BACKUP cannot be updated via itemId-only path');
+      ).rejects.toThrow('PW_BACKUP cannot be updated');
     });
 
     it('should reject update without any fields in batch', async () => {
@@ -637,11 +637,11 @@ describe('MetadataStore', () => {
               itemId: 'item-1',
               fields: { dataType: EncAccountDataType.PrimarySrp },
             },
-            { itemId: 'item-2', fields: {} },
+            { itemId: 'item-2', fields: {} as UpdateSecretDataItemFields },
           ],
           authKeyPair,
         }),
-      ).rejects.toThrow('At least one field must be provided for update');
+      ).rejects.toThrow('dataType is required for update');
     });
   });
 });
