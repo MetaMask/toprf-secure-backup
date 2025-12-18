@@ -1515,7 +1515,7 @@ describe('toprf secret backup', function () {
 
     it('should be able to store secret data in batch', async function () {
       await toprfSecureBackup.batchAddSecretDataItems({
-        items: secretDataArray,
+        secretData: secretDataArray,
         encKey,
         authKeyPair,
       });
@@ -1573,7 +1573,7 @@ describe('toprf secret backup', function () {
 
       await expect(
         toprfSecureBackup.batchAddSecretDataItems({
-          items: secretDataArray,
+          secretData: secretDataArray,
           encKey,
           authKeyPair,
         }),
@@ -1590,7 +1590,7 @@ describe('toprf secret backup', function () {
         .mockRejectedValue(new Error('Failed to release metadata lock'));
 
       await toprfSecureBackup.batchAddSecretDataItems({
-        items: secretDataArray,
+        secretData: secretDataArray,
         encKey,
         authKeyPair,
       });
@@ -1664,7 +1664,7 @@ describe('toprf secret backup', function () {
 
       // Update to add dataType (migration scenario)
       await toprfSecureBackup.updateSecretDataItem({
-        itemId: itemId as string,
+        itemId,
         dataType: EncAccountDataType.PrimarySrp,
         authKeyPair: encKeyResult.authKeyPair,
       });
@@ -1697,7 +1697,7 @@ describe('toprf secret backup', function () {
 
       // Add items without dataType (simulates old data that needs migration)
       await toprfSecureBackup.batchAddSecretDataItems({
-        items: [
+        secretData: [
           { data: utf8ToBytes('data-1') },
           { data: utf8ToBytes('data-2') },
         ],
@@ -1716,8 +1716,8 @@ describe('toprf secret backup', function () {
       expect(beforeUpdate[1].createdAt).toBeDefined();
 
       // Use actual itemIds returned from fetch (server generates/hashes them)
-      const itemId1 = beforeUpdate[0].itemId as string;
-      const itemId2 = beforeUpdate[1].itemId as string;
+      const itemId1 = beforeUpdate[0].itemId;
+      const itemId2 = beforeUpdate[1].itemId;
       const createdAt1 = beforeUpdate[0].createdAt;
       const createdAt2 = beforeUpdate[1].createdAt;
       expect(itemId1).toBeDefined();

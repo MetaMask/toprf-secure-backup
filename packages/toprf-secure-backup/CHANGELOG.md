@@ -16,7 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Breaking**: `fetchAllSecretDataItems` now returns `FetchedSecretDataItem[]` instead of `Uint8Array[]`, including `data`, `itemId`, `dataType`, and `createdAt` fields. ([#157](https://github.com/MetaMask/toprf-secure-backup/pull/157))
-- **Breaking**: `batchAddSecretDataItems` now uses `items: [{ data, itemId?, dataType? }]` instead of `secretData: Uint8Array[]`. ([#157](https://github.com/MetaMask/toprf-secure-backup/pull/157))
+- **Breaking**: `batchAddSecretDataItems` parameter `secretData` changed from `Uint8Array[]` to `{ data: Uint8Array, itemId?: string, dataType?: EncAccountDataType }[]`. ([#157](https://github.com/MetaMask/toprf-secure-backup/pull/157))
+- `addSecretDataItem` now accepts optional `itemId` and `dataType` parameters. ([#157](https://github.com/MetaMask/toprf-secure-backup/pull/157))
 
 ## [0.11.0]
 

@@ -528,14 +528,13 @@ describe('MetadataStore', () => {
         encKey,
         authKeyPair,
       );
-      expect(beforeUpdate?.length).toBe(1);
-      const itemId = beforeUpdate?.[0].itemId;
-      expect(itemId).toBeDefined();
-      expect(beforeUpdate?.[0].dataType).toBeUndefined();
+      expect(beforeUpdate).toHaveLength(1);
+      expect(beforeUpdate[0].dataType).toBeUndefined();
+      expect(beforeUpdate[0].itemId).toBeDefined();
 
       await metadataStore.updateSecretDataItem({
         updateItem: {
-          itemId: itemId as string,
+          itemId: beforeUpdate[0].itemId as string,
           fields: { dataType: EncAccountDataType.PrimarySrp },
         },
         authKeyPair,
@@ -570,19 +569,21 @@ describe('MetadataStore', () => {
         encKey,
         authKeyPair,
       );
-      expect(beforeUpdate?.length).toBe(2);
-      expect(beforeUpdate?.[0].dataType).toBeUndefined();
-      expect(beforeUpdate?.[1].dataType).toBeUndefined();
+      expect(beforeUpdate).toHaveLength(2);
+      expect(beforeUpdate[0].dataType).toBeUndefined();
+      expect(beforeUpdate[1].dataType).toBeUndefined();
+      expect(beforeUpdate[0].itemId).toBeDefined();
+      expect(beforeUpdate[1].itemId).toBeDefined();
 
       lockId = await metadataStore.acquireMetadataLock(authKeyPair);
       await metadataStore.batchUpdateSecretData({
         updateItems: [
           {
-            itemId: beforeUpdate?.[0].itemId as string,
+            itemId: beforeUpdate[0].itemId as string,
             fields: { dataType: EncAccountDataType.PrimarySrp },
           },
           {
-            itemId: beforeUpdate?.[1].itemId as string,
+            itemId: beforeUpdate[1].itemId as string,
             fields: { dataType: EncAccountDataType.ImportedSrp },
           },
         ],
@@ -594,13 +595,13 @@ describe('MetadataStore', () => {
         encKey,
         authKeyPair,
       );
-      expect(afterUpdate?.length).toBe(2);
+      expect(afterUpdate).toHaveLength(2);
 
-      const item1 = afterUpdate?.find(
-        (item) => item.itemId === beforeUpdate?.[0].itemId,
+      const item1 = afterUpdate.find(
+        (item) => item.itemId === beforeUpdate[0].itemId,
       );
-      const item2 = afterUpdate?.find(
-        (item) => item.itemId === beforeUpdate?.[1].itemId,
+      const item2 = afterUpdate.find(
+        (item) => item.itemId === beforeUpdate[1].itemId,
       );
 
       expect(item1?.dataType).toBe(EncAccountDataType.PrimarySrp);

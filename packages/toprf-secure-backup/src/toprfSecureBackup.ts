@@ -551,7 +551,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * This function encrypts the array of secret data using the encryption key and stores in the metadata store in encrypted form as a batch.
    *
    * @param params - The parameters for registering new secret data.
-   * @param params.items - Array of items to store, each with data and optional itemId/dataType.
+   * @param params.secretData - Array of items to store, each with data and optional itemId/dataType.
    * @param params.encKey - The encryption key to be used to encrypt the secret data before storing it.
    * @param params.authKeyPair - The authentication key to be used to provide valid signature for storing the secret data.
    */
@@ -571,7 +571,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       await metadataStore.batchAddSecretData({
         encKey: params.encKey,
         authKeyPair: params.authKeyPair,
-        secretData: params.items.map((item) => ({
+        secretData: params.secretData.map((item) => ({
           data: item.data,
           itemId: item.itemId,
           dataType: item.dataType,
@@ -673,9 +673,10 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       params.decKey,
       params.authKeyPair,
     );
-    return dataItems.map((dataItem: SecretDataItem) => ({
+    // itemId is always present in fetched data from server
+    return dataItems.map((dataItem) => ({
       data: dataItem.data,
-      itemId: dataItem.itemId,
+      itemId: dataItem.itemId as string,
       dataType: dataItem.dataType,
       createdAt: dataItem.createdAt,
     }));

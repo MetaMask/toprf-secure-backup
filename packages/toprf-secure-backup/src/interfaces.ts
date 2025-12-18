@@ -250,24 +250,23 @@ export type BatchAddSecretDataItem = {
 /**
  * BatchAddSecretDataItemParams - Parameters for batch adding secret data items.
  *
- * items - Array of items to store, each with data and optional itemId/dataType.
+ * secretData - Array of items to store, each with data and optional itemId/dataType.
  *
  * encKey - The encryption key(s) to be used to encrypt the secret data.
  *
  * authKeyPair - The authentication key to be used to provide valid signature for storing the secret data.
  */
-export type BatchAddSecretDataItemParams = {
-  items: BatchAddSecretDataItem[];
-  encKey: Uint8Array | Uint8Array[];
-  authKeyPair: KeyPair;
-};
+export type BatchAddSecretDataItemParams = BaseAddSecretDataItemParams<
+  BatchAddSecretDataItem[],
+  Uint8Array | Uint8Array[]
+>;
 
 /**
  * FetchedSecretDataItem - A secret data item returned from fetch operations.
  */
 export type FetchedSecretDataItem = {
   data: Uint8Array;
-  itemId?: string;
+  itemId: string;
   dataType?: EncAccountDataType;
   createdAt?: string;
 };
@@ -509,7 +508,7 @@ export type IToprfSecureBackup = {
    * This function encrypts the array of secret data using the encryption key and stores it in the metadata store in encrypted form as a batch.
    *
    * @param params - The parameters for registering new secret data.
-   * @param params.items - Array of items to store, each with data and optional itemId/dataType.
+   * @param params.secretData - Array of items to store, each with data and optional itemId/dataType.
    * @param params.encKey - The encryption key to be used to encrypt the secret data before storing it.
    * @param params.authKeyPair - The authentication key to be used to provide valid signature for storing the secret data.
    *
