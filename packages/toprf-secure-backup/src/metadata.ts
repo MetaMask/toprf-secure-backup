@@ -398,24 +398,23 @@ export class MetadataStore {
       );
     }
 
-    for (const secret of params.secretData) {
-      if (
-        secret.itemId === PW_BACKUP_ITEM_ID &&
-        secret.dataType !== undefined
-      ) {
-        throw new MetadataStoreError(
-          'dataType cannot be set for PW_BACKUP item',
-        );
-      }
-    }
-
     try {
       const url = `${params.metadataEndpoint}/enc_account_data/batch_set`;
-      const encryptedDataArray = params.secretData.map((secret, index) => ({
-        data: this.#encryptData(secret.data, encKeys[index]),
-        itemId: secret.itemId,
-        dataType: secret.dataType,
-      }));
+      const encryptedDataArray = params.secretData.map((secret, index) => {
+        if (
+          secret.itemId === PW_BACKUP_ITEM_ID &&
+          secret.dataType !== undefined
+        ) {
+          throw new MetadataStoreError(
+            'dataType cannot be set for PW_BACKUP item',
+          );
+        }
+        return {
+          data: this.#encryptData(secret.data, encKeys[index]),
+          itemId: secret.itemId,
+          dataType: secret.dataType,
+        };
+      });
       const payload =
         await this.#generatePayloadForSetOrBatchSetSecretDataRequest(
           encryptedDataArray,
