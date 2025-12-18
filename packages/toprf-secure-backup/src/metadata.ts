@@ -603,10 +603,6 @@ export class MetadataStore {
 
         const rawData = new Uint8Array(Buffer.from(jsonData.data[i], 'base64'));
         const decryptedData = this.#decryptData(rawData, params.encKey);
-
-        if (decryptedData.length === 0) {
-          continue;
-        }
         const dataType = jsonData.dataTypes?.[i];
         const createdAt = jsonData.createdAt?.[i];
         secretData.push({
