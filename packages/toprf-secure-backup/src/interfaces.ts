@@ -230,11 +230,14 @@ export type BaseAddSecretDataItemParams<
  *
  * itemId - Optional item ID for the data item.
  *
+ * version - Optional version string for the data item.
+ *
  * dataType - Optional data type for categorizing the secret data.
  */
 export type AddSecretDataItemParams =
   BaseAddSecretDataItemParams<Uint8Array> & {
     itemId?: string;
+    version?: string;
     dataType?: EncAccountDataType;
   };
 
@@ -244,6 +247,7 @@ export type AddSecretDataItemParams =
 export type BatchAddSecretDataItem = {
   data: Uint8Array;
   itemId?: string;
+  version?: string;
   dataType?: EncAccountDataType;
 };
 
@@ -267,6 +271,7 @@ export type BatchAddSecretDataItemParams = BaseAddSecretDataItemParams<
 export type FetchedSecretDataItem = {
   data: Uint8Array;
   itemId: string;
+  version: string;
   dataType?: EncAccountDataType;
   createdAt?: string;
 };

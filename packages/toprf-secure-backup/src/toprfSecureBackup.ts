@@ -542,6 +542,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       secretData: {
         data: params.secretData,
         itemId: params.itemId,
+        version: params.version,
         dataType: params.dataType,
       },
     });
@@ -574,6 +575,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         secretData: params.secretData.map((item) => ({
           data: item.data,
           itemId: item.itemId,
+          version: item.version,
           dataType: item.dataType,
         })),
       });
@@ -676,6 +678,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     return dataItems.map((dataItem) => ({
       data: dataItem.data,
       itemId: dataItem.itemId,
+      version: dataItem.version,
       dataType: dataItem.dataType,
       createdAt: dataItem.createdAt,
     }));

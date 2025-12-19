@@ -95,6 +95,7 @@ describe('MetadataStore', () => {
     expect(result).not.toBeNull();
     expect(result?.[0].data).toStrictEqual(secretData);
     expect(result?.[0].dataType).toBe(EncAccountDataType.PrimarySrp);
+    expect(result?.[0].version).toBeDefined();
     expect(result?.[0].createdAt).toBeDefined();
   });
 
@@ -118,6 +119,7 @@ describe('MetadataStore', () => {
     expect(result).not.toBeNull();
     expect(result?.[0].data).toStrictEqual(secretData);
     expect(result?.[0].dataType).toBe(EncAccountDataType.ImportedSrp);
+    expect(result?.[0].version).toBeDefined();
     expect(result?.[0].createdAt).toBeDefined();
   });
 
@@ -451,8 +453,9 @@ describe('MetadataStore', () => {
       );
       expect(shouldHaveSameValuesBeforeAfterBatchAdd).toBe(true);
 
-      // Verify all items have createdAt
+      // Verify all items have version and createdAt
       allSecretDataAfterBatchAdd?.forEach((item) => {
+        expect(item.version).toBeDefined();
         expect(item.createdAt).toBeDefined();
       });
 

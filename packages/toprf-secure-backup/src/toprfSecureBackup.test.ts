@@ -1462,6 +1462,7 @@ describe('toprf secret backup', function () {
       expect(fetchedSecretData?.[0].dataType).toBe(
         EncAccountDataType.PrimarySrp,
       );
+      expect(fetchedSecretData?.[0].version).toBeDefined();
       expect(fetchedSecretData?.[0].createdAt).toBeDefined();
     });
   });
@@ -1560,8 +1561,9 @@ describe('toprf secret backup', function () {
       );
       expect(itemsWithoutDataType).toHaveLength(1);
 
-      // Verify all items have createdAt
+      // Verify all items have version and createdAt
       fetchedSecretData.forEach((item) => {
+        expect(item.version).toBeDefined();
         expect(item.createdAt).toBeDefined();
       });
     });
@@ -1619,8 +1621,9 @@ describe('toprf secret backup', function () {
       );
       expect(itemsWithDataType).toHaveLength(2);
 
-      // Verify all items have createdAt
+      // Verify all items have version and createdAt
       fetchedSecretData.forEach((item) => {
+        expect(item.version).toBeDefined();
         expect(item.createdAt).toBeDefined();
       });
     });
@@ -1656,6 +1659,7 @@ describe('toprf secret backup', function () {
       });
       expect(beforeUpdate).toHaveLength(1);
       expect(beforeUpdate[0].dataType).toBeUndefined();
+      expect(beforeUpdate[0].version).toBeDefined();
       expect(beforeUpdate[0].createdAt).toBeDefined();
 
       // Use the actual itemId returned from fetch (server generates/hashes it)
@@ -1712,6 +1716,8 @@ describe('toprf secret backup', function () {
       expect(beforeUpdate).toHaveLength(2);
       expect(beforeUpdate[0].dataType).toBeUndefined();
       expect(beforeUpdate[1].dataType).toBeUndefined();
+      expect(beforeUpdate[0].version).toBeDefined();
+      expect(beforeUpdate[1].version).toBeDefined();
       expect(beforeUpdate[0].createdAt).toBeDefined();
       expect(beforeUpdate[1].createdAt).toBeDefined();
 

@@ -44,13 +44,17 @@ export type LockAcquiredResponse = { status: MetadataLockStatus; id?: string };
 export type SecretDataItem = {
   itemId?: string;
   data: Uint8Array;
+  version?: string;
   dataType?: EncAccountDataType;
   createdAt?: string;
 };
 
 export type SecretDataItemInput = Omit<SecretDataItem, 'createdAt'>;
 
-export type SecretDataItemOutput = SecretDataItem & { itemId: string };
+export type SecretDataItemOutput = SecretDataItem & {
+  itemId: string;
+  version: string;
+};
 
 export type UpdateSecretDataItem = {
   itemId: string;
@@ -336,6 +340,7 @@ export class MetadataStore {
           {
             itemId: params.secretData.itemId,
             data: encryptedData,
+            version: params.secretData.version,
             dataType: params.secretData.dataType,
           },
           params.authKeyPair,
@@ -412,6 +417,7 @@ export class MetadataStore {
         return {
           data: this.#encryptData(secret.data, encKeys[index]),
           itemId: secret.itemId,
+          version: secret.version,
           dataType: secret.dataType,
         };
       });
@@ -582,6 +588,7 @@ export class MetadataStore {
       const jsonData = (await response.json()) as {
         data: string[];
         ids: string[];
+        versions: string[];
         dataTypes: (number | null)[];
         createdAt: (string | null)[];
       };
@@ -608,6 +615,7 @@ export class MetadataStore {
         secretData.push({
           itemId: id,
           data: decryptedData,
+          version: jsonData.versions[i],
           dataType: typeof dataType === 'number' ? dataType : undefined,
           createdAt: typeof createdAt === 'string' ? createdAt : undefined,
         });
@@ -728,11 +736,13 @@ export class MetadataStore {
       sigPayload.data = inputData.map((item) => ({
         data: Buffer.from(item.data).toString('base64'),
         itemId: item.itemId,
+        version: item.version,
         dataType: item.dataType,
       }));
     } else {
       sigPayload.data = Buffer.from(inputData.data).toString('base64');
       sigPayload.itemId = inputData.itemId;
+      sigPayload.version = inputData.version;
       sigPayload.dataType = inputData.dataType;
     }
 
