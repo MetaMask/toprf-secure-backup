@@ -95,8 +95,41 @@ describe('MetadataStore', () => {
     expect(result).not.toBeNull();
     expect(result?.[0].data).toStrictEqual(secretData);
     expect(result?.[0].dataType).toBe(EncAccountDataType.PrimarySrp);
-    expect(result?.[0].version).toBeDefined();
+    expect(result?.[0].version).toBe('v2');
     expect(result?.[0].createdAt).toBeDefined();
+
+    // Add second item to test filtering by itemId
+    await metadataStore.addSecretDataItem({
+      secretData: {
+        data: utf8ToBytes('data-2'),
+        dataType: EncAccountDataType.ImportedSrp,
+      },
+      encKey,
+      authKeyPair,
+    });
+
+    const allItems = await metadataStore.fetchAllSecretDataItems(
+      encKey,
+      authKeyPair,
+    );
+    expect(allItems).toHaveLength(2);
+    expect(allItems[0].data).toStrictEqual(secretData);
+    expect(allItems[0].dataType).toBe(EncAccountDataType.PrimarySrp);
+    expect(allItems[0].version).toBe('v2');
+    expect(allItems[0].createdAt).toBeDefined();
+    expect(allItems[1].data).toStrictEqual(utf8ToBytes('data-2'));
+    expect(allItems[1].dataType).toBe(EncAccountDataType.ImportedSrp);
+    expect(allItems[1].version).toBe('v2');
+    expect(allItems[1].createdAt).toBeDefined();
+
+    // Fetch with specific itemId - should filter out other items
+    const filteredResult = await metadataStore.fetchAllSecretDataItems(
+      encKey,
+      authKeyPair,
+      allItems[0].itemId,
+    );
+    expect(filteredResult).toHaveLength(1);
+    expect(filteredResult[0].itemId).toBe(allItems[0].itemId);
   });
 
   it('should be able to store/fetch data with different instances', async () => {
@@ -119,7 +152,7 @@ describe('MetadataStore', () => {
     expect(result).not.toBeNull();
     expect(result?.[0].data).toStrictEqual(secretData);
     expect(result?.[0].dataType).toBe(EncAccountDataType.ImportedSrp);
-    expect(result?.[0].version).toBeDefined();
+    expect(result?.[0].version).toBe('v2');
     expect(result?.[0].createdAt).toBeDefined();
   });
 
@@ -267,7 +300,10 @@ describe('MetadataStore', () => {
 
     await expect(
       metadataStore.addSecretDataItem({
-        secretData: { data: utf8ToBytes('SECRET_DATA') },
+        secretData: {
+          data: utf8ToBytes('SECRET_DATA'),
+          dataType: EncAccountDataType.PrimarySrp,
+        },
         encKey,
         authKeyPair,
       }),
@@ -283,7 +319,12 @@ describe('MetadataStore', () => {
 
     await expect(
       metadataStore.batchAddSecretData({
-        secretData: [{ data: utf8ToBytes('SECRET_DATA') }],
+        secretData: [
+          {
+            data: utf8ToBytes('SECRET_DATA'),
+            dataType: EncAccountDataType.PrimarySrp,
+          },
+        ],
         encKey,
         authKeyPair,
       }),
@@ -309,7 +350,10 @@ describe('MetadataStore', () => {
 
     await expect(
       metadataStore.addSecretDataItem({
-        secretData: { data: utf8ToBytes('SECRET_DATA') },
+        secretData: {
+          data: utf8ToBytes('SECRET_DATA'),
+          dataType: EncAccountDataType.PrimarySrp,
+        },
         encKey,
         authKeyPair,
       }),
@@ -321,7 +365,12 @@ describe('MetadataStore', () => {
 
     await expect(
       metadataStore.batchAddSecretData({
-        secretData: [{ data: utf8ToBytes('SECRET_DATA') }],
+        secretData: [
+          {
+            data: utf8ToBytes('SECRET_DATA'),
+            dataType: EncAccountDataType.PrimarySrp,
+          },
+        ],
         encKey,
         authKeyPair,
       }),
@@ -377,18 +426,46 @@ describe('MetadataStore', () => {
     ).rejects.toThrow('dataType cannot be set for PW_BACKUP item');
   });
 
-  it('should reject PW_BACKUP from itemId-only update path', async () => {
+  it('should require dataType for v2 secret data items', async () => {
     const metadataStore = await createMetadataStore();
 
+    // Single add: Default version (v2) should require dataType
     await expect(
-      metadataStore.updateSecretDataItem({
-        updateItem: {
-          itemId: 'PW_BACKUP',
-          fields: { dataType: EncAccountDataType.PrimarySrp },
-        },
+      metadataStore.addSecretDataItem({
+        secretData: { data: secretData },
+        encKey,
         authKeyPair,
       }),
-    ).rejects.toThrow('PW_BACKUP cannot be updated');
+    ).rejects.toThrow('dataType is required for v2 secret data items');
+
+    // Single add: Explicit v2 should require dataType
+    await expect(
+      metadataStore.addSecretDataItem({
+        secretData: { data: secretData, version: 'v2' },
+        encKey,
+        authKeyPair,
+      }),
+    ).rejects.toThrow('dataType is required for v2 secret data items');
+
+    // Batch add: Default version (v2) should require dataType
+    const lockId = await metadataStore.acquireMetadataLock(authKeyPair);
+    await expect(
+      metadataStore.batchAddSecretData({
+        secretData: [{ data: secretData }],
+        encKey,
+        authKeyPair,
+      }),
+    ).rejects.toThrow('dataType is required for v2 secret data items');
+
+    // Batch add: Explicit v2 should require dataType
+    await expect(
+      metadataStore.batchAddSecretData({
+        secretData: [{ data: secretData, version: 'v2' }],
+        encKey,
+        authKeyPair,
+      }),
+    ).rejects.toThrow('dataType is required for v2 secret data items');
+    await metadataStore.releaseMetadataLock(authKeyPair, lockId);
   });
 
   describe('batchAddSecretData', () => {
@@ -453,9 +530,9 @@ describe('MetadataStore', () => {
       );
       expect(shouldHaveSameValuesBeforeAfterBatchAdd).toBe(true);
 
-      // Verify all items have version and createdAt
+      // Verify all items have version v2 and createdAt
       allSecretDataAfterBatchAdd?.forEach((item) => {
-        expect(item.version).toBeDefined();
+        expect(item.version).toBe('v2');
         expect(item.createdAt).toBeDefined();
       });
 
@@ -473,7 +550,12 @@ describe('MetadataStore', () => {
 
       await expect(
         metadataStore.batchAddSecretData({
-          secretData: [{ data: utf8ToBytes('SECRET_DATA') }],
+          secretData: [
+            {
+              data: utf8ToBytes('SECRET_DATA'),
+              dataType: EncAccountDataType.PrimarySrp,
+            },
+          ],
           encKey: [encKey, encKey], // length of secretData is 1, but encKey is 2
           authKeyPair,
         }),
@@ -507,8 +589,9 @@ describe('MetadataStore', () => {
     it('should update fields for existing item', async () => {
       const metadataStore = await createMetadataStore();
 
+      // Add legacy data (v1) without dataType - simulates old data that needs migration
       await metadataStore.addSecretDataItem({
-        secretData: { data: secretData },
+        secretData: { data: secretData, version: 'v1' },
         encKey,
         authKeyPair,
       });
@@ -518,7 +601,10 @@ describe('MetadataStore', () => {
         authKeyPair,
       );
       expect(beforeUpdate).toHaveLength(1);
+      expect(beforeUpdate[0].data).toStrictEqual(secretData);
       expect(beforeUpdate[0].dataType).toBeUndefined();
+      expect(beforeUpdate[0].version).toBe('v1');
+      expect(beforeUpdate[0].createdAt).toBeDefined();
       expect(beforeUpdate[0].itemId).toBeDefined();
 
       await metadataStore.updateSecretDataItem({
@@ -533,9 +619,47 @@ describe('MetadataStore', () => {
         encKey,
         authKeyPair,
       );
-      expect(afterUpdate?.length).toBe(1);
-      expect(afterUpdate?.[0].dataType).toBe(EncAccountDataType.PrimarySrp);
-      expect(afterUpdate?.[0].data).toStrictEqual(secretData);
+      expect(afterUpdate).toHaveLength(1);
+      expect(afterUpdate[0].data).toStrictEqual(secretData);
+      expect(afterUpdate[0].dataType).toBe(EncAccountDataType.PrimarySrp);
+      expect(afterUpdate[0].version).toBe('v2');
+      expect(afterUpdate[0].createdAt).toBeDefined();
+    });
+
+    it('should handle HTTP error response', async () => {
+      const metadataStore = await createMetadataStore();
+
+      const fetchSpy = jest.spyOn(globalThis, 'fetch').mockResolvedValue({
+        ok: false,
+        // eslint-disable-next-line jsdoc/require-jsdoc
+        json: async () => ({ error: 'Server error' }),
+      } as globalThis.Response);
+
+      await expect(
+        metadataStore.updateSecretDataItem({
+          updateItem: {
+            itemId: 'some-item-id',
+            fields: { dataType: EncAccountDataType.PrimarySrp },
+          },
+          authKeyPair,
+        }),
+      ).rejects.toThrow('HTTP error message: Server error');
+
+      fetchSpy.mockRestore();
+    });
+
+    it('should reject PW_BACKUP update', async () => {
+      const metadataStore = await createMetadataStore();
+
+      await expect(
+        metadataStore.updateSecretDataItem({
+          updateItem: {
+            itemId: 'PW_BACKUP',
+            fields: { dataType: EncAccountDataType.PrimarySrp },
+          },
+          authKeyPair,
+        }),
+      ).rejects.toThrow('PW_BACKUP cannot be updated');
     });
   });
 
@@ -546,9 +670,13 @@ describe('MetadataStore', () => {
       const data1 = utf8ToBytes('DATA_1');
       const data2 = utf8ToBytes('DATA_2');
 
+      // Add legacy data (v1) without dataType - simulates old data that needs migration
       let lockId = await metadataStore.acquireMetadataLock(authKeyPair);
       await metadataStore.batchAddSecretData({
-        secretData: [{ data: data1 }, { data: data2 }],
+        secretData: [
+          { data: data1, version: 'v1' },
+          { data: data2, version: 'v1' },
+        ],
         encKey,
         authKeyPair,
       });
@@ -559,9 +687,15 @@ describe('MetadataStore', () => {
         authKeyPair,
       );
       expect(beforeUpdate).toHaveLength(2);
+      expect(beforeUpdate[0].data).toStrictEqual(data1);
       expect(beforeUpdate[0].dataType).toBeUndefined();
-      expect(beforeUpdate[1].dataType).toBeUndefined();
+      expect(beforeUpdate[0].version).toBe('v1');
+      expect(beforeUpdate[0].createdAt).toBeDefined();
       expect(beforeUpdate[0].itemId).toBeDefined();
+      expect(beforeUpdate[1].data).toStrictEqual(data2);
+      expect(beforeUpdate[1].dataType).toBeUndefined();
+      expect(beforeUpdate[1].version).toBe('v1');
+      expect(beforeUpdate[1].createdAt).toBeDefined();
       expect(beforeUpdate[1].itemId).toBeDefined();
 
       lockId = await metadataStore.acquireMetadataLock(authKeyPair);
@@ -593,8 +727,14 @@ describe('MetadataStore', () => {
         (item) => item.itemId === beforeUpdate[1].itemId,
       );
 
+      expect(item1?.data).toStrictEqual(data1);
       expect(item1?.dataType).toBe(EncAccountDataType.PrimarySrp);
+      expect(item1?.version).toBe('v2');
+      expect(item1?.createdAt).toBeDefined();
+      expect(item2?.data).toStrictEqual(data2);
       expect(item2?.dataType).toBe(EncAccountDataType.ImportedSrp);
+      expect(item2?.version).toBe('v2');
+      expect(item2?.createdAt).toBeDefined();
     });
 
     it('should reject PW_BACKUP from itemId-only update path', async () => {
@@ -615,6 +755,30 @@ describe('MetadataStore', () => {
           authKeyPair,
         }),
       ).rejects.toThrow('PW_BACKUP cannot be updated');
+    });
+
+    it('should handle HTTP error response', async () => {
+      const metadataStore = await createMetadataStore();
+
+      const fetchSpy = jest.spyOn(globalThis, 'fetch').mockResolvedValue({
+        ok: false,
+        // eslint-disable-next-line jsdoc/require-jsdoc
+        json: async () => ({ error: 'Batch update failed' }),
+      } as globalThis.Response);
+
+      await expect(
+        metadataStore.batchUpdateSecretData({
+          updateItems: [
+            {
+              itemId: 'some-item-id',
+              fields: { dataType: EncAccountDataType.PrimarySrp },
+            },
+          ],
+          authKeyPair,
+        }),
+      ).rejects.toThrow('HTTP error message: Batch update failed');
+
+      fetchSpy.mockRestore();
     });
   });
 });

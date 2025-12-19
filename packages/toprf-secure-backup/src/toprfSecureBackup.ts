@@ -475,6 +475,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       ).map((dataItem) => ({
         data: dataItem.data,
         dataType: dataItem.dataType,
+        version: dataItem.version,
       }));
 
       // Validate that this is actually a key change scenario
@@ -532,7 +533,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * @param params.secretData - The secret data to be registered.
    * @param params.authKeyPair - The authentication key pair which is used to authenticate the user to the storage service.
    * @param params.itemId - Optional item ID for the data item.
-   * @param params.dataType - Optional data type for categorizing the secret data.
+   * @param params.version - Optional version ('v1' | 'v2'). Defaults to 'v2'.
+   * @param params.dataType - Optional data type for categorizing the secret data. Required for v2.
    */
   async addSecretDataItem(params: AddSecretDataItemParams): Promise<void> {
     const metadataStore = await this.#createMetadataStore();

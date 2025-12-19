@@ -720,6 +720,10 @@ export type UpdateSecretDataItemFields = {
    * The data type to set for the item
    */
   dataType: EncAccountDataType;
+  /**
+   * The version to set for the item. Defaults to 'v2' on server if not provided.
+   */
+  version?: 'v1' | 'v2';
 };
 
 /**
@@ -738,6 +742,10 @@ export type IUpdateSecretDataRequestBody = IBaseMetadataRequestBody & {
    * The data type for categorizing the secret data
    */
   dataType: EncAccountDataType;
+  /**
+   * The version to set for the item. Defaults to 'v2' on server if not provided.
+   */
+  version?: 'v1' | 'v2';
   /**
    * The signature produced by signing the payload using the user's private key.
    */
@@ -758,6 +766,7 @@ export type IBatchUpdateSecretDataRequestBody = IBaseMetadataRequestBody & {
   items: {
     itemId: string;
     dataType: EncAccountDataType;
+    version?: 'v1' | 'v2';
   }[];
   /**
    * The signature produced by signing the payload using the user's private key.

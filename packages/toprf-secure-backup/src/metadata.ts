@@ -124,8 +124,11 @@ export class MetadataStore {
    * Encrypts the secret data and stores it in the metadata store.
    *
    * @param params - The parameters for storing the secret data.
-   * @param params.secretData - The secret data to be stored.
+   * @param params.secretData - The secret data to be stored, including optional version and dataType.
+   * @param params.secretData.version - Optional version ('v1' | 'v2'). Defaults to 'v2'.
+   * @param params.secretData.dataType - Optional data type for categorizing the secret data. Required for v2.
    * @param params.encKey - The encryption key to be used for encrypting the secret data.
+   * @param params.authKeyPair - The authentication key pair for signing the request.
    * @returns A promise that resolves when the secret data is stored.
    */
   async addSecretDataItem(
@@ -330,6 +333,17 @@ export class MetadataStore {
         );
       }
 
+      // For v2 (or default), dataType is required for non-PW_BACKUP items
+      if (
+        params.secretData.itemId !== PW_BACKUP_ITEM_ID &&
+        params.secretData.version !== 'v1' &&
+        params.secretData.dataType === undefined
+      ) {
+        throw new MetadataStoreError(
+          'dataType is required for v2 secret data items',
+        );
+      }
+
       const url = `${params.metadataEndpoint}/enc_account_data/set`;
       const encryptedData = this.#encryptData(
         params.secretData.data,
@@ -412,6 +426,16 @@ export class MetadataStore {
         ) {
           throw new MetadataStoreError(
             'dataType cannot be set for PW_BACKUP item',
+          );
+        }
+        // For v2 (or default), dataType is required for non-PW_BACKUP items
+        if (
+          secret.itemId !== PW_BACKUP_ITEM_ID &&
+          secret.version !== 'v1' &&
+          secret.dataType === undefined
+        ) {
+          throw new MetadataStoreError(
+            'dataType is required for v2 secret data items',
           );
         }
         return {
@@ -598,12 +622,10 @@ export class MetadataStore {
 
       const secretData: SecretDataItemOutput[] = [];
 
+      // Server filters by itemId when provided, so no client-side filtering needed
       for (let i = 0; i < jsonData.data.length; i++) {
         const id = jsonData.ids[i];
 
-        if (params.itemId && id !== params.itemId) {
-          continue;
-        }
         // Skip PW_BACKUP unless specifically requested
         if (!params.itemId && id === PW_BACKUP_ITEM_ID) {
           continue;
@@ -816,10 +838,12 @@ export class MetadataStore {
       sigPayload.items = inputData.map((item) => ({
         itemId: item.itemId,
         dataType: item.fields.dataType,
+        version: item.fields.version ?? 'v2',
       }));
     } else {
       sigPayload.itemId = inputData.itemId;
       sigPayload.dataType = inputData.fields.dataType;
+      sigPayload.version = inputData.fields.version ?? 'v2';
     }
 
     const { pk, sk } = authKeyPair;
