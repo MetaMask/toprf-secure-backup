@@ -384,6 +384,28 @@ describe('MetadataStore', () => {
       metadataStore.fetchAllSecretDataItems(encKey, authKeyPair),
     ).rejects.toThrow('Unknown error');
 
+    await expect(
+      metadataStore.updateSecretDataItem({
+        updateItem: {
+          itemId: 'test-item',
+          fields: { dataType: EncAccountDataType.PrimarySrp },
+        },
+        authKeyPair,
+      }),
+    ).rejects.toThrow('Unknown error');
+
+    await expect(
+      metadataStore.batchUpdateSecretData({
+        updateItems: [
+          {
+            itemId: 'test-item',
+            fields: { dataType: EncAccountDataType.PrimarySrp },
+          },
+        ],
+        authKeyPair,
+      }),
+    ).rejects.toThrow('Unknown error');
+
     expect(fetchSpy).toHaveBeenCalled();
 
     jest.restoreAllMocks();

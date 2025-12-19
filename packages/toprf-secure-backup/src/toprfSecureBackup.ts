@@ -475,7 +475,9 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       ).map((dataItem) => ({
         data: dataItem.data,
         dataType: dataItem.dataType,
-        version: dataItem.version,
+        // Use v1 to bypass dataType validation for legacy data without dataType
+        version:
+          dataItem.dataType === undefined ? ('v1' as const) : dataItem.version,
       }));
 
       // Validate that this is actually a key change scenario
