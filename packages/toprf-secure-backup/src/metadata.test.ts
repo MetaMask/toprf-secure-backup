@@ -280,6 +280,57 @@ describe('MetadataStore', () => {
     jest.restoreAllMocks();
   });
 
+  it('should convert null createdAt from server to undefined', async () => {
+    const metadataStore = await createMetadataStore();
+
+    // Add real data first
+    await metadataStore.addSecretDataItem({
+      secretData: { data: secretData, dataType: EncAccountDataType.PrimarySrp },
+      encKey,
+      authKeyPair,
+    });
+
+    // Capture real response by intercepting fetch
+    let capturedResponse: object = {};
+    const originalFetch = global.fetch;
+    const captureSpy = jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(async (...args: unknown[]) => {
+        const response = await originalFetch(
+          args[0] as Parameters<typeof fetch>[0],
+          args[1] as Parameters<typeof fetch>[1],
+        );
+        const clonedResponse = response.clone();
+        capturedResponse = await clonedResponse.json();
+        return response;
+      });
+
+    await metadataStore.fetchAllSecretDataItems(encKey, authKeyPair);
+    captureSpy.mockRestore();
+
+    // Now mock with captured data but null createdAt
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(async () => {
+        return Promise.resolve({
+          ok: true,
+          // eslint-disable-next-line jsdoc/require-jsdoc
+          json: async () => ({ ...capturedResponse, createdAt: [null] }),
+          // eslint-disable-next-line no-restricted-globals
+        } as Response);
+      });
+
+    const result = await metadataStore.fetchAllSecretDataItems(
+      encKey,
+      authKeyPair,
+    );
+
+    expect(result[0].createdAt).toBeUndefined();
+    expect(fetchSpy).toHaveBeenCalled();
+
+    jest.restoreAllMocks();
+  });
+
   it('should handle network errors if the metadata server is down', async () => {
     const fetchSpy = jest
       .spyOn(global, 'fetch')

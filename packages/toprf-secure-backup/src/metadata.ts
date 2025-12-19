@@ -634,12 +634,13 @@ export class MetadataStore {
         const rawData = new Uint8Array(Buffer.from(jsonData.data[i], 'base64'));
         const decryptedData = this.#decryptData(rawData, params.encKey);
         const dataType = jsonData.dataTypes?.[i];
+        const createdAt = jsonData.createdAt?.[i];
         secretData.push({
           itemId: id,
           data: decryptedData,
           version: jsonData.versions[i] as 'v1' | 'v2',
           dataType: typeof dataType === 'number' ? dataType : undefined,
-          createdAt: jsonData.createdAt?.[i] as string | undefined,
+          createdAt: typeof createdAt === 'string' ? createdAt : undefined,
         });
       }
 
