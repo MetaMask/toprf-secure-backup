@@ -44,7 +44,7 @@ export type LockAcquiredResponse = { status: MetadataLockStatus; id?: string };
 export type SecretDataItem = {
   itemId?: string;
   data: Uint8Array;
-  version?: string;
+  version?: 'v1' | 'v2';
   dataType?: EncAccountDataType;
   createdAt?: string;
 };
@@ -53,7 +53,7 @@ export type SecretDataItemInput = Omit<SecretDataItem, 'createdAt'>;
 
 export type SecretDataItemOutput = SecretDataItem & {
   itemId: string;
-  version: string;
+  version: 'v1' | 'v2';
 };
 
 export type UpdateSecretDataItem = {
@@ -604,7 +604,8 @@ export class MetadataStore {
         if (params.itemId && id !== params.itemId) {
           continue;
         }
-        if (id === PW_BACKUP_ITEM_ID) {
+        // Skip PW_BACKUP unless specifically requested
+        if (!params.itemId && id === PW_BACKUP_ITEM_ID) {
           continue;
         }
 
@@ -615,7 +616,7 @@ export class MetadataStore {
         secretData.push({
           itemId: id,
           data: decryptedData,
-          version: jsonData.versions[i],
+          version: jsonData.versions[i] as 'v1' | 'v2',
           dataType: typeof dataType === 'number' ? dataType : undefined,
           createdAt: typeof createdAt === 'string' ? createdAt : undefined,
         });

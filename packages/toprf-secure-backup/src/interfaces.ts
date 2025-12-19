@@ -237,7 +237,7 @@ export type BaseAddSecretDataItemParams<
 export type AddSecretDataItemParams =
   BaseAddSecretDataItemParams<Uint8Array> & {
     itemId?: string;
-    version?: string;
+    version?: 'v1' | 'v2';
     dataType?: EncAccountDataType;
   };
 
@@ -247,7 +247,7 @@ export type AddSecretDataItemParams =
 export type BatchAddSecretDataItem = {
   data: Uint8Array;
   itemId?: string;
-  version?: string;
+  version?: 'v1' | 'v2';
   dataType?: EncAccountDataType;
 };
 
@@ -271,7 +271,7 @@ export type BatchAddSecretDataItemParams = BaseAddSecretDataItemParams<
 export type FetchedSecretDataItem = {
   data: Uint8Array;
   itemId: string;
-  version: string;
+  version: 'v1' | 'v2';
   dataType?: EncAccountDataType;
   createdAt?: string;
 };
