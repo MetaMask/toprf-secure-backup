@@ -354,7 +354,7 @@ export class MetadataStore {
           {
             itemId: params.secretData.itemId,
             data: encryptedData,
-            version: params.secretData.version,
+            version: params.secretData.version ?? 'v2',
             dataType: params.secretData.dataType,
           },
           params.authKeyPair,
@@ -441,7 +441,7 @@ export class MetadataStore {
         return {
           data: this.#encryptData(secret.data, encKeys[index]),
           itemId: secret.itemId,
-          version: secret.version,
+          version: secret.version ?? 'v2',
           dataType: secret.dataType,
         };
       });
