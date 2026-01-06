@@ -679,13 +679,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       params.decKey,
       params.authKeyPair,
     );
-    return dataItems.map((dataItem) => ({
-      data: dataItem.data,
-      itemId: dataItem.itemId,
-      version: dataItem.version,
-      dataType: dataItem.dataType,
-      createdAt: dataItem.createdAt,
-    }));
+    return dataItems;
   }
 
   /**
