@@ -16,6 +16,15 @@ export const FIRST_KEY_INDEX = 1;
 export const MAX_PASSWORD_CHAIN_LENGTH = 10;
 export const PW_BACKUP_ITEM_ID = 'PW_BACKUP';
 
+/**
+ * Data types for encrypted account data.
+ */
+export enum EncAccountDataType {
+  PrimarySrp = 1,
+  ImportedSrp = 2,
+  ImportedPrivateKey = 3,
+}
+
 export enum JsonRpcErrorCodes {
   ErrorCodeInvalidParams = -32602,
   ErrorCodeInternal = -32603,

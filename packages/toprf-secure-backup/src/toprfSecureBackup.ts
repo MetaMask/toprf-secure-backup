@@ -41,6 +41,9 @@ import type {
   RecoverPwEncKeyResult,
   NodeDetailsOverride,
   FetchMetadataAccessCreds,
+  UpdateSecretDataItemParams,
+  BatchUpdateSecretDataItemParams,
+  FetchedSecretDataItem,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -469,7 +472,13 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
 
       const existingData = (
         await metadataStore.fetchAllSecretDataItems(oldEncKey, oldAuthKeyPair)
-      ).map((dataItem) => ({ data: dataItem.data }));
+      ).map((dataItem) => ({
+        data: dataItem.data,
+        dataType: dataItem.dataType,
+        // Use v1 to bypass dataType validation for legacy data without dataType
+        version:
+          dataItem.dataType === undefined ? ('v1' as const) : dataItem.version,
+      }));
 
       // Validate that this is actually a key change scenario
       if (!existingData || existingData.length === 0) {
@@ -523,15 +532,22 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    *
    * @param params - The parameters for registering new secret data.
    * @param params.encKey - The encryption key which is used to encrypt the secret data before storing it.
-   * @param params.secretData - The array of secret data to be registered.
+   * @param params.secretData - The secret data to be registered.
    * @param params.authKeyPair - The authentication key pair which is used to authenticate the user to the storage service.
+   * @param params.itemId - Optional item ID for the data item.
+   * @param params.version - Optional version ('v1' | 'v2'). Defaults to 'v2'.
+   * @param params.dataType - Optional data type for categorizing the secret data. Required for v2.
    */
   async addSecretDataItem(params: AddSecretDataItemParams): Promise<void> {
     const metadataStore = await this.#createMetadataStore();
     await metadataStore.addSecretDataItem({
-      ...params,
+      encKey: params.encKey,
+      authKeyPair: params.authKeyPair,
       secretData: {
         data: params.secretData,
+        itemId: params.itemId,
+        version: params.version,
+        dataType: params.dataType,
       },
     });
   }
@@ -540,8 +556,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * This function encrypts the array of secret data using the encryption key and stores in the metadata store in encrypted form as a batch.
    *
    * @param params - The parameters for registering new secret data.
+   * @param params.secretData - Array of items to store, each with data and optional itemId/dataType.
    * @param params.encKey - The encryption key to be used to encrypt the secret data before storing it.
-   * @param params.secretData - The array of secret data to be stored.
    * @param params.authKeyPair - The authentication key to be used to provide valid signature for storing the secret data.
    */
   async batchAddSecretDataItems(
@@ -558,10 +574,77 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       );
 
       await metadataStore.batchAddSecretData({
-        ...params,
-        secretData: params.secretData.map((data) => ({
-          data,
+        encKey: params.encKey,
+        authKeyPair: params.authKeyPair,
+        secretData: params.secretData.map((item) => ({
+          data: item.data,
+          itemId: item.itemId,
+          version: item.version,
+          dataType: item.dataType,
         })),
+      });
+    } finally {
+      // release metadata lock
+      if (metadataLockId) {
+        try {
+          await metadataStore.releaseMetadataLock(
+            params.authKeyPair,
+            metadataLockId,
+          );
+        } catch (error) {
+          console.error('Failed to release metadata lock:', error);
+        }
+      }
+    }
+  }
+
+  /**
+   * Updates fields for an existing secret data item by itemId.
+   *
+   * @param params - The parameters for updating the secret data item.
+   * @param params.itemId - The ID of the item to update.
+   * @param params.dataType - The data type to set for the item.
+   * @param params.authKeyPair - The authentication key pair for signing the request.
+   */
+  async updateSecretDataItem(
+    params: UpdateSecretDataItemParams,
+  ): Promise<void> {
+    const metadataStore = await this.#createMetadataStore();
+    await metadataStore.updateSecretDataItem({
+      updateItem: {
+        itemId: params.itemId,
+        fields: { dataType: params.dataType },
+      },
+      authKeyPair: params.authKeyPair,
+    });
+  }
+
+  /**
+   * Updates fields for multiple existing secret data items by their itemIds.
+   *
+   * @param params - The parameters for batch updating the secret data items.
+   * @param params.updateItems - Array of items to update, each with itemId and fields to update.
+   * @param params.authKeyPair - The authentication key pair for signing the request.
+   */
+  async batchUpdateSecretDataItems(
+    params: BatchUpdateSecretDataItemParams,
+  ): Promise<void> {
+    const metadataStore = await this.#createMetadataStore();
+
+    let metadataLockId: string | undefined;
+
+    try {
+      // acquire metadata lock
+      metadataLockId = await metadataStore.acquireMetadataLock(
+        params.authKeyPair,
+      );
+
+      await metadataStore.batchUpdateSecretData({
+        updateItems: params.updateItems.map((item) => ({
+          itemId: item.itemId,
+          fields: { dataType: item.dataType },
+        })),
+        authKeyPair: params.authKeyPair,
       });
     } finally {
       // release metadata lock
@@ -590,13 +673,13 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    */
   async fetchAllSecretDataItems(
     params: FetchAllSecretDataParams,
-  ): Promise<Uint8Array[]> {
+  ): Promise<FetchedSecretDataItem[]> {
     const metadataStore = await this.#createMetadataStore();
     const dataItems = await metadataStore.fetchAllSecretDataItems(
       params.decKey,
       params.authKeyPair,
     );
-    return dataItems.map((dataItem: SecretDataItem) => dataItem.data);
+    return dataItems;
   }
 
   /**
