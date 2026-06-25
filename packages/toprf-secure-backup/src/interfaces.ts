@@ -2,6 +2,21 @@ import type { INodePub } from '@toruslabs/constants';
 
 import type { EncAccountDataType } from './constants';
 
+export type SecretDataItem = {
+  itemId?: string;
+  data: Uint8Array;
+  version?: 'v1' | 'v2';
+  dataType?: EncAccountDataType;
+  createdAt?: string;
+};
+
+export type SecretDataItemInput = Omit<SecretDataItem, 'createdAt'>;
+
+export type SecretDataItemOutput = SecretDataItem & {
+  itemId: string;
+  version: 'v1' | 'v2';
+};
+
 /**
  * SEC1 encoded public key
  */
@@ -370,6 +385,8 @@ export type ChangeEncryptionKeyParams = {
   newPassword?: string;
   groupedAuthConnectionId?: string;
   pregeneratedOprfKey?: CreateLocalKeyResult;
+  /** Pre-sorted items to re-insert. If omitted, the SDK fetches internally. */
+  existingDataItems?: SecretDataItemInput[];
 };
 
 /**

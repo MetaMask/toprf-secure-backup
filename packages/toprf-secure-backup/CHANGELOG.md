@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `changeEncKey` accepts an optional `existingDataItems` parameter (`SecretDataItemInput[]`); if provided, the SDK skips its internal fetch and uses the supplied pre-sorted items ([#TBD](https://github.com/MetaMask/toprf-secure-backup/pull/TBD))
+
 ## [1.0.0]
 
 ### Added

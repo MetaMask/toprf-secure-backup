@@ -5,7 +5,7 @@ import { secp256k1 } from '@noble/curves/secp256k1';
 import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
 import { bytesToHex } from '@noble/hashes/utils';
 
-import { PW_BACKUP_ITEM_ID, type EncAccountDataType } from './constants';
+import { PW_BACKUP_ITEM_ID } from './constants';
 import type {
   IGetSecretDataRequestBody,
   KeyPair,
@@ -18,6 +18,8 @@ import type {
   IUpdateSecretDataRequestBody,
   IBatchUpdateSecretDataRequestBody,
   UpdateSecretDataItemFields,
+  SecretDataItemInput,
+  SecretDataItemOutput,
 } from './interfaces';
 
 type MetadataStoreOptions = {
@@ -40,21 +42,6 @@ export type AuthTokenToMetadataEndpointsMap = {
 };
 
 export type LockAcquiredResponse = { status: MetadataLockStatus; id?: string };
-
-export type SecretDataItem = {
-  itemId?: string;
-  data: Uint8Array;
-  version?: 'v1' | 'v2';
-  dataType?: EncAccountDataType;
-  createdAt?: string;
-};
-
-export type SecretDataItemInput = Omit<SecretDataItem, 'createdAt'>;
-
-export type SecretDataItemOutput = SecretDataItem & {
-  itemId: string;
-  version: 'v1' | 'v2';
-};
 
 export type UpdateSecretDataItem = {
   itemId: string;

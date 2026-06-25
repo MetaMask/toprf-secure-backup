@@ -44,13 +44,13 @@ import type {
   UpdateSecretDataItemParams,
   BatchUpdateSecretDataItemParams,
   FetchedSecretDataItem,
+  SecretDataItem,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
   deriveEncryptionKey,
   derivePwEncKey,
 } from './keyDerivation';
-import type { SecretDataItem } from './metadata';
 import { MetadataStore } from './metadata';
 import type { KeyDeriver } from './oprf';
 import { OPRF, generateRandomScalar } from './oprf';
@@ -440,6 +440,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       newPassword,
       newKeyShareIndex,
       pregeneratedOprfKey,
+      existingDataItems,
     } = params;
 
     if (!pregeneratedOprfKey && !newPassword) {
@@ -470,15 +471,18 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         metadataStore.acquireMetadataLock(authKeyPair),
       ]);
 
-      const existingData = (
-        await metadataStore.fetchAllSecretDataItems(oldEncKey, oldAuthKeyPair)
-      ).map((dataItem) => ({
-        data: dataItem.data,
-        dataType: dataItem.dataType,
-        // Use v1 to bypass dataType validation for legacy data without dataType
-        version:
-          dataItem.dataType === undefined ? ('v1' as const) : dataItem.version,
-      }));
+      const existingData =
+        existingDataItems ??
+        (
+          await metadataStore.fetchAllSecretDataItems(oldEncKey, oldAuthKeyPair)
+        ).map(({ data, dataType, version }) => {
+          return {
+            data,
+            dataType,
+            // Use v1 to bypass dataType validation for legacy data without dataType
+            version: dataType === undefined ? 'v1' : version,
+          };
+        });
 
       // Validate that this is actually a key change scenario
       if (!existingData || existingData.length === 0) {
