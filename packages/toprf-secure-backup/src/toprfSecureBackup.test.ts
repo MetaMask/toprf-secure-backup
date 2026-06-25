@@ -1192,6 +1192,73 @@ describe('toprf secret backup', function () {
       expect(releaseMetadataLockSpy).toHaveBeenCalled();
     });
 
+    it('should call transformDataItems callback when provided', async function () {
+      const { authConnectionId, userId, idToken, toprfSecureBackup } = setup();
+
+      const result = await toprfSecureBackup.authenticate({
+        idTokens: [idToken],
+        authConnectionId,
+        userId,
+      });
+
+      const originalPassword = generateRandomPassword();
+      const originalEncKeyResult =
+        await toprfSecureBackup.createAndPersistEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          password: originalPassword,
+          authConnectionId,
+          userId,
+        });
+
+      await toprfSecureBackup.addSecretDataItem({
+        encKey: originalEncKeyResult.encKey,
+        secretData: utf8ToBytes('srp'),
+        authKeyPair: originalEncKeyResult.authKeyPair,
+        dataType: EncAccountDataType.PrimarySrp,
+      });
+
+      const recoveredKey = await toprfSecureBackup.recoverEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        password: originalPassword,
+        authConnectionId,
+        userId,
+      });
+
+      const transformDataItems = jest.fn((items) =>
+        items.map(
+          ({
+            data,
+            dataType,
+            version,
+          }: {
+            data: Uint8Array;
+            dataType?: EncAccountDataType;
+            version: 'v1' | 'v2';
+          }) => ({
+            data,
+            dataType,
+            version,
+          }),
+        ),
+      );
+
+      const newPassword = generateRandomPassword();
+      const newEncKeyResult = await toprfSecureBackup.changeEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        authConnectionId,
+        userId,
+        oldEncKey: originalEncKeyResult.encKey,
+        oldPwEncKey: originalEncKeyResult.pwEncKey,
+        oldAuthKeyPair: originalEncKeyResult.authKeyPair,
+        newPassword,
+        newKeyShareIndex: recoveredKey.keyShareIndex + 1,
+        transformDataItems,
+      });
+
+      expect(newEncKeyResult).toBeDefined();
+      expect(transformDataItems).toHaveBeenCalledTimes(1);
+    });
+
     it('should throw error when trying to change encryption key without existing data', async function () {
       const { authConnectionId, userId, idToken, toprfSecureBackup } = setup();
 
