@@ -385,8 +385,10 @@ export type ChangeEncryptionKeyParams = {
   newPassword?: string;
   groupedAuthConnectionId?: string;
   pregeneratedOprfKey?: CreateLocalKeyResult;
-  /** Pre-sorted items to re-insert. If omitted, the SDK fetches internally. */
-  existingDataItems?: SecretDataItemInput[];
+  /** Optional callback to sort/transform items after fetching, inside the lock. If omitted, items are re-inserted as-is. */
+  transformDataItems?: (
+    items: FetchedSecretDataItem[],
+  ) => SecretDataItemInput[];
 };
 
 /**

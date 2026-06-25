@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- `changeEncKey` accepts an optional `existingDataItems` parameter (`SecretDataItemInput[]`); if provided, the SDK skips its internal fetch and uses the supplied pre-sorted items ([#160](https://github.com/MetaMask/toprf-secure-backup/pull/160))
+- `changeEncKey` accepts an optional `transformDataItems` callback (`(items: FetchedSecretDataItem[]) => SecretDataItemInput[]`); the SDK fetches inside the metadata lock and passes items to the callback for sorting before re-insertion, preventing data loss from concurrent writes ([#160](https://github.com/MetaMask/toprf-secure-backup/pull/160))
 
 ## [1.0.0]
 

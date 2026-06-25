@@ -440,7 +440,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       newPassword,
       newKeyShareIndex,
       pregeneratedOprfKey,
-      existingDataItems,
+      transformDataItems,
     } = params;
 
     if (!pregeneratedOprfKey && !newPassword) {
@@ -471,18 +471,17 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         metadataStore.acquireMetadataLock(authKeyPair),
       ]);
 
-      const existingData =
-        existingDataItems ??
-        (
-          await metadataStore.fetchAllSecretDataItems(oldEncKey, oldAuthKeyPair)
-        ).map(({ data, dataType, version }) => {
-          return {
+      const fetched = await metadataStore.fetchAllSecretDataItems(
+        oldEncKey,
+        oldAuthKeyPair,
+      );
+      const existingData = transformDataItems
+        ? transformDataItems(fetched)
+        : fetched.map(({ data, dataType, version }) => ({
             data,
             dataType,
-            // Use v1 to bypass dataType validation for legacy data without dataType
             version: dataType === undefined ? 'v1' : version,
-          };
-        });
+          }));
 
       // Validate that this is actually a key change scenario
       if (!existingData || existingData.length === 0) {
