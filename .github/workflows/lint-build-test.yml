@@ -6,7 +6,7 @@ on:
 jobs:
   prepare:
     name: Prepare
-    runs-on: ubuntu-latest
+    runs-on: gha-mm-scale-set-ubuntu-22.04-amd64-med
     strategy:
       matrix:
         node-version: [18.x, 20.x, 22.x]
@@ -26,7 +26,7 @@ jobs:
 
   lint:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: gha-mm-scale-set-ubuntu-22.04-amd64-med
     needs: prepare
     strategy:
       matrix:
@@ -47,7 +47,7 @@ jobs:
 
   validate-changelog:
     name: Validate changelog
-    runs-on: ubuntu-latest
+    runs-on: gha-mm-scale-set-ubuntu-22.04-amd64-med
     needs: prepare
     strategy:
       matrix:
@@ -69,7 +69,7 @@ jobs:
 
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: gha-mm-scale-set-ubuntu-22.04-amd64-med
     needs: prepare
     strategy:
       matrix:
@@ -90,7 +90,7 @@ jobs:
 
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: gha-mm-scale-set-ubuntu-22.04-amd64-med
     needs: prepare
     strategy:
       matrix:
