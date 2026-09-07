@@ -68,18 +68,24 @@ const createToprfEvalRequestParams = (
  *
  * @param endpoint - The endpoint to be used for the toprf eval request
  * @param params - The parameters for the toprf eval request
+ * @param client - Optional client identifier sent as the `x-web3-client` header.
  * @returns Array of toprf eval request promises
  */
 const sendToprfEvalRequest = async (
   endpoint: string,
   params: ToprfEvalJRPCRequestParams,
+  client?: string,
 ): Promise<ToprfEvalJRPCResponse> => {
   const toprfEvalJRPCRequest = generateJsonRPCObject(
     JRPC_METHODS.TOPRF_EVAL_REQUEST,
     params,
   ) as ToprfEvalJRPCRequest;
 
-  return postJRPCRequest<ToprfEvalJRPCResponse>(endpoint, toprfEvalJRPCRequest);
+  return postJRPCRequest<ToprfEvalJRPCResponse>(
+    endpoint,
+    toprfEvalJRPCRequest,
+    client,
+  );
 };
 
 /**
@@ -277,6 +283,7 @@ export const validateSeed = async (
  * @param params.userId - The user id of the user issued by authentication service.
  * @param params.userInput - The user input to be used for the toprf eval request.
  * @param params.keyDeriver - The key deriver to be used for the toprf eval request.
+ * @param params.client - Optional client identifier sent as the `x-web3-client` header.
  *
  * @returns - A promise that resolves with the key pair seed and key share index.
  */
@@ -288,6 +295,7 @@ export const recoverTOPRFSeed = async (params: {
   userId: string;
   userInput: Uint8Array;
   keyDeriver?: KeyDeriver;
+  client?: string;
 }): Promise<{ seed: Uint8Array; keyShareIndex: number }> => {
   const {
     authTokens,
@@ -297,6 +305,7 @@ export const recoverTOPRFSeed = async (params: {
     userId,
     userInput,
     keyDeriver,
+    client,
   } = params;
 
   if (authTokens.length < TOPRF_EVAL_THRESHOLD) {
@@ -321,7 +330,7 @@ export const recoverTOPRFSeed = async (params: {
         userId,
         groupedAuthConnectionId,
       );
-      return sendToprfEvalRequest(endpoint, requestParams);
+      return sendToprfEvalRequest(endpoint, requestParams, client);
     },
   );
 

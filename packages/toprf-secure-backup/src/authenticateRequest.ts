@@ -76,17 +76,19 @@ const createAuthenticateRequestParams = (params: {
  *
  * @param endpoint - The endpoint to be used for the authenticate request
  * @param params - The parameters for the authenticate request
+ * @param client - Optional client identifier sent as the `x-web3-client` header.
  * @returns The authenticate request promise.
  */
 const sendAuthenticateRequest = async (
   endpoint: string,
   params: AuthJRPCRequestParams,
+  client?: string,
 ): Promise<AuthJRPCResponse> => {
   const authJRPCRequest = generateJsonRPCObject(
     JRPC_METHODS.AUTHENTICATE_REQUEST,
     params,
   ) as AuthJRPCRequest;
-  return postJRPCRequest<AuthJRPCResponse>(endpoint, authJRPCRequest);
+  return postJRPCRequest<AuthJRPCResponse>(endpoint, authJRPCRequest, client);
 };
 
 /**
@@ -168,6 +170,7 @@ export const createAuthResponseHandler = (
  * @param params.nodeEndpointsMap - The map of node indexes to endpoints map to be used for the authenticate request.
  * @param params.commitmentSignatures - The idToken commitment signatures to be used for the authenticate request.
  * You can pass this to use aggregate verifier.
+ * @param params.client - Optional client identifier sent as the `x-web3-client` header.
  *
  * @returns resultArr - The authenticate request result, where each element is
  * a signed authenticate data from a node and a boolean indicating if the user is new or not.
@@ -182,6 +185,7 @@ export const authenticateUser = async (params: {
   commitmentSignatures: CommitmentRequestResult[];
   groupedAuthConnectionId?: string;
   hashedIdToken?: string;
+  client?: string;
 }): Promise<{
   authTokensData: AuthRequestResult[];
   isNewUser: boolean;
@@ -195,6 +199,7 @@ export const authenticateUser = async (params: {
     groupedAuthConnectionId,
     hashedIdToken,
     sessionPrivateKey,
+    client,
   } = params;
   const requestParams = createAuthenticateRequestParams({
     idToken,
@@ -207,7 +212,7 @@ export const authenticateUser = async (params: {
 
   const endpoints = Object.values(nodeEndpointsMap);
   const promiseArr = endpoints.map(async (endpoint) =>
-    sendAuthenticateRequest(endpoint, requestParams),
+    sendAuthenticateRequest(endpoint, requestParams, client),
   );
 
   const validationResult = await Some<

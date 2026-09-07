@@ -1,6 +1,10 @@
-import type { INodePub } from '@toruslabs/constants';
+import type {
+  INodePub,
+  TORUS_SAPPHIRE_NETWORK_TYPE,
+} from '@toruslabs/constants';
 
 import type { EncAccountDataType } from './constants';
+import type { KeyDeriver } from './oprf';
 
 export type SecretDataItem = {
   itemId?: string;
@@ -848,3 +852,19 @@ export type IMetadataLockRequestBody = {
 export type FetchMetadataAccessCreds = () => Promise<{
   metadataAccessToken: string;
 }>;
+
+/**
+ * Constructor parameters for `ToprfSecureBackup`.
+ *
+ * `client` is an optional identifier sent as the `x-web3-client` header on SSS
+ * JSON-RPC requests for logging. Include name and version, e.g.
+ * `metamask-extension@13.46.1`. The header is omitted when `client` is missing
+ * or empty. Do not send `x-web3-client-version`.
+ */
+export type ToprfSecureBackupConstructorParams = {
+  network: TORUS_SAPPHIRE_NETWORK_TYPE;
+  fetchMetadataAccessCreds: FetchMetadataAccessCreds;
+  nodeDetailsOverride?: NodeDetailsOverride;
+  keyDeriver?: KeyDeriver;
+  client?: string;
+};
