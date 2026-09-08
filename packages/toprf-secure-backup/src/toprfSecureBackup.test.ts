@@ -4,12 +4,17 @@ import { sha256 } from '@noble/hashes/sha2';
 import type { INodePub } from '@toruslabs/constants';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
+import * as authenticateRequestModule from './authenticateRequest';
+import * as commitRequestModule from './commitRequest';
 import { EncAccountDataType, FIRST_KEY_INDEX } from './constants';
 import { TOPRFError, TOPRFErrorCode } from './errors';
+import * as getPubKeyRequestModule from './getPubKeyRequest';
 import type { KeyPair, NodeDetailsOverride } from './interfaces';
 import { MetadataStore } from './metadata';
 import type { KeyDeriver } from './oprf';
 import * as resetRateLimitsModule from './resetRateLimits';
+import * as storeSharesRequestModule from './storeSharesRequest';
+import * as toprfEvalRequestModule from './toprfEvalRequest';
 import { ToprfSecureBackup } from './toprfSecureBackup';
 import {
   generateIdToken,
@@ -43,6 +48,7 @@ const keyDeriver = {
  * @param options.userId - The user id to be used for the test.
  * @param options.nodeDetailsOverride - The node details override to be used for the test.
  * @param options.keyDeriver - The key deriver to be used for the test.
+ * @param options.clientIdentifier - Optional SSS client identifier for the test.
  * @returns The setup object.
  */
 function setup(options?: {
@@ -50,6 +56,7 @@ function setup(options?: {
   userId?: string;
   nodeDetailsOverride?: NodeDetailsOverride;
   keyDeriver?: KeyDeriver;
+  clientIdentifier?: string;
 }): {
   authConnectionId: string;
   userId: string;
@@ -65,6 +72,7 @@ function setup(options?: {
     network: 'sapphire_devnet',
     nodeDetailsOverride: options?.nodeDetailsOverride,
     keyDeriver: options?.keyDeriver,
+    clientIdentifier: options?.clientIdentifier,
   });
 
   return { authConnectionId, userId, idToken, toprfSecureBackup };
@@ -120,6 +128,126 @@ describe('toprf secret backup', function () {
       expect(result.isNewUser).toBe(false);
     });
 
+    it('passes clientIdentifier to SSS JSON-RPC helpers when provided', async function () {
+      const clientIdentifier = 'metamask-extension@13.46.1';
+      const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
+        clientIdentifier,
+        nodeDetailsOverride: {
+          indexes: [1, 2, 3, 4, 5],
+          pubKeys: [
+            { X: '1', Y: '1' },
+            { X: '2', Y: '2' },
+            { X: '3', Y: '3' },
+            { X: '4', Y: '4' },
+            { X: '5', Y: '5' },
+          ],
+          endpoints: [
+            'https://node-1.example/sss/jrpc',
+            'https://node-2.example/sss/jrpc',
+            'https://node-3.example/sss/jrpc',
+            'https://node-4.example/sss/jrpc',
+            'https://node-5.example/sss/jrpc',
+          ],
+        },
+      });
+
+      const commitSpy = jest
+        .spyOn(commitRequestModule, 'commitIdToken')
+        .mockResolvedValue([
+          {
+            signature: 'sig',
+            data: 'data',
+            nodePubX: 'x',
+            nodePubY: 'y',
+            nodeIndex: 1,
+          },
+        ]);
+      const authenticateSpy = jest
+        .spyOn(authenticateRequestModule, 'authenticateUser')
+        .mockResolvedValue({
+          authTokensData: [
+            {
+              authToken: 'token',
+              nodeIndex: 1,
+              nodePubKey: 'pk',
+              pubKey: 'pub',
+              keyIndex: 1,
+            },
+          ],
+          isNewUser: true,
+        });
+
+      await toprfSecureBackup.authenticate({
+        idTokens: [idToken],
+        authConnectionId,
+        userId,
+      });
+
+      expect(commitSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ clientIdentifier }),
+      );
+      expect(authenticateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ clientIdentifier }),
+      );
+    });
+
+    it('does not pass a clientIdentifier to SSS helpers when omitted', async function () {
+      const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
+        nodeDetailsOverride: {
+          indexes: [1, 2, 3, 4, 5],
+          pubKeys: [
+            { X: '1', Y: '1' },
+            { X: '2', Y: '2' },
+            { X: '3', Y: '3' },
+            { X: '4', Y: '4' },
+            { X: '5', Y: '5' },
+          ],
+          endpoints: [
+            'https://node-1.example/sss/jrpc',
+            'https://node-2.example/sss/jrpc',
+            'https://node-3.example/sss/jrpc',
+            'https://node-4.example/sss/jrpc',
+            'https://node-5.example/sss/jrpc',
+          ],
+        },
+      });
+
+      const commitSpy = jest
+        .spyOn(commitRequestModule, 'commitIdToken')
+        .mockResolvedValue([
+          {
+            signature: 'sig',
+            data: 'data',
+            nodePubX: 'x',
+            nodePubY: 'y',
+            nodeIndex: 1,
+          },
+        ]);
+      jest
+        .spyOn(authenticateRequestModule, 'authenticateUser')
+        .mockResolvedValue({
+          authTokensData: [
+            {
+              authToken: 'token',
+              nodeIndex: 1,
+              nodePubKey: 'pk',
+              pubKey: 'pub',
+              keyIndex: 1,
+            },
+          ],
+          isNewUser: true,
+        });
+
+      await toprfSecureBackup.authenticate({
+        idTokens: [idToken],
+        authConnectionId,
+        userId,
+      });
+
+      const commitArgs = commitSpy.mock.calls[0][0];
+      expect(commitArgs.clientIdentifier).toBeUndefined();
+    });
+
     it('should throw error if unable to fetch node details', async function () {
       const { authConnectionId, userId, idToken, toprfSecureBackup } = setup();
 
@@ -140,6 +268,118 @@ describe('toprf secret backup', function () {
         }),
       ).rejects.toThrow('Failed to get node details');
       expect(fndSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('SSS client identifier', function () {
+    const clientIdentifier = 'metamask-extension@13.46.1';
+    const nodeDetailsOverride: NodeDetailsOverride = {
+      indexes: [1, 2, 3, 4, 5],
+      pubKeys: [
+        { X: '1', Y: '1' },
+        { X: '2', Y: '2' },
+        { X: '3', Y: '3' },
+        { X: '4', Y: '4' },
+        { X: '5', Y: '5' },
+      ],
+      endpoints: [
+        'https://node-1.example/sss/jrpc',
+        'https://node-2.example/sss/jrpc',
+        'https://node-3.example/sss/jrpc',
+        'https://node-4.example/sss/jrpc',
+        'https://node-5.example/sss/jrpc',
+      ],
+    };
+    const nodeAuthTokens = [
+      { authToken: 'token', nodeIndex: 1, nodePubKey: 'pk' },
+    ];
+
+    it('passes clientIdentifier to storeKeyShares and changeKeyShares', async function () {
+      const { authConnectionId, userId, toprfSecureBackup } = setup({
+        clientIdentifier,
+        nodeDetailsOverride,
+      });
+      const authPubKey = new Uint8Array(33).fill(1);
+
+      const storeSpy = jest
+        .spyOn(storeSharesRequestModule, 'storeKeyShares')
+        .mockResolvedValue({
+          id: 10,
+          jsonrpc: '2.0',
+          result: null,
+        });
+      await toprfSecureBackup.persistLocalKey({
+        nodeAuthTokens,
+        oprfKey: 1n,
+        authPubKey,
+        authConnectionId,
+        userId,
+      });
+      expect(storeSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ clientIdentifier }),
+      );
+
+      const changeSpy = jest
+        .spyOn(storeSharesRequestModule, 'changeKeyShares')
+        .mockResolvedValue({
+          id: 10,
+          jsonrpc: '2.0',
+          result: null,
+        });
+      await toprfSecureBackup.persistLocalKey({
+        nodeAuthTokens,
+        oprfKey: 1n,
+        authPubKey,
+        authConnectionId,
+        userId,
+        oldAuthKeyPair: { sk: 1n, pk: authPubKey },
+      });
+      expect(changeSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ clientIdentifier }),
+      );
+    });
+
+    it('passes clientIdentifier to recoverTOPRFSeed, resetRateLimits, and getPubKey', async function () {
+      const { authConnectionId, userId, toprfSecureBackup } = setup({
+        clientIdentifier,
+        nodeDetailsOverride,
+      });
+      const seed = new Uint8Array(32).fill(1);
+
+      const evalSpy = jest
+        .spyOn(toprfEvalRequestModule, 'recoverTOPRFSeed')
+        .mockResolvedValue({ seed, keyShareIndex: 1 });
+      const resetSpy = jest
+        .spyOn(resetRateLimitsModule, 'resetRateLimits')
+        .mockResolvedValue(true);
+      const pubKeySpy = jest
+        .spyOn(getPubKeyRequestModule, 'getPubKey')
+        .mockResolvedValue({
+          authPubKey: new Uint8Array(33).fill(2),
+          keyIndex: 1,
+        });
+
+      await toprfSecureBackup.recoverEncKey({
+        nodeAuthTokens,
+        password: 'password',
+        authConnectionId,
+        userId,
+      });
+      await toprfSecureBackup.fetchAuthPubKey({
+        nodeAuthTokens,
+        authConnectionId,
+        userId,
+      });
+
+      expect(evalSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ clientIdentifier }),
+      );
+      expect(resetSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ clientIdentifier }),
+      );
+      expect(pubKeySpy).toHaveBeenCalledWith(
+        expect.objectContaining({ clientIdentifier }),
+      );
     });
   });
 

@@ -17,6 +17,11 @@ export const MAX_PASSWORD_CHAIN_LENGTH = 10;
 export const PW_BACKUP_ITEM_ID = 'PW_BACKUP';
 
 /**
+ * Optional SSS JSON-RPC request header used by the SSS service for client logging.
+ */
+export const WEB3_CLIENT_HEADER = 'x-web3-client';
+
+/**
  * Data types for encrypted account data.
  */
 export enum EncAccountDataType {

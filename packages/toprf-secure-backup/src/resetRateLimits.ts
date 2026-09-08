@@ -56,11 +56,13 @@ const createResetRateLimitRequestParams = (
  *
  * @param endpoint - The endpoint to be used for the reset rate limit request
  * @param params - The parameters for the reset rate limit request
+ * @param clientIdentifier - Optional client identifier sent as the `x-web3-client` header.
  * @returns promise of reset rate limit response.
  */
 export const sendResetRateLimitRequest = async (
   endpoint: string,
   params: ResetRateLimitJRPCRequestParams,
+  clientIdentifier?: string,
 ): Promise<ResetRateLimitJRPCResponse> => {
   const resetRateLimitJRPCRequest = generateJsonRPCObject(
     JRPC_METHODS.RESET_RATE_LIMIT_REQUEST,
@@ -70,6 +72,7 @@ export const sendResetRateLimitRequest = async (
   return postJRPCRequest<ResetRateLimitJRPCResponse>(
     endpoint,
     resetRateLimitJRPCRequest,
+    clientIdentifier,
   );
 };
 
@@ -112,6 +115,7 @@ export const validateThresholdResetRateLimitResponses = (
  * @param params.userId - The user id of the user issued by authentication service.
  * @param params.nodeEndpointsMap - Map of node index to endpoint to be used for the reset rate limit request.
  * @param params.authPrivKey - The user's authentication private key as bigint for signing the request.
+ * @param params.clientIdentifier - Optional client identifier sent as the `x-web3-client` header.
  *
  * @returns - A promise that resolves when the rate limit is reset successfully.
  */
@@ -122,6 +126,7 @@ export const resetRateLimits = async (params: {
   groupedAuthConnectionId?: string;
   userId: string;
   authPrivKey: bigint;
+  clientIdentifier?: string;
 }): Promise<boolean> => {
   const {
     authTokens,
@@ -130,6 +135,7 @@ export const resetRateLimits = async (params: {
     groupedAuthConnectionId,
     userId,
     authPrivKey,
+    clientIdentifier,
   } = params;
 
   const endpointsWithAuthTokens = mergeEndpointsWithAuthTokens(
@@ -157,7 +163,11 @@ export const resetRateLimits = async (params: {
         userId,
         groupedAuthConnectionId,
       );
-      return sendResetRateLimitRequest(endpoint, requestParams);
+      return sendResetRateLimitRequest(
+        endpoint,
+        requestParams,
+        clientIdentifier,
+      );
     },
   );
 

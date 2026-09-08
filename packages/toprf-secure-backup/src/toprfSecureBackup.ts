@@ -3,10 +3,7 @@ import { bytesToUtf8, equalBytes } from '@noble/ciphers/utils';
 import { utf8ToBytes } from '@noble/curves/abstract/utils';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
-import type {
-  INodePub,
-  TORUS_SAPPHIRE_NETWORK_TYPE,
-} from '@toruslabs/constants';
+import type { INodePub } from '@toruslabs/constants';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import { authenticateUser } from './authenticateRequest';
@@ -45,6 +42,7 @@ import type {
   BatchUpdateSecretDataItemParams,
   FetchedSecretDataItem,
   SecretDataItem,
+  ToprfSecureBackupConstructorParams,
 } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -72,6 +70,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
 
   readonly #fetchMetadataAccessCreds: FetchMetadataAccessCreds;
 
+  readonly #clientIdentifier?: string;
+
   #metadataStoreCache: MetadataStore | undefined;
 
   /**
@@ -90,19 +90,18 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * @param params.keyDeriver - Optional key deriver to be used for an
    * additional layer of security.
    * @param params.fetchMetadataAccessCreds - Function to fetch metadata access credentials.
+   * @param params.clientIdentifier - Optional client identifier (name and version, e.g.
+   * `metamask-extension@13.46.1`) sent as the `x-web3-client` header on SSS
+   * JSON-RPC requests for logging. Omitted when missing or empty.
    */
-  constructor(params: {
-    network: TORUS_SAPPHIRE_NETWORK_TYPE;
-    fetchMetadataAccessCreds: FetchMetadataAccessCreds;
-    nodeDetailsOverride?: NodeDetailsOverride;
-    keyDeriver?: KeyDeriver;
-  }) {
+  constructor(params: ToprfSecureBackupConstructorParams) {
     this.#nodeDetailManager = new NodeDetailManager({
       network: params.network,
     });
     this.#nodeDetailsOverride = params.nodeDetailsOverride;
     this.#keyDeriver = params.keyDeriver;
     this.#fetchMetadataAccessCreds = params.fetchMetadataAccessCreds;
+    this.#clientIdentifier = params.clientIdentifier;
   }
 
   /**
@@ -148,6 +147,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         sessionPubKeyX,
         sessionPubKeyY,
         endpoints: nodeEndpoints,
+        clientIdentifier: this.#clientIdentifier,
       });
 
       // use only the node indexes that returned valid commitment responses
@@ -168,6 +168,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         commitmentSignatures: commitmentResults,
         groupedAuthConnectionId: params.groupedAuthConnectionId,
         hashedIdToken,
+        clientIdentifier: this.#clientIdentifier,
       });
 
       return {
@@ -271,6 +272,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         newOprfKey: oprfKey,
         newAuthPubKey: authPubKey,
         oldAuthPrivKey: oldAuthKeyPair.sk,
+        clientIdentifier: this.#clientIdentifier,
       });
     } else {
       await storeKeyShares({
@@ -282,6 +284,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         keyShareIndex,
         oprfKey,
         authPubKey,
+        clientIdentifier: this.#clientIdentifier,
       });
     }
   }
@@ -360,6 +363,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         userId,
         userInput: pwBytes,
         keyDeriver: this.#keyDeriver,
+        clientIdentifier: this.#clientIdentifier,
       });
 
       seed = seedValue;
@@ -376,6 +380,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
           groupedAuthConnectionId,
           userId,
           authPrivKey: authKeyPair.sk,
+          clientIdentifier: this.#clientIdentifier,
         })
           .then(() => {
             return resolve();
@@ -712,6 +717,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       authConnectionId,
       userId,
       groupedAuthConnectionId,
+      clientIdentifier: this.#clientIdentifier,
     });
   }
 
