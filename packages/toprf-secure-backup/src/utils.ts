@@ -53,13 +53,13 @@ export const bigIntToBN = (value: bigint): BN => {
 };
 
 /**
- * Builds the `@toruslabs/http-helpers` `post()` request init for SSS JSON-RPC
+ * Builds the `@toruslabs/http-helpers` `post()` headers for SSS JSON-RPC
  * calls. When `client` is provided, sets `x-web3-client` only (no version header).
  *
  * @param client - Optional client identifier (name and version).
  * @returns Request init with headers, or `{}` when `client` is missing/empty.
  */
-export const getSssJrpcRequestInit = (client?: string): RequestInit => {
+export const getSssJrpcRequestHeaders = (client?: string): RequestInit => {
   if (!client) {
     return {};
   }
@@ -100,7 +100,7 @@ export const postJRPCRequest = async <
   const req = { ...request };
   req.params = toSnakeCaseKeys(request.params);
 
-  return post<Response>(endpoint, req, getSssJrpcRequestInit(client), {
+  return post<Response>(endpoint, req, getSssJrpcRequestHeaders(client), {
     logTracingHeader: false,
   })
     .then((res) => {

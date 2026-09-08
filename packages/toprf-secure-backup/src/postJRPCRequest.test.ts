@@ -1,7 +1,7 @@
 import { post } from '@toruslabs/http-helpers';
 
 import { WEB3_CLIENT_HEADER } from './constants';
-import { getSssJrpcRequestInit, postJRPCRequest } from './utils';
+import { getSssJrpcRequestHeaders, postJRPCRequest } from './utils';
 
 jest.mock('@toruslabs/http-helpers', () => ({
   post: jest.fn(),
@@ -16,17 +16,19 @@ const request = {
   params: { tokenCommitment: 'abc' },
 };
 
-describe('getSssJrpcRequestInit', () => {
+describe('getSssJrpcRequestHeaders', () => {
   it('returns empty request init when client is omitted', () => {
-    expect(getSssJrpcRequestInit()).toStrictEqual({});
+    expect(getSssJrpcRequestHeaders()).toStrictEqual({});
   });
 
   it('returns empty request init when client is empty', () => {
-    expect(getSssJrpcRequestInit('')).toStrictEqual({});
+    expect(getSssJrpcRequestHeaders('')).toStrictEqual({});
   });
 
   it('sets only x-web3-client when client is provided', () => {
-    expect(getSssJrpcRequestInit('metamask-extension@13.46.1')).toStrictEqual({
+    expect(
+      getSssJrpcRequestHeaders('metamask-extension@13.46.1'),
+    ).toStrictEqual({
       headers: {
         [WEB3_CLIENT_HEADER]: 'metamask-extension@13.46.1',
       },
