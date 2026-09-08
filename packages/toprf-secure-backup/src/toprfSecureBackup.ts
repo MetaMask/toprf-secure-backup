@@ -90,7 +90,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * @param params.keyDeriver - Optional key deriver to be used for an
    * additional layer of security.
    * @param params.fetchMetadataAccessCreds - Function to fetch metadata access credentials.
-   * @param params.client - Optional client identifier (name and version, e.g.
+   * @param params.clientIdentifier - Optional client identifier (name and version, e.g.
    * `metamask-extension@13.46.1`) sent as the `x-web3-client` header on SSS
    * JSON-RPC requests for logging. Omitted when missing or empty.
    */
@@ -101,7 +101,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
     this.#nodeDetailsOverride = params.nodeDetailsOverride;
     this.#keyDeriver = params.keyDeriver;
     this.#fetchMetadataAccessCreds = params.fetchMetadataAccessCreds;
-    this.#clientIdentifier = params.client;
+    this.#clientIdentifier = params.clientIdentifier;
   }
 
   /**
@@ -147,7 +147,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         sessionPubKeyX,
         sessionPubKeyY,
         endpoints: nodeEndpoints,
-        client: this.#clientIdentifier,
+        clientIdentifier: this.#clientIdentifier,
       });
 
       // use only the node indexes that returned valid commitment responses
@@ -168,7 +168,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         commitmentSignatures: commitmentResults,
         groupedAuthConnectionId: params.groupedAuthConnectionId,
         hashedIdToken,
-        client: this.#clientIdentifier,
+        clientIdentifier: this.#clientIdentifier,
       });
 
       return {
@@ -272,7 +272,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         newOprfKey: oprfKey,
         newAuthPubKey: authPubKey,
         oldAuthPrivKey: oldAuthKeyPair.sk,
-        client: this.#clientIdentifier,
+        clientIdentifier: this.#clientIdentifier,
       });
     } else {
       await storeKeyShares({
@@ -284,7 +284,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         keyShareIndex,
         oprfKey,
         authPubKey,
-        client: this.#clientIdentifier,
+        clientIdentifier: this.#clientIdentifier,
       });
     }
   }
@@ -363,7 +363,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         userId,
         userInput: pwBytes,
         keyDeriver: this.#keyDeriver,
-        client: this.#clientIdentifier,
+        clientIdentifier: this.#clientIdentifier,
       });
 
       seed = seedValue;
@@ -380,7 +380,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
           groupedAuthConnectionId,
           userId,
           authPrivKey: authKeyPair.sk,
-          client: this.#clientIdentifier,
+          clientIdentifier: this.#clientIdentifier,
         })
           .then(() => {
             return resolve();
@@ -717,7 +717,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       authConnectionId,
       userId,
       groupedAuthConnectionId,
-      client: this.#clientIdentifier,
+      clientIdentifier: this.#clientIdentifier,
     });
   }
 

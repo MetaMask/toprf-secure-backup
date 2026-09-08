@@ -54,19 +54,21 @@ export const bigIntToBN = (value: bigint): BN => {
 
 /**
  * Builds the `@toruslabs/http-helpers` `post()` headers for SSS JSON-RPC
- * calls. When `client` is provided, sets `x-web3-client` only (no version header).
+ * calls. When `clientIdentifier` is provided, sets `x-web3-client` only (no version header).
  *
- * @param client - Optional client identifier (name and version).
- * @returns Request init with headers, or `{}` when `client` is missing/empty.
+ * @param clientIdentifier - Optional client identifier (name and version).
+ * @returns Request init with headers, or `{}` when `clientIdentifier` is missing/empty.
  */
-export const getSssJrpcRequestHeaders = (client?: string): RequestInit => {
-  if (!client) {
+export const getSssJrpcRequestHeaders = (
+  clientIdentifier?: string,
+): RequestInit => {
+  if (!clientIdentifier) {
     return {};
   }
 
   return {
     headers: {
-      [WEB3_CLIENT_HEADER]: client,
+      [WEB3_CLIENT_HEADER]: clientIdentifier,
     },
   };
 };
@@ -77,7 +79,7 @@ export const getSssJrpcRequestHeaders = (client?: string): RequestInit => {
  *
  * @param endpoint - The endpoint to make the request to
  * @param request - The request object to send. The params are converted to snake_case.
- * @param client - Optional client identifier sent as the `x-web3-client` header.
+ * @param clientIdentifier - Optional client identifier sent as the `x-web3-client` header.
  *
  * @returns The response with camelCase converted result
  */
@@ -95,14 +97,17 @@ export const postJRPCRequest = async <
 >(
   endpoint: string,
   request: JRPCRequest<JSONValue>,
-  client?: string,
+  clientIdentifier?: string,
 ): Promise<Response> => {
   const req = { ...request };
   req.params = toSnakeCaseKeys(request.params);
 
-  return post<Response>(endpoint, req, getSssJrpcRequestHeaders(client), {
-    logTracingHeader: false,
-  })
+  return post<Response>(
+    endpoint,
+    req,
+    getSssJrpcRequestHeaders(clientIdentifier),
+    { logTracingHeader: false },
+  )
     .then((res) => {
       if (res.result) {
         res.result = toCamelCaseKeys(res.result);

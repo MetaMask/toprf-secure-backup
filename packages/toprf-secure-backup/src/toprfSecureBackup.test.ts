@@ -48,7 +48,7 @@ const keyDeriver = {
  * @param options.userId - The user id to be used for the test.
  * @param options.nodeDetailsOverride - The node details override to be used for the test.
  * @param options.keyDeriver - The key deriver to be used for the test.
- * @param options.client - Optional SSS client identifier for the test.
+ * @param options.clientIdentifier - Optional SSS client identifier for the test.
  * @returns The setup object.
  */
 function setup(options?: {
@@ -56,7 +56,7 @@ function setup(options?: {
   userId?: string;
   nodeDetailsOverride?: NodeDetailsOverride;
   keyDeriver?: KeyDeriver;
-  client?: string;
+  clientIdentifier?: string;
 }): {
   authConnectionId: string;
   userId: string;
@@ -72,7 +72,7 @@ function setup(options?: {
     network: 'sapphire_devnet',
     nodeDetailsOverride: options?.nodeDetailsOverride,
     keyDeriver: options?.keyDeriver,
-    client: options?.client,
+    clientIdentifier: options?.clientIdentifier,
   });
 
   return { authConnectionId, userId, idToken, toprfSecureBackup };
@@ -128,10 +128,10 @@ describe('toprf secret backup', function () {
       expect(result.isNewUser).toBe(false);
     });
 
-    it('passes client to SSS JSON-RPC helpers when provided', async function () {
-      const client = 'metamask-extension@13.46.1';
+    it('passes clientIdentifier to SSS JSON-RPC helpers when provided', async function () {
+      const clientIdentifier = 'metamask-extension@13.46.1';
       const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
-        client,
+        clientIdentifier,
         nodeDetailsOverride: {
           indexes: [1, 2, 3, 4, 5],
           pubKeys: [
@@ -184,14 +184,14 @@ describe('toprf secret backup', function () {
       });
 
       expect(commitSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ client }),
+        expect.objectContaining({ clientIdentifier }),
       );
       expect(authenticateSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ client }),
+        expect.objectContaining({ clientIdentifier }),
       );
     });
 
-    it('does not pass a client string to SSS helpers when omitted', async function () {
+    it('does not pass a clientIdentifier to SSS helpers when omitted', async function () {
       const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
         nodeDetailsOverride: {
           indexes: [1, 2, 3, 4, 5],
@@ -245,7 +245,7 @@ describe('toprf secret backup', function () {
       });
 
       const commitArgs = commitSpy.mock.calls[0][0];
-      expect(commitArgs.client).toBeUndefined();
+      expect(commitArgs.clientIdentifier).toBeUndefined();
     });
 
     it('should throw error if unable to fetch node details', async function () {
@@ -272,7 +272,7 @@ describe('toprf secret backup', function () {
   });
 
   describe('SSS client identifier', function () {
-    const client = 'metamask-extension@13.46.1';
+    const clientIdentifier = 'metamask-extension@13.46.1';
     const nodeDetailsOverride: NodeDetailsOverride = {
       indexes: [1, 2, 3, 4, 5],
       pubKeys: [
@@ -294,9 +294,9 @@ describe('toprf secret backup', function () {
       { authToken: 'token', nodeIndex: 1, nodePubKey: 'pk' },
     ];
 
-    it('passes client to storeKeyShares and changeKeyShares', async function () {
+    it('passes clientIdentifier to storeKeyShares and changeKeyShares', async function () {
       const { authConnectionId, userId, toprfSecureBackup } = setup({
-        client,
+        clientIdentifier,
         nodeDetailsOverride,
       });
       const authPubKey = new Uint8Array(33).fill(1);
@@ -316,7 +316,7 @@ describe('toprf secret backup', function () {
         userId,
       });
       expect(storeSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ client }),
+        expect.objectContaining({ clientIdentifier }),
       );
 
       const changeSpy = jest
@@ -335,13 +335,13 @@ describe('toprf secret backup', function () {
         oldAuthKeyPair: { sk: 1n, pk: authPubKey },
       });
       expect(changeSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ client }),
+        expect.objectContaining({ clientIdentifier }),
       );
     });
 
-    it('passes client to recoverTOPRFSeed, resetRateLimits, and getPubKey', async function () {
+    it('passes clientIdentifier to recoverTOPRFSeed, resetRateLimits, and getPubKey', async function () {
       const { authConnectionId, userId, toprfSecureBackup } = setup({
-        client,
+        clientIdentifier,
         nodeDetailsOverride,
       });
       const seed = new Uint8Array(32).fill(1);
@@ -371,12 +371,14 @@ describe('toprf secret backup', function () {
         userId,
       });
 
-      expect(evalSpy).toHaveBeenCalledWith(expect.objectContaining({ client }));
+      expect(evalSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ clientIdentifier }),
+      );
       expect(resetSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ client }),
+        expect.objectContaining({ clientIdentifier }),
       );
       expect(pubKeySpy).toHaveBeenCalledWith(
-        expect.objectContaining({ client }),
+        expect.objectContaining({ clientIdentifier }),
       );
     });
   });

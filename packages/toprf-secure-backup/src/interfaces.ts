@@ -856,9 +856,9 @@ export type FetchMetadataAccessCreds = () => Promise<{
 /**
  * Constructor parameters for `ToprfSecureBackup`.
  *
- * `client` is an optional identifier sent as the `x-web3-client` header on SSS
+ * `clientIdentifier` is an optional string sent as the `x-web3-client` header on SSS
  * JSON-RPC requests for logging. Include name and version, e.g.
- * `metamask-extension@13.46.1`. The header is omitted when `client` is missing
+ * `metamask-extension@13.46.1`. The header is omitted when `clientIdentifier` is missing
  * or empty. Do not send `x-web3-client-version`.
  */
 export type ToprfSecureBackupConstructorParams = {
@@ -866,5 +866,5 @@ export type ToprfSecureBackupConstructorParams = {
   fetchMetadataAccessCreds: FetchMetadataAccessCreds;
   nodeDetailsOverride?: NodeDetailsOverride;
   keyDeriver?: KeyDeriver;
-  client?: string;
+  clientIdentifier?: string;
 };

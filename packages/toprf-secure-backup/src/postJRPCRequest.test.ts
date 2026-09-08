@@ -17,15 +17,15 @@ const request = {
 };
 
 describe('getSssJrpcRequestHeaders', () => {
-  it('returns empty request init when client is omitted', () => {
+  it('returns empty request init when clientIdentifier is omitted', () => {
     expect(getSssJrpcRequestHeaders()).toStrictEqual({});
   });
 
-  it('returns empty request init when client is empty', () => {
+  it('returns empty request init when clientIdentifier is empty', () => {
     expect(getSssJrpcRequestHeaders('')).toStrictEqual({});
   });
 
-  it('sets only x-web3-client when client is provided', () => {
+  it('sets only x-web3-client when clientIdentifier is provided', () => {
     expect(
       getSssJrpcRequestHeaders('metamask-extension@13.46.1'),
     ).toStrictEqual({
@@ -47,7 +47,7 @@ describe('postJRPCRequest', () => {
     });
   });
 
-  it('does not send x-web3-client when client is omitted', async () => {
+  it('does not send x-web3-client when clientIdentifier is omitted', async () => {
     await postJRPCRequest(endpoint, request);
 
     expect(mockPost).toHaveBeenCalledWith(
@@ -60,18 +60,19 @@ describe('postJRPCRequest', () => {
     );
     const body = mockPost.mock.calls[0][1] as Record<string, unknown>;
     expect(body).not.toHaveProperty('client');
+    expect(body).not.toHaveProperty('clientIdentifier');
     expect(JSON.stringify(body)).not.toContain(WEB3_CLIENT_HEADER);
   });
 
-  it('does not send x-web3-client when client is empty', async () => {
+  it('does not send x-web3-client when clientIdentifier is empty', async () => {
     await postJRPCRequest(endpoint, request, '');
 
     expect(mockPost.mock.calls[0][2]).toStrictEqual({});
   });
 
   it('sends x-web3-client as a header and not in the JSON-RPC body', async () => {
-    const client = 'metamask-extension@13.46.1';
-    await postJRPCRequest(endpoint, request, client);
+    const clientIdentifier = 'metamask-extension@13.46.1';
+    await postJRPCRequest(endpoint, request, clientIdentifier);
 
     expect(mockPost).toHaveBeenCalledWith(
       endpoint,
@@ -83,14 +84,15 @@ describe('postJRPCRequest', () => {
       }),
       {
         headers: {
-          [WEB3_CLIENT_HEADER]: client,
+          [WEB3_CLIENT_HEADER]: clientIdentifier,
         },
       },
       { logTracingHeader: false },
     );
     const body = mockPost.mock.calls[0][1] as Record<string, unknown>;
     expect(body).not.toHaveProperty('client');
-    expect(JSON.stringify(body)).not.toContain(client);
+    expect(body).not.toHaveProperty('clientIdentifier');
+    expect(JSON.stringify(body)).not.toContain(clientIdentifier);
     expect(JSON.stringify(mockPost.mock.calls[0][2])).not.toContain(
       'x-web3-client-version',
     );

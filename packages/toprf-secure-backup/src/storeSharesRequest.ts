@@ -32,7 +32,7 @@ export type CreateStoreKeySharesRequestParamsInput = {
 
 export type StoreKeySharesRequestParams =
   CreateStoreKeySharesRequestParamsInput & {
-    client?: string;
+    clientIdentifier?: string;
   };
 /**
  * Creates the parameters for the store key shares request
@@ -82,14 +82,14 @@ export const createStoreKeySharesRequestParams = async (
  *
  * @param endpoint - The endpoint to be used for the store key shares request.
  * @param params - The parameters for the store key shares request.
- * @param client - Optional client identifier sent as the `x-web3-client` header.
+ * @param clientIdentifier - Optional client identifier sent as the `x-web3-client` header.
  *
  * @returns The store key shares request promise.
  */
 export const sendStoreKeySharesRequest = async (
   endpoint: string,
   params: StoreKeySharesJRPCRequestParams,
-  client?: string,
+  clientIdentifier?: string,
 ): Promise<StoreKeySharesJRPCResponse> => {
   const authJRPCRequest = generateJsonRPCObject(
     JRPC_METHODS.STORE_KEY_SHARES_REQUEST,
@@ -98,7 +98,7 @@ export const sendStoreKeySharesRequest = async (
   return postJRPCRequest<StoreKeySharesJRPCResponse>(
     endpoint,
     authJRPCRequest,
-    client,
+    clientIdentifier,
   );
 };
 
@@ -116,7 +116,7 @@ export const sendStoreKeySharesRequest = async (
  *
  * @param params.oprfKey - The oprfKey to be used for the store key shares request.
  * @param params.authPubKey - The  auth pubkey associated with the authentication key pair derived from the seed and input.
- * @param params.client - Optional client identifier sent as the `x-web3-client` header.
+ * @param params.clientIdentifier - Optional client identifier sent as the `x-web3-client` header.
  *
  * @returns The store key shares request promise.
  */
@@ -132,7 +132,7 @@ export const storeKeyShares = async (
     keyShareIndex,
     oprfKey,
     authPubKey,
-    client,
+    clientIdentifier,
   } = params;
   const requestParams = await createStoreKeySharesRequestParams({
     nodeEndpointsMap,
@@ -153,7 +153,7 @@ export const storeKeyShares = async (
   const storeKeyShareResponse = await sendStoreKeySharesRequest(
     proxyNodeEndpoint,
     requestParams,
-    client,
+    clientIdentifier,
   );
 
   if (isJSONRPCError(storeKeyShareResponse.error)) {
@@ -177,7 +177,7 @@ export type CreateKeyChangeRequestParamsInput = {
 };
 
 export type KeyChangeRequestParams = CreateKeyChangeRequestParamsInput & {
-  client?: string;
+  clientIdentifier?: string;
 };
 
 /**
@@ -241,7 +241,7 @@ export const createKeyChangeRequestParams = async (
  * @param params.newOprfKey - The new oprfKey to be used for the key change request.
  * @param params.newAuthPubKey - The new auth pubkey for the updated authentication.
  * @param params.oldAuthPrivKey - The old auth private key used to sign the key change request.
- * @param params.client - Optional client identifier sent as the `x-web3-client` header.
+ * @param params.clientIdentifier - Optional client identifier sent as the `x-web3-client` header.
  *
  * @returns The key change request promise.
  */
@@ -258,7 +258,7 @@ export const changeKeyShares = async (
     authConnectionId,
     groupedAuthConnectionId,
     userId,
-    client,
+    clientIdentifier,
   } = params;
 
   const requestParams = await createKeyChangeRequestParams({
@@ -284,7 +284,7 @@ export const changeKeyShares = async (
   const keyChangeResponse = await sendStoreKeySharesRequest(
     proxyNodeEndpoint,
     requestParams,
-    client,
+    clientIdentifier,
   );
 
   if (isJSONRPCError(keyChangeResponse.error)) {

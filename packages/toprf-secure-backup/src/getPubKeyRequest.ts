@@ -48,13 +48,13 @@ const createGetPubKeyRequestParams = (
  *
  * @param endpoint - The endpoint that the request will be sent to.
  * @param params - The request parameters.
- * @param client - Optional client identifier sent as the `x-web3-client` header.
+ * @param clientIdentifier - Optional client identifier sent as the `x-web3-client` header.
  * @returns The pub key.
  */
 const sendGetPubKeyRequest = async (
   endpoint: string,
   params: GetPubKeyJRPCRequestParams,
-  client?: string,
+  clientIdentifier?: string,
 ): Promise<GetPubKeyJRPCResponse> => {
   const getPubKeyJRPCRequest = generateJsonRPCObject(
     JRPC_METHODS.GET_PUB_KEY_REQUEST,
@@ -64,7 +64,7 @@ const sendGetPubKeyRequest = async (
   return postJRPCRequest<GetPubKeyJRPCResponse>(
     endpoint,
     getPubKeyJRPCRequest,
-    client,
+    clientIdentifier,
   );
 };
 
@@ -120,7 +120,7 @@ export const validatePubKey = async (
  * @param params.groupedAuthConnectionId - An optional grouped auth connection name used for authentication with aggregate (single id) verifier.
  * @param params.userId - The user id of the user issued by authentication service.
  * @param params.nodeEndpointsMap - Map of node index to endpoint to be used for the toprf eval request.
- * @param params.client - Optional client identifier sent as the `x-web3-client` header.
+ * @param params.clientIdentifier - Optional client identifier sent as the `x-web3-client` header.
  *
  * @returns - A promise that resolves with the latest auth pub key and key index successfully.
  */
@@ -130,7 +130,7 @@ export const getPubKey = async (params: {
   authConnectionId: string;
   userId: string;
   groupedAuthConnectionId?: string;
-  client?: string;
+  clientIdentifier?: string;
 }): Promise<FetchAuthPubKeyResult> => {
   const {
     authTokens,
@@ -138,7 +138,7 @@ export const getPubKey = async (params: {
     authConnectionId,
     userId,
     groupedAuthConnectionId,
-    client,
+    clientIdentifier,
   } = params;
 
   if (authTokens.length < GET_PUB_KEY_THRESHOLD) {
@@ -160,7 +160,7 @@ export const getPubKey = async (params: {
         userId,
         groupedAuthConnectionId,
       );
-      return sendGetPubKeyRequest(endpoint, requestParams, client);
+      return sendGetPubKeyRequest(endpoint, requestParams, clientIdentifier);
     },
   );
 

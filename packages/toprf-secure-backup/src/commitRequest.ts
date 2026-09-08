@@ -44,13 +44,13 @@ const createCommitmentRequestParams = (
  *
  * @param endpoint - The endpoint to be used for the commitment request.
  * @param params - The parameters for the commitment request.
- * @param client - Optional client identifier sent as the `x-web3-client` header.
+ * @param clientIdentifier - Optional client identifier sent as the `x-web3-client` header.
  * @returns The commitment responses.
  */
 const sendCommitmentRequest = async (
   endpoint: string,
   params: CommitmentJRPCRequestParams,
-  client?: string,
+  clientIdentifier?: string,
 ): Promise<CommitmentJRPCResponse> => {
   const commitmentJRPCRequest = generateJsonRPCObject(
     JRPC_METHODS.COMMITMENT_REQUEST,
@@ -60,7 +60,7 @@ const sendCommitmentRequest = async (
   return postJRPCRequest<CommitmentJRPCResponse>(
     endpoint,
     commitmentJRPCRequest,
-    client,
+    clientIdentifier,
   );
 };
 
@@ -117,7 +117,7 @@ export const createHandleCommitmentResponses = (
  * @param params.sessionPubKeyX - The public key x to be used for the commitment request session.
  * @param params.sessionPubKeyY - The public key y to be used for the commitment request session.
  * @param params.endpoints - The endpoints to be used for the commitment request
- * @param params.client - Optional client identifier sent as the `x-web3-client` header.
+ * @param params.clientIdentifier - Optional client identifier sent as the `x-web3-client` header.
  * @returns resultArr - The commitment request result, where each element is
  * a signed commitment data from a node.
  * @throws SomeError if underlying requests fail significantly (per original Some behavior), or TOPRFError if threshold not met after settling.
@@ -128,7 +128,7 @@ export const commitIdToken = async (params: {
   sessionPubKeyX: string;
   sessionPubKeyY: string;
   endpoints: string[];
-  client?: string;
+  clientIdentifier?: string;
 }): Promise<CommitmentRequestResult[]> => {
   const {
     idToken,
@@ -136,7 +136,7 @@ export const commitIdToken = async (params: {
     authConnectionId,
     sessionPubKeyX,
     sessionPubKeyY,
-    client,
+    clientIdentifier,
   } = params;
   const tokenCommitment = keccak256AndHexify(utf8ToBytes(idToken)).slice(2);
 
@@ -148,7 +148,7 @@ export const commitIdToken = async (params: {
   );
 
   const promiseArr = endpoints.map(async (endpoint) =>
-    sendCommitmentRequest(endpoint, requestParams, client),
+    sendCommitmentRequest(endpoint, requestParams, clientIdentifier),
   );
 
   return Some<CommitmentJRPCResponse, CommitmentRequestResult[]>(
