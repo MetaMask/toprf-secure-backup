@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0]
+
 ### Added
 
 - Add optional `clientIdentifier` constructor parameter to `ToprfSecureBackup`. When set, SSS JSON-RPC requests include an `x-web3-client` header (name and version, e.g. `metamask-extension@13.46.1`) for SSS service logging. The header is omitted when `clientIdentifier` is missing or empty. ([#162](https://github.com/MetaMask/toprf-secure-backup/pull/162))
@@ -166,7 +168,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Add `fetchAuthPubKey` function to fetch current auth public key associated with user's password, helps to check if user password is changed.
   - Add `recoverPassword` function to recover a older password corresponding to provided target auth public key, user can use this function only if they have access to latest password. This function is useful for password syncing across devices.
 
-[Unreleased]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@1.1.0...HEAD
+[Unreleased]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@1.2.0...HEAD
+[1.2.0]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@1.1.0...@metamask/toprf-secure-backup@1.2.0
 [1.1.0]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@1.0.0...@metamask/toprf-secure-backup@1.1.0
 [1.0.0]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@0.11.0...@metamask/toprf-secure-backup@1.0.0
 [0.11.0]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@0.10.1...@metamask/toprf-secure-backup@0.11.0
