@@ -70,6 +70,7 @@ export const createStoreKeySharesRequestParams = async (
     authTokens,
     oprfKey,
     keyShareIndex,
+    authPubKey,
     undefined,
     shareTag,
   );
@@ -226,6 +227,7 @@ export const createKeyChangeRequestParams = async (
     authTokens,
     newOprfKey,
     keyShareIndex,
+    newAuthPubKey,
     oldAuthPrivKey,
     shareTag,
   );

@@ -432,6 +432,7 @@ describe('share_tag in signed payloads', () => {
       nodeAuthTokens,
       1n,
       2,
+      new Uint8Array([4, 1, 2]),
       1n,
       ShareTag.RecoverySecret,
     );
@@ -694,54 +695,67 @@ describe('encrypted share plaintext', () => {
     return Buffer.from(plaintext);
   };
 
+  const authPubKeyHex = `04${'ab'.repeat(64)}`;
+  const authPubKey = Uint8Array.from(Buffer.from(authPubKeyHex, 'hex'));
+
+  // The plaintext is the v1 payload: the share plus the tag and pub key it is stored under.
+  const expectBoundPayload = (plaintext: Buffer, expectedTag: string): void => {
+    expect(JSON.parse(plaintext.toString('utf8'))).toStrictEqual({
+      v: 1,
+      share: expect.any(String),
+      share_tag: expectedTag,
+      pub_key: authPubKeyHex,
+    });
+  };
+
   it.each([
     { label: 'ShareTag.Password', shareTag: ShareTag.Password },
     { label: 'ShareTag.RecoverySecret', shareTag: ShareTag.RecoverySecret },
   ])(
-    'keeps the raw share bytes as plaintext for $label',
+    'binds the share tag and pub key into the plaintext for $label',
     async ({ shareTag }) => {
       const items = await utilsModule.generateShareImportItems(
         endpoints,
         nodeTokens,
         1n,
         1,
+        authPubKey,
         undefined,
         shareTag,
       );
 
       const plaintext = await decryptShare(items[0].encryptedShare);
-      expect(plaintext.length).toBeLessThanOrEqual(32);
-      expect(() => JSON.parse(plaintext.toString('utf8'))).toThrow(SyntaxError);
+      expectBoundPayload(plaintext, shareTag);
     },
   );
 
-  it('keeps the raw share bytes as plaintext for a new share with a tag', async () => {
+  it('binds the share tag and pub key into the plaintext for a new share with a tag', async () => {
     const items = await utilsModule.generateShareImportItems(
       endpoints,
       nodeTokens,
       1n,
       1,
+      authPubKey,
       undefined,
       ShareTag.RecoverySecret,
     );
 
     const plaintext = await decryptShare(items[0].encryptedShare);
-    expect(plaintext.length).toBeLessThanOrEqual(32);
-    expect(() => JSON.parse(plaintext.toString('utf8'))).toThrow(SyntaxError);
+    expectBoundPayload(plaintext, ShareTag.RecoverySecret);
   });
 
-  it('keeps the raw share bytes as plaintext for a key change with a tag', async () => {
+  it('binds the share tag and pub key into the plaintext for a key change with a tag', async () => {
     const items = await utilsModule.generateShareImportItems<'keyChange'>(
       endpoints,
       nodeTokens,
       1n,
       2,
+      authPubKey,
       1n,
       ShareTag.RecoverySecret,
     );
 
     const plaintext = await decryptShare(items[0].encryptedShare);
-    expect(plaintext.length).toBeLessThanOrEqual(32);
-    expect(() => JSON.parse(plaintext.toString('utf8'))).toThrow(SyntaxError);
+    expectBoundPayload(plaintext, ShareTag.RecoverySecret);
   });
 });
