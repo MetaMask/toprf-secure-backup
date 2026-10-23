@@ -4,6 +4,7 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
+import { ShareTag } from './constants';
 import { TOPRFError } from './errors';
 import { deriveAuthenticationKeyPair } from './keyDerivation';
 import { OPRF, generateRandomScalar } from './oprf';
@@ -77,6 +78,7 @@ describe('secure backup operations', function () {
     const authKeyPair = deriveAuthenticationKeyPair(seed);
 
     const storeSharesResponse = await storeKeyShares({
+      shareTag: ShareTag.Password,
       nodeEndpointsMap: selectedEndpointsMap,
       authConnectionId,
       userId,
@@ -149,6 +151,7 @@ describe('secure backup operations', function () {
     const authKeyPair = deriveAuthenticationKeyPair(seed);
 
     const storeSharesResponse = await storeKeyShares({
+      shareTag: ShareTag.Password,
       nodeEndpointsMap: selectedEndpointsMap,
       authConnectionId,
       userId,
@@ -222,6 +225,7 @@ describe('secure backup operations', function () {
 
     // Store shares with original password
     const storeSharesResponse = await storeKeyShares({
+      shareTag: ShareTag.Password,
       nodeEndpointsMap: selectedEndpointsMap,
       authConnectionId,
       userId,
@@ -245,6 +249,7 @@ describe('secure backup operations', function () {
       seed: originalRecoveredSeed,
       keyShareIndex: originalKeyShareIndex,
     } = await recoverTOPRFSeed({
+      shareTag: ShareTag.Password,
       authTokens: authTokensData,
       nodeEndpointsMap: selectedEndpointsMap,
       authConnectionId,
@@ -260,6 +265,7 @@ describe('secure backup operations', function () {
     // Verify that the new password doesn't work
     await expect(
       recoverTOPRFSeed({
+        shareTag: ShareTag.Password,
         authTokens: authTokensData,
         nodeEndpointsMap: selectedEndpointsMap,
         authConnectionId,
@@ -270,6 +276,7 @@ describe('secure backup operations', function () {
 
     // Reset the rate limit
     await resetRateLimits({
+      shareTag: ShareTag.Password,
       authTokens: authTokensData,
       nodeEndpointsMap: selectedEndpointsMap,
       authConnectionId,
@@ -279,6 +286,7 @@ describe('secure backup operations', function () {
 
     // Change the key
     const keyChangeResponse = await changeKeyShares({
+      shareTag: ShareTag.Password,
       nodeEndpointsMap: selectedEndpointsMap,
       authConnectionId,
       userId,
@@ -295,6 +303,7 @@ describe('secure backup operations', function () {
     // Verify that the original password doesn't work
     await expect(
       recoverTOPRFSeed({
+        shareTag: ShareTag.Password,
         authTokens: authTokensData,
         nodeEndpointsMap: selectedEndpointsMap,
         authConnectionId,
@@ -306,6 +315,7 @@ describe('secure backup operations', function () {
     // Verify that the new password works
     const { seed: newRecoveredSeed, keyShareIndex: newKeyShareIndex } =
       await recoverTOPRFSeed({
+        shareTag: ShareTag.Password,
         authTokens: authTokensData,
         nodeEndpointsMap: selectedEndpointsMap,
         authConnectionId,
@@ -383,6 +393,7 @@ describe('secure backup operations', function () {
     // Attempt to change key before storing shares, which should fail
     await expect(
       changeKeyShares({
+        shareTag: ShareTag.Password,
         nodeEndpointsMap: selectedEndpointsMap,
         authConnectionId,
         userId,
@@ -459,6 +470,7 @@ describe('secure backup operations', function () {
     const initialKeyIndex = 2;
 
     const storeSharesResponse = await storeKeyShares({
+      shareTag: ShareTag.Password,
       nodeEndpointsMap: selectedEndpointsMap,
       authConnectionId,
       userId,
@@ -481,6 +493,7 @@ describe('secure backup operations', function () {
 
     await expect(
       changeKeyShares({
+        shareTag: ShareTag.Password,
         nodeEndpointsMap: selectedEndpointsMap,
         authConnectionId,
         userId,

@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add optional `shareTag` (`ShareTag.Password` or `ShareTag.RecoverySecret`) to `ToprfSecureBackup` methods and the request helpers, sent as `share_tag` on eval, pub key, store, key change and reset rate limit requests. When omitted, requests are unchanged and target the default `password` share. Add `ShareTag` enum export. ([#165](https://github.com/MetaMask/toprf-secure-backup/pull/165))
+- Add optional `shareTag` (`ShareTag.Password` or `ShareTag.RecoverySecret`) to `ToprfSecureBackup` methods and the request helpers, sent as `share_tag` on eval, pub key, store, key change and reset rate limit requests. When omitted, requests target the default `password` share. Add `ShareTag` enum export. The tag is also included in the signed reset rate limit and key change payloads, and `ShareTag.Password` is sent explicitly as `share_tag: "password"`. `changeEncKey` operates on the password share only. ([#165](https://github.com/MetaMask/toprf-secure-backup/pull/165))
 - Add optional `clientIdentifier` constructor parameter to `ToprfSecureBackup`. When set, SSS JSON-RPC requests include an `x-web3-client` header (name and version, e.g. `metamask-extension@13.46.1`) for SSS service logging. The header is omitted when `clientIdentifier` is missing or empty. ([#162](https://github.com/MetaMask/toprf-secure-backup/pull/162))
 
 ## [1.1.0]

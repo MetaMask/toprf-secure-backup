@@ -1,15 +1,24 @@
+import { encParamsHexToBuf } from '@metamask/auth-network-utils';
+import { secp256k1 } from '@noble/curves/secp256k1';
+import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
 import { toBytes } from '@noble/hashes/utils';
+import { decrypt } from '@toruslabs/eccrypto';
+import BN from 'bn.js';
 
 import { ShareTag } from './constants';
 import { TOPRFErrorCode } from './errors';
 import { getPubKey } from './getPubKeyRequest';
 import * as getPubKeyModule from './getPubKeyRequest';
-import type { NodeAuthTokens } from './interfaces';
-import { MetadataStore } from './metadata';
+import type { KeyChangeProof, NodeAuthTokens } from './interfaces';
 import { resetRateLimits } from './resetRateLimits';
 import * as resetRateLimitsModule from './resetRateLimits';
 import * as storeSharesRequestModule from './storeSharesRequest';
-import { changeKeyShares, storeKeyShares } from './storeSharesRequest';
+import {
+  changeKeyShares,
+  createKeyChangeRequestParams,
+  createStoreKeySharesRequestParams,
+  storeKeyShares,
+} from './storeSharesRequest';
 import * as toprfEvalRequestModule from './toprfEvalRequest';
 import { recoverTOPRFSeed } from './toprfEvalRequest';
 import { ToprfSecureBackup } from './toprfSecureBackup';
@@ -102,20 +111,20 @@ describe('share_tag on the wire', () => {
     );
   });
 
-  it('omits share_tag on get pub key requests when no tag is given', async () => {
+  it('sends share_tag password on get pub key requests for the default share', async () => {
     const fetchSpy = mockJrpcFetch({ pubKey: '04ab', keyIndex: 1 });
 
     await getPubKey({
+      shareTag: ShareTag.Password,
       authTokens: nodeAuthTokens,
       nodeEndpointsMap,
       authConnectionId: 'conn',
       userId: 'user',
     });
 
-    expect(sentParams(fetchSpy)).toHaveLength(nodeAuthTokens.length);
-    expect(
-      sentParams(fetchSpy).every((params) => !('share_tag' in params)),
-    ).toBe(true);
+    expect(sentShareTags(fetchSpy)).toStrictEqual(
+      nodeAuthTokens.map(() => 'password'),
+    );
   });
 
   it('rejects an empty pub key from a tagged miss', async () => {
@@ -149,10 +158,11 @@ describe('share_tag on the wire', () => {
     );
   });
 
-  it('omits share_tag on reset rate limit requests when no tag is given', async () => {
+  it('sends share_tag password on reset rate limit requests for the default share', async () => {
     const fetchSpy = mockJrpcFetch(true);
 
     await resetRateLimits({
+      shareTag: ShareTag.Password,
       authTokens: nodeAuthTokens,
       nodeEndpointsMap,
       authConnectionId: 'conn',
@@ -161,37 +171,34 @@ describe('share_tag on the wire', () => {
     });
 
     expect(sentShareTags(fetchSpy)).toStrictEqual(
-      nodeAuthTokens.map(() => undefined),
+      nodeAuthTokens.map(() => 'password'),
     );
   });
 
   it.each([
     { label: 'with a tag', shareTag: ShareTag.RecoverySecret },
-    { label: 'without a tag', shareTag: undefined },
-  ])(
-    'sends share_tag on eval requests $label and fails on a tagged miss',
-    async ({ shareTag }) => {
-      // A node with no share returns an empty pubKey and empty outputs.
-      // The threshold pub key check runs first, so the call fails with a TOPRF error.
-      const fetchSpy = mockJrpcFetch(emptyEvalResult);
+    { label: 'the default (Password) share', shareTag: ShareTag.Password },
+  ])('eval requests for $label fail on a miss', async ({ shareTag }) => {
+    // A node with no share returns an empty pubKey and empty outputs.
+    // The threshold pub key check runs first, so the call fails with a TOPRF error.
+    const fetchSpy = mockJrpcFetch(emptyEvalResult);
 
-      const caught = await recoverTOPRFSeed({
-        authTokens: nodeAuthTokens,
-        nodeEndpointsMap,
-        authConnectionId: 'conn',
-        userId: 'user',
-        userInput: toBytes('password'),
-        shareTag,
-      }).catch((error: unknown) => error);
+    const caught = await recoverTOPRFSeed({
+      authTokens: nodeAuthTokens,
+      nodeEndpointsMap,
+      authConnectionId: 'conn',
+      userId: 'user',
+      userInput: toBytes('password'),
+      shareTag,
+    }).catch((error: unknown) => error);
 
-      expect(caught).toMatchObject({
-        code: TOPRFErrorCode.CouldNotDeriveThresholdAuthPubKey,
-      });
-      expect(sentShareTags(fetchSpy)).toStrictEqual(
-        nodeAuthTokens.map(() => shareTag),
-      );
-    },
-  );
+    expect(caught).toMatchObject({
+      code: TOPRFErrorCode.CouldNotDeriveThresholdAuthPubKey,
+    });
+    expect(sentShareTags(fetchSpy)).toStrictEqual(
+      nodeAuthTokens.map(() => shareTag),
+    );
+  });
 
   it('filters eval responses with empty blinded outputs instead of parsing them', async () => {
     // Valid pubKey, but empty blinded outputs: the empty outputs must be filtered out.
@@ -254,6 +261,180 @@ describe('share_tag on the wire', () => {
     const [params] = sentParams(fetchSpy);
     expect(params.share_tag).toBe('recovery_secret');
     expect(params.share_import_items).toStrictEqual([]);
+  });
+});
+
+describe('share_tag in signed payloads', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  /**
+   * Returns the parsed `signed_data` of each captured reset rate limit request.
+   *
+   * @param fetchSpy - The fetch spy returned by `mockJrpcFetch`.
+   * @returns The signed reset payloads.
+   */
+  const sentSignedData = (
+    fetchSpy: jest.SpyInstance,
+  ): Record<string, unknown>[] =>
+    sentParams(fetchSpy).map((params) =>
+      JSON.parse(params.signed_data as string),
+    );
+
+  it('signs share_tag in the reset payload when a tag is given', async () => {
+    const fetchSpy = mockJrpcFetch(true);
+
+    await resetRateLimits({
+      authTokens: nodeAuthTokens,
+      nodeEndpointsMap,
+      authConnectionId: 'conn',
+      userId: 'user',
+      authPrivKey: 1n,
+      shareTag: ShareTag.RecoverySecret,
+    });
+
+    const signed = sentSignedData(fetchSpy);
+    expect(signed).toHaveLength(nodeAuthTokens.length);
+    expect(
+      signed.every((payload) => payload.share_tag === 'recovery_secret'),
+    ).toBe(true);
+  });
+
+  it('sends share_tag password in the reset payload for the default share', async () => {
+    const fetchSpy = mockJrpcFetch(true);
+
+    await resetRateLimits({
+      shareTag: ShareTag.Password,
+      authTokens: nodeAuthTokens,
+      nodeEndpointsMap,
+      authConnectionId: 'conn',
+      userId: 'user',
+      authPrivKey: 1n,
+    });
+
+    const signed = sentSignedData(fetchSpy);
+    expect(signed.every((payload) => payload.share_tag === 'password')).toBe(
+      true,
+    );
+  });
+
+  it.each([
+    {
+      label: 'Password reset payload appends share_tag password',
+      shareTag: ShareTag.Password,
+      suffix: ',"share_tag":"password"',
+    },
+    {
+      label: 'tagged reset payload appends share_tag as the last key',
+      shareTag: ShareTag.RecoverySecret,
+      suffix: ',"share_tag":"recovery_secret"',
+    },
+  ])('$label', async ({ shareTag, suffix }) => {
+    const timestamp = 1700000000000;
+    jest.spyOn(Date, 'now').mockReturnValue(timestamp);
+    const fetchSpy = mockJrpcFetch(true);
+
+    await resetRateLimits({
+      authTokens: nodeAuthTokens,
+      nodeEndpointsMap,
+      authConnectionId: 'conn',
+      userId: 'user',
+      authPrivKey: 1n,
+      shareTag,
+    });
+
+    const expected = nodeAuthTokens
+      .map(
+        ({ nodeIndex }) =>
+          `{"timestamp":${timestamp},"node_index":${nodeIndex},"action":"reset_ratelimit"${suffix}}`,
+      )
+      .sort();
+    const actual = sentParams(fetchSpy)
+      .map((params) => params.signed_data as string)
+      .sort();
+    expect(actual).toStrictEqual(expected);
+  });
+
+  it('signs share_tag into the key change proof only when a tag is given', () => {
+    const oldAuthPrivKey = 987654321n;
+    const shareValue = new BN(1234567);
+    const keyShareIndex = 2;
+    const nodeIndex = 3;
+
+    /**
+     * Checks whether a proof's signature was made by `oldAuthPrivKey` over the
+     * snake_case message that includes the given tag (or no tag).
+     *
+     * @param proof - The key change proof to check.
+     * @param tag - The tag expected in the signed message, if any.
+     * @returns True when the signature recovers to the old auth public key.
+     */
+    const signedBy = (proof: KeyChangeProof, tag?: string): boolean => {
+      const message = JSON.stringify({
+        share_data: Buffer.from(
+          shareValue.toArrayLike(Buffer, 'be', 32),
+        ).toString('base64'),
+        key_share_index: keyShareIndex,
+        node_index: nodeIndex,
+        timestamp: proof.signatureTimestamp,
+        ...(tag !== undefined && { share_tag: tag }),
+      });
+      const signature = proof.oldKeySignature;
+      const recovered = secp256k1.Signature.fromCompact(signature.slice(0, 128))
+        .addRecoveryBit(parseInt(signature.slice(128), 16) - 27)
+        .recoverPublicKey(keccak256(message));
+      return recovered.equals(
+        secp256k1.ProjectivePoint.BASE.multiply(oldAuthPrivKey),
+      );
+    };
+
+    const tagged = utilsModule.createKeyChangeProof(
+      shareValue,
+      keyShareIndex,
+      nodeIndex,
+      oldAuthPrivKey,
+      ShareTag.RecoverySecret,
+    );
+    expect(signedBy(tagged, 'recovery_secret')).toBe(true);
+    expect(signedBy(tagged)).toBe(false);
+
+    const untagged = utilsModule.createKeyChangeProof(
+      shareValue,
+      keyShareIndex,
+      nodeIndex,
+      oldAuthPrivKey,
+      ShareTag.Password,
+    );
+    expect(signedBy(untagged, 'password')).toBe(true);
+    expect(signedBy(untagged, 'recovery_secret')).toBe(false);
+  });
+
+  it('passes shareTag through to the key change share import items', async () => {
+    const spy = jest
+      .spyOn(utilsModule, 'generateShareImportItems')
+      .mockResolvedValue([] as never);
+
+    await createKeyChangeRequestParams({
+      nodeEndpointsMap,
+      authTokens: nodeAuthTokens,
+      keyShareIndex: 2,
+      authConnectionId: 'conn',
+      userId: 'user',
+      newOprfKey: 1n,
+      newAuthPubKey: new Uint8Array([4, 1, 2]),
+      oldAuthPrivKey: 1n,
+      shareTag: ShareTag.RecoverySecret,
+    });
+
+    expect(spy).toHaveBeenCalledWith(
+      nodeEndpointsMap,
+      nodeAuthTokens,
+      1n,
+      2,
+      1n,
+      ShareTag.RecoverySecret,
+    );
   });
 });
 
@@ -380,44 +561,187 @@ describe('ToprfSecureBackup share tag pass-through', () => {
       expect.objectContaining({ shareTag: 'recovery_secret' }),
     );
   });
+});
 
-  it('changeEncKey passes shareTag to persistLocalKey', async () => {
-    const persistSpy = jest
-      .spyOn(ToprfSecureBackup.prototype, 'persistLocalKey')
-      .mockResolvedValue();
-    jest
-      .spyOn(MetadataStore.prototype, 'acquireMetadataLock')
-      .mockResolvedValue('lock-id');
-    jest
-      .spyOn(MetadataStore.prototype, 'fetchAllSecretDataItems')
-      .mockResolvedValue([
-        {
-          data: new Uint8Array([1]),
-          itemId: 'item',
-          version: 'v1',
-        },
-      ]);
-    jest
-      .spyOn(MetadataStore.prototype, 'batchAddSecretData')
-      .mockResolvedValue(undefined as never);
-    jest
-      .spyOn(MetadataStore.prototype, 'releaseMetadataLock')
-      .mockResolvedValue(undefined as never);
+describe('ShareTag.Password is sent explicitly on the wire', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
 
-    await createBackup().changeEncKey({
-      nodeAuthTokens,
+  it('sends share_tag password on get pub key requests', async () => {
+    const fetchSpy = mockJrpcFetch({ pubKey: '04ab', keyIndex: 1 });
+
+    await getPubKey({
+      authTokens: nodeAuthTokens,
+      nodeEndpointsMap,
       authConnectionId: 'conn',
       userId: 'user',
-      oldEncKey: new Uint8Array(32).fill(1),
-      oldPwEncKey: new Uint8Array(32).fill(2),
-      oldAuthKeyPair: { sk: 1n, pk: new Uint8Array([4]) },
-      newKeyShareIndex: 2,
-      newPassword: 'new-password',
-      shareTag: ShareTag.RecoverySecret,
+      shareTag: ShareTag.Password,
     });
 
-    expect(persistSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ shareTag: 'recovery_secret' }),
+    expect(
+      sentParams(fetchSpy).every((params) => params.share_tag === 'password'),
+    ).toBe(true);
+  });
+
+  it('sends share_tag password on eval requests', async () => {
+    const fetchSpy = mockJrpcFetch(emptyEvalResult);
+
+    await recoverTOPRFSeed({
+      authTokens: nodeAuthTokens,
+      nodeEndpointsMap,
+      authConnectionId: 'conn',
+      userId: 'user',
+      userInput: toBytes('password'),
+      shareTag: ShareTag.Password,
+    }).catch(() => undefined);
+
+    expect(fetchSpy).toHaveBeenCalledTimes(nodeAuthTokens.length);
+    expect(
+      sentParams(fetchSpy).every((params) => params.share_tag === 'password'),
+    ).toBe(true);
+  });
+
+  it('signs the reset payload with share_tag password', async () => {
+    const timestamp = 1700000000000;
+    jest.spyOn(Date, 'now').mockReturnValue(timestamp);
+    const fetchSpy = mockJrpcFetch(true);
+
+    await resetRateLimits({
+      authTokens: nodeAuthTokens,
+      nodeEndpointsMap,
+      authConnectionId: 'conn',
+      userId: 'user',
+      authPrivKey: 1n,
+      shareTag: ShareTag.Password,
+    });
+
+    const expected = nodeAuthTokens
+      .map(
+        ({ nodeIndex }) =>
+          `{"timestamp":${timestamp},"node_index":${nodeIndex},"action":"reset_ratelimit","share_tag":"password"}`,
+      )
+      .sort();
+    const actual = sentParams(fetchSpy)
+      .map((params) => params.signed_data as string)
+      .sort();
+    expect(actual).toStrictEqual(expected);
+  });
+
+  it('sends shareTag password in store and key change request params', async () => {
+    jest
+      .spyOn(utilsModule, 'generateShareImportItems')
+      .mockResolvedValue([] as never);
+
+    const storeParams = await createStoreKeySharesRequestParams({
+      nodeEndpointsMap,
+      authTokens: nodeAuthTokens,
+      authConnectionId: 'conn',
+      userId: 'user',
+      keyShareIndex: 1,
+      oprfKey: 1n,
+      authPubKey: new Uint8Array([4, 1, 2]),
+      shareTag: ShareTag.Password,
+    });
+    const changeParams = await createKeyChangeRequestParams({
+      nodeEndpointsMap,
+      authTokens: nodeAuthTokens,
+      keyShareIndex: 2,
+      authConnectionId: 'conn',
+      userId: 'user',
+      newOprfKey: 1n,
+      newAuthPubKey: new Uint8Array([4, 1, 2]),
+      oldAuthPrivKey: 1n,
+      shareTag: ShareTag.Password,
+    });
+
+    expect(storeParams).toHaveProperty('shareTag', 'password');
+    expect(changeParams).toHaveProperty('shareTag', 'password');
+  });
+});
+
+describe('encrypted share plaintext', () => {
+  const nodePrivKeyHex = '11'.repeat(32);
+  const nodePubKeyHex = Buffer.from(
+    secp256k1.getPublicKey(nodePrivKeyHex, false),
+  ).toString('hex');
+  const nodeTokens: NodeAuthTokens = [
+    {
+      authToken: Buffer.from('auth-token').toString('base64'),
+      nodeIndex: 1,
+      nodePubKey: nodePubKeyHex,
+    },
+  ];
+  const endpoints: Record<number, string> = {
+    1: 'https://node-1.example/sss/jrpc',
+  };
+
+  /**
+   * Decrypts the encrypted share of a share import item, the same way a node does.
+   *
+   * @param encryptedShare - The `encryptedShare` field of a share import item.
+   * @returns The decrypted plaintext.
+   */
+  const decryptShare = async (encryptedShare: string): Promise<Buffer> => {
+    const { data, metadata } = JSON.parse(encryptedShare) as {
+      data: string;
+      metadata: Parameters<typeof encParamsHexToBuf>[0];
+    };
+    const plaintext = await decrypt(Buffer.from(nodePrivKeyHex, 'hex'), {
+      ...encParamsHexToBuf(metadata),
+      ciphertext: Buffer.from(data, 'hex'),
+    });
+    return Buffer.from(plaintext);
+  };
+
+  it.each([
+    { label: 'ShareTag.Password', shareTag: ShareTag.Password },
+    { label: 'ShareTag.RecoverySecret', shareTag: ShareTag.RecoverySecret },
+  ])(
+    'keeps the raw share bytes as plaintext for $label',
+    async ({ shareTag }) => {
+      const items = await utilsModule.generateShareImportItems(
+        endpoints,
+        nodeTokens,
+        1n,
+        1,
+        undefined,
+        shareTag,
+      );
+
+      const plaintext = await decryptShare(items[0].encryptedShare);
+      expect(plaintext.length).toBeLessThanOrEqual(32);
+      expect(() => JSON.parse(plaintext.toString('utf8'))).toThrow(SyntaxError);
+    },
+  );
+
+  it('keeps the raw share bytes as plaintext for a new share with a tag', async () => {
+    const items = await utilsModule.generateShareImportItems(
+      endpoints,
+      nodeTokens,
+      1n,
+      1,
+      undefined,
+      ShareTag.RecoverySecret,
     );
+
+    const plaintext = await decryptShare(items[0].encryptedShare);
+    expect(plaintext.length).toBeLessThanOrEqual(32);
+    expect(() => JSON.parse(plaintext.toString('utf8'))).toThrow(SyntaxError);
+  });
+
+  it('keeps the raw share bytes as plaintext for a key change with a tag', async () => {
+    const items = await utilsModule.generateShareImportItems<'keyChange'>(
+      endpoints,
+      nodeTokens,
+      1n,
+      2,
+      1n,
+      ShareTag.RecoverySecret,
+    );
+
+    const plaintext = await decryptShare(items[0].encryptedShare);
+    expect(plaintext.length).toBeLessThanOrEqual(32);
+    expect(() => JSON.parse(plaintext.toString('utf8'))).toThrow(SyntaxError);
   });
 });

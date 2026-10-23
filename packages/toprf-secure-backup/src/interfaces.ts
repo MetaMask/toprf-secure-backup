@@ -182,7 +182,7 @@ export type PersistLocalKeyParams = {
   groupedAuthConnectionId?: string;
   keyShareIndex?: number;
   oldAuthKeyPair?: KeyPair;
-  shareTag?: ShareTag;
+  shareTag: ShareTag;
 };
 
 /**
@@ -206,7 +206,7 @@ export type CreateEncryptionKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
   password: string;
   groupedAuthConnectionId?: string;
-  shareTag?: ShareTag;
+  shareTag: ShareTag;
 };
 
 /**
@@ -349,7 +349,7 @@ export type RecoverEncryptionKeyParams = {
   authConnectionId: string;
   userId: string;
   groupedAuthConnectionId?: string;
-  shareTag?: ShareTag;
+  shareTag: ShareTag;
 };
 
 /**
@@ -402,8 +402,6 @@ export type ChangeEncryptionKeyParams = {
   transformDataItems?: (
     items: FetchedSecretDataItem[],
   ) => SecretDataItemInput[];
-  /** Optional share tag for the key share being changed. When omitted, the default share is used. */
-  shareTag?: ShareTag;
 };
 
 /**
@@ -458,7 +456,7 @@ export type FetchAuthPubKeyParams = {
   authConnectionId: string;
   groupedAuthConnectionId?: string;
   userId: string;
-  shareTag?: ShareTag;
+  shareTag: ShareTag;
 };
 
 export type FetchAuthPubKeyResult = {

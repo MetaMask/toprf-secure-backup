@@ -12,6 +12,7 @@ import {
   FIRST_KEY_INDEX,
   MAX_PASSWORD_CHAIN_LENGTH,
   PW_BACKUP_ITEM_ID,
+  ShareTag,
 } from './constants';
 import { TOPRFError } from './errors';
 import { getPubKey } from './getPubKeyRequest';
@@ -240,6 +241,9 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * @param params.keyShareIndex - The key share index to be persisted. Required only during key change, defaults to FIRST_KEY_INDEX for first-time storage.
    * @param params.oldAuthKeyPair - The old authentication key pair of the user. Required only during key change, not needed for first-time storage.
    * @param params.shareTag - Optional share tag to store the key under. When omitted, the default share is used.
+   * Rotating a non-default share (e.g. `ShareTag.RecoverySecret`) is done by calling this method with
+   * `oldAuthKeyPair` and `keyShareIndex`. It only changes the node key shares and does not migrate
+   * secret data. Use `changeEncKey` for the password share, which is the only share that carries secret data.
    */
   async persistLocalKey(params: PersistLocalKeyParams): Promise<void> {
     const {
@@ -455,7 +459,6 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       newKeyShareIndex,
       pregeneratedOprfKey,
       transformDataItems,
-      shareTag,
     } = params;
 
     if (!pregeneratedOprfKey && !newPassword) {
@@ -525,7 +528,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         userId,
         keyShareIndex: newKeyShareIndex,
         oldAuthKeyPair,
-        shareTag,
+        shareTag: ShareTag.Password,
       });
 
       return { authKeyPair, encKey, pwEncKey };

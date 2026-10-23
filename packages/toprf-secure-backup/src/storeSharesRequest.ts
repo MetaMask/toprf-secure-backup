@@ -28,7 +28,7 @@ export type CreateStoreKeySharesRequestParamsInput = {
   keyShareIndex: number;
   oprfKey: bigint;
   authPubKey: Uint8Array;
-  shareTag?: ShareTag;
+  shareTag: ShareTag;
 };
 
 export type StoreKeySharesRequestParams =
@@ -70,13 +70,15 @@ export const createStoreKeySharesRequestParams = async (
     authTokens,
     oprfKey,
     keyShareIndex,
+    undefined,
+    shareTag,
   );
   return {
     verifier: groupedAuthConnectionId ?? authConnectionId,
     verifierId: userId,
     pubKey: uint8ArrayToHex(authPubKey),
     shareImportItems,
-    ...(shareTag !== undefined && { shareTag }),
+    shareTag,
   };
 };
 
@@ -179,7 +181,7 @@ export type CreateKeyChangeRequestParamsInput = {
   newOprfKey: bigint;
   newAuthPubKey: Uint8Array;
   oldAuthPrivKey: bigint;
-  shareTag?: ShareTag;
+  shareTag: ShareTag;
 };
 
 export type KeyChangeRequestParams = CreateKeyChangeRequestParamsInput & {
@@ -225,6 +227,7 @@ export const createKeyChangeRequestParams = async (
     newOprfKey,
     keyShareIndex,
     oldAuthPrivKey,
+    shareTag,
   );
 
   return {
@@ -232,7 +235,7 @@ export const createKeyChangeRequestParams = async (
     shareImportItems,
     verifier: groupedAuthConnectionId ?? authConnectionId,
     verifierId: userId,
-    ...(shareTag !== undefined && { shareTag }),
+    shareTag,
   };
 };
 

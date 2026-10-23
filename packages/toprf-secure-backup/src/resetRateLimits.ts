@@ -41,8 +41,8 @@ const createResetRateLimitRequestParams = (
   signedData: string,
   authConnectionId: string,
   userId: string,
-  groupedAuthConnectionId?: string,
-  shareTag?: ShareTag,
+  groupedAuthConnectionId: string | undefined,
+  shareTag: ShareTag,
 ): ResetRateLimitJRPCRequestParams => {
   return {
     authToken,
@@ -50,7 +50,7 @@ const createResetRateLimitRequestParams = (
     signedData,
     verifier: groupedAuthConnectionId ?? authConnectionId,
     verifierId: userId,
-    ...(shareTag !== undefined && { shareTag }),
+    shareTag,
   };
 };
 
@@ -131,7 +131,7 @@ export const resetRateLimits = async (params: {
   userId: string;
   authPrivKey: bigint;
   clientIdentifier?: string;
-  shareTag?: ShareTag;
+  shareTag: ShareTag;
 }): Promise<boolean> => {
   const {
     authTokens,
@@ -155,6 +155,7 @@ export const resetRateLimits = async (params: {
         timestamp: Date.now(),
         nodeIndex: authToken.nodeIndex,
         action: 'reset_ratelimit',
+        shareTag,
       });
 
       const jsonData = safeStringify(dataToSign, { cmp: preserveKeyOrder });

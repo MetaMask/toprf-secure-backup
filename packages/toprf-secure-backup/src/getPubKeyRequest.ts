@@ -39,14 +39,14 @@ const createGetPubKeyRequestParams = (
   authToken: string,
   authConnectionId: string,
   userId: string,
-  groupedAuthConnectionId?: string,
-  shareTag?: ShareTag,
+  groupedAuthConnectionId: string | undefined,
+  shareTag: ShareTag,
 ): GetPubKeyJRPCRequestParams => {
   return {
     authToken,
     verifier: groupedAuthConnectionId ?? authConnectionId,
     verifierId: userId,
-    ...(shareTag !== undefined && { shareTag }),
+    shareTag,
   };
 };
 
@@ -139,7 +139,7 @@ export const getPubKey = async (params: {
   userId: string;
   groupedAuthConnectionId?: string;
   clientIdentifier?: string;
-  shareTag?: ShareTag;
+  shareTag: ShareTag;
 }): Promise<FetchAuthPubKeyResult> => {
   const {
     authTokens,

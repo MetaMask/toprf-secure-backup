@@ -52,8 +52,8 @@ const createToprfEvalRequestParams = (
   blindedInputY: string,
   authConnectionId: string,
   userId: string,
-  groupedAuthConnectionId?: string,
-  shareTag?: ShareTag,
+  groupedAuthConnectionId: string | undefined,
+  shareTag: ShareTag,
 ): ToprfEvalJRPCRequestParams => {
   return {
     authToken,
@@ -62,7 +62,7 @@ const createToprfEvalRequestParams = (
     blindedInputY,
     verifier: groupedAuthConnectionId ?? authConnectionId,
     verifierId: userId,
-    ...(shareTag !== undefined && { shareTag }),
+    shareTag,
   };
 };
 
@@ -303,7 +303,7 @@ export const recoverTOPRFSeed = async (params: {
   userInput: Uint8Array;
   keyDeriver?: KeyDeriver;
   clientIdentifier?: string;
-  shareTag?: ShareTag;
+  shareTag: ShareTag;
 }): Promise<{ seed: Uint8Array; keyShareIndex: number }> => {
   const {
     authTokens,
