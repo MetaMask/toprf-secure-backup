@@ -239,6 +239,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * @param params.userId - The user id of the user issued by authentication service.
    * @param params.keyShareIndex - The key share index to be persisted. Required only during key change, defaults to FIRST_KEY_INDEX for first-time storage.
    * @param params.oldAuthKeyPair - The old authentication key pair of the user. Required only during key change, not needed for first-time storage.
+   * @param params.shareTag - Optional share tag to store the key under. When omitted, the default share is used.
    */
   async persistLocalKey(params: PersistLocalKeyParams): Promise<void> {
     const {
@@ -250,6 +251,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       userId,
       keyShareIndex = FIRST_KEY_INDEX,
       oldAuthKeyPair,
+      shareTag,
     } = params;
     const { nodeEndpointsMap } = await this.#getNodeDetails();
 
@@ -273,6 +275,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         newAuthPubKey: authPubKey,
         oldAuthPrivKey: oldAuthKeyPair.sk,
         clientIdentifier: this.#clientIdentifier,
+        shareTag,
       });
     } else {
       await storeKeyShares({
@@ -285,6 +288,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         oprfKey,
         authPubKey,
         clientIdentifier: this.#clientIdentifier,
+        shareTag,
       });
     }
   }
@@ -301,7 +305,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
   async createAndPersistEncKey(
     params: CreateEncryptionKeyParams,
   ): Promise<CreateEncryptionKeyResult> {
-    const { nodeAuthTokens, password, authConnectionId, userId } = params;
+    const { nodeAuthTokens, password, authConnectionId, userId, shareTag } =
+      params;
     const { oprfKey, authKeyPair, encKey, pwEncKey } =
       await this.createLocalKey({
         password,
@@ -313,6 +318,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       authPubKey: authKeyPair.pk,
       authConnectionId,
       userId,
+      shareTag,
     });
 
     return {
@@ -346,6 +352,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       authConnectionId,
       groupedAuthConnectionId,
       userId,
+      shareTag,
     } = params;
 
     let pwBytes: Uint8Array | null = null;
@@ -364,6 +371,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         userInput: pwBytes,
         keyDeriver: this.#keyDeriver,
         clientIdentifier: this.#clientIdentifier,
+        shareTag,
       });
 
       seed = seedValue;
@@ -381,6 +389,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
           userId,
           authPrivKey: authKeyPair.sk,
           clientIdentifier: this.#clientIdentifier,
+          shareTag,
         })
           .then(() => {
             return resolve();
@@ -446,6 +455,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       newKeyShareIndex,
       pregeneratedOprfKey,
       transformDataItems,
+      shareTag,
     } = params;
 
     if (!pregeneratedOprfKey && !newPassword) {
@@ -515,6 +525,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         userId,
         keyShareIndex: newKeyShareIndex,
         oldAuthKeyPair,
+        shareTag,
       });
 
       return { authKeyPair, encKey, pwEncKey };
@@ -709,6 +720,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       authConnectionId,
       userId,
       groupedAuthConnectionId,
+      shareTag,
     } = params;
     const { nodeEndpointsMap } = await this.#getNodeDetails();
     return getPubKey({
@@ -718,6 +730,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       userId,
       groupedAuthConnectionId,
       clientIdentifier: this.#clientIdentifier,
+      shareTag,
     });
   }
 

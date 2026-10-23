@@ -6,7 +6,11 @@ import {
 import { hexToBytes } from '@noble/hashes/utils';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
-import { GET_PUB_KEY_THRESHOLD, JRPC_METHODS } from './constants';
+import {
+  GET_PUB_KEY_THRESHOLD,
+  JRPC_METHODS,
+  type ShareTag,
+} from './constants';
 import { TOPRFError } from './errors';
 import type { FetchAuthPubKeyResult, NodeAuthTokens } from './interfaces';
 import type {
@@ -27,6 +31,7 @@ import {
  * @param authConnectionId - The auth connection name.
  * @param userId - The user id of the user issued by authentication service.
  * @param groupedAuthConnectionId - An optional grouped auth connection name used for authentication with aggregate (single id) verifier.
+ * @param shareTag - Optional share tag. When omitted, the request targets the default share.
  *
  * @returns The parameters for the get pub key jrpc request.
  */
@@ -35,11 +40,13 @@ const createGetPubKeyRequestParams = (
   authConnectionId: string,
   userId: string,
   groupedAuthConnectionId?: string,
+  shareTag?: ShareTag,
 ): GetPubKeyJRPCRequestParams => {
   return {
     authToken,
     verifier: groupedAuthConnectionId ?? authConnectionId,
     verifierId: userId,
+    ...(shareTag !== undefined && { shareTag }),
   };
 };
 
@@ -121,6 +128,7 @@ export const validatePubKey = async (
  * @param params.userId - The user id of the user issued by authentication service.
  * @param params.nodeEndpointsMap - Map of node index to endpoint to be used for the toprf eval request.
  * @param params.clientIdentifier - Optional client identifier sent as the `x-web3-client` header.
+ * @param params.shareTag - Optional share tag. When omitted, the request targets the default share.
  *
  * @returns - A promise that resolves with the latest auth pub key and key index successfully.
  */
@@ -131,6 +139,7 @@ export const getPubKey = async (params: {
   userId: string;
   groupedAuthConnectionId?: string;
   clientIdentifier?: string;
+  shareTag?: ShareTag;
 }): Promise<FetchAuthPubKeyResult> => {
   const {
     authTokens,
@@ -139,6 +148,7 @@ export const getPubKey = async (params: {
     userId,
     groupedAuthConnectionId,
     clientIdentifier,
+    shareTag,
   } = params;
 
   if (authTokens.length < GET_PUB_KEY_THRESHOLD) {
@@ -159,6 +169,7 @@ export const getPubKey = async (params: {
         authConnectionId,
         userId,
         groupedAuthConnectionId,
+        shareTag,
       );
       return sendGetPubKeyRequest(endpoint, requestParams, clientIdentifier);
     },

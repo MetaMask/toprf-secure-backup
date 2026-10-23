@@ -3,7 +3,7 @@ import type {
   TORUS_SAPPHIRE_NETWORK_TYPE,
 } from '@toruslabs/constants';
 
-import type { EncAccountDataType } from './constants';
+import type { EncAccountDataType, ShareTag } from './constants';
 import type { KeyDeriver } from './oprf';
 
 export type SecretDataItem = {
@@ -170,6 +170,8 @@ export type CreateLocalKeyResult = {
  * keyShareIndex - Optional key share index to be persisted.
  *
  * oldAuthKeyPair - Optional authentication key pair to be used for key change flow.
+ *
+ * shareTag - Optional share tag to store the key under. When omitted, the default share is used.
  */
 export type PersistLocalKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
@@ -180,6 +182,7 @@ export type PersistLocalKeyParams = {
   groupedAuthConnectionId?: string;
   keyShareIndex?: number;
   oldAuthKeyPair?: KeyPair;
+  shareTag?: ShareTag;
 };
 
 /**
@@ -194,6 +197,8 @@ export type PersistLocalKeyParams = {
  * password - The password of the user.
  *
  * groupedAuthConnectionId - Optional grouped auth connection id to be used for the authenticate request with aggregate (single id) verifier.
+ *
+ * shareTag - Optional share tag to store the key under. When omitted, the default share is used.
  */
 export type CreateEncryptionKeyParams = {
   authConnectionId: string;
@@ -201,6 +206,7 @@ export type CreateEncryptionKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
   password: string;
   groupedAuthConnectionId?: string;
+  shareTag?: ShareTag;
 };
 
 /**
@@ -334,6 +340,8 @@ export type BatchUpdateSecretDataItemParams = {
  * userId - The user id of the user issued by authentication service.
  *
  * groupedAuthConnectionId - Optional grouped auth connection id to be used for the authenticate request with aggregate (single id) verifier.
+ *
+ * shareTag - Optional share tag to recover the key from. When omitted, the default share is used.
  */
 export type RecoverEncryptionKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
@@ -341,6 +349,7 @@ export type RecoverEncryptionKeyParams = {
   authConnectionId: string;
   userId: string;
   groupedAuthConnectionId?: string;
+  shareTag?: ShareTag;
 };
 
 /**
@@ -393,6 +402,8 @@ export type ChangeEncryptionKeyParams = {
   transformDataItems?: (
     items: FetchedSecretDataItem[],
   ) => SecretDataItemInput[];
+  /** Optional share tag for the key share being changed. When omitted, the default share is used. */
+  shareTag?: ShareTag;
 };
 
 /**
@@ -439,12 +450,15 @@ export type KeyChangeProof = {
  * groupedAuthConnectionId - Optional grouped auth connection id to be used for the authenticate request with aggregate (single id) verifier.
  *
  * userId - The user id of the user issued by authentication service.
+ *
+ * shareTag - Optional share tag to fetch the public key for. When omitted, the default share is used.
  */
 export type FetchAuthPubKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
   authConnectionId: string;
   groupedAuthConnectionId?: string;
   userId: string;
+  shareTag?: ShareTag;
 };
 
 export type FetchAuthPubKeyResult = {

@@ -1,5 +1,6 @@
 import type { JRPCResponse, JRPCRequest } from '@metamask/auth-network-utils';
 
+import type { ShareTag } from './constants';
 import type { KeyChangeProof } from './interfaces';
 
 export type CommitmentJRPCRequestParams = {
@@ -79,6 +80,7 @@ export type StoreKeySharesJRPCRequestParams = {
   verifierId: string;
   pubKey: string;
   shareImportItems: ShareImportItem[];
+  shareTag?: ShareTag;
 };
 
 export type StoreKeySharesJRPCRequest =
@@ -92,6 +94,7 @@ export type ResetRateLimitJRPCRequestParams = {
   signedData: string;
   verifier: string;
   verifierId: string;
+  shareTag?: ShareTag;
 };
 
 export type ResetRateLimitJRPCRequest =
@@ -106,6 +109,7 @@ export type ToprfEvalJRPCRequestParams = {
   blindedInputY: string;
   verifier: string;
   verifierId: string;
+  shareTag?: ShareTag;
 };
 
 export type ToprfEvalJRPCRequest = JRPCRequest<ToprfEvalJRPCRequestParams>;
@@ -140,6 +144,7 @@ export type GetPubKeyJRPCRequestParams = {
   authToken: string;
   verifier: string;
   verifierId: string;
+  shareTag?: ShareTag;
 };
 
 export type GetPubKeyJRPCRequest = JRPCRequest<GetPubKeyJRPCRequestParams>;
