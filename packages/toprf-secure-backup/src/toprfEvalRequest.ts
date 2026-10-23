@@ -9,7 +9,7 @@ import type { ProjPointType } from '@noble/curves/abstract/weierstrass';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
-import { TOPRF_EVAL_THRESHOLD, JRPC_METHODS } from './constants';
+import { TOPRF_EVAL_THRESHOLD, JRPC_METHODS, type ShareTag } from './constants';
 import { TOPRFError } from './errors';
 import type { NodeAuthTokens } from './interfaces';
 import type {
@@ -43,6 +43,7 @@ type BlindedOutputShare = {
  * @param authConnectionId - The auth connection name.
  * @param userId - The user id of the user issued by authentication service.
  * @param groupedAuthConnectionId - An optional grouped auth connection name used for authentication with aggregate (single id) verifier.
+ * @param shareTag - Optional share tag. When omitted, the request targets the default share.
  * @returns The parameters for the toprf eval jrpc request.
  */
 const createToprfEvalRequestParams = (
@@ -51,7 +52,8 @@ const createToprfEvalRequestParams = (
   blindedInputY: string,
   authConnectionId: string,
   userId: string,
-  groupedAuthConnectionId?: string,
+  groupedAuthConnectionId: string | undefined,
+  shareTag: ShareTag,
 ): ToprfEvalJRPCRequestParams => {
   return {
     authToken,
@@ -60,6 +62,7 @@ const createToprfEvalRequestParams = (
     blindedInputY,
     verifier: groupedAuthConnectionId ?? authConnectionId,
     verifierId: userId,
+    shareTag,
   };
 };
 
@@ -164,14 +167,17 @@ const assertIsValidToprfEvalResult = (
     value === null || // `value` should not be null
     !('blindedOutputX' in value) || // `value` should have `blindedOutputX`
     typeof value.blindedOutputX !== 'string' || // `blindedOutputX` should be a string
+    value.blindedOutputX === '' || // an empty output means the node has no share for the tag
     !('blindedOutputY' in value) || // `value` should have `blindedOutputY`
     typeof value.blindedOutputY !== 'string' || // `blindedOutputY` should be a string
+    value.blindedOutputY === '' || // an empty output means the node has no share for the tag
     !('nodeIndex' in value) || // `value` should have `nodeIndex`
     typeof value.nodeIndex !== 'number' || // `nodeIndex` should be a number
     !('keyShareIndex' in value) || // should have keyShareIndex
     typeof value.keyShareIndex !== 'number' || // `keyShareIndex` should be a number
     !('pubKey' in value) || // should have pubKey
-    typeof value.pubKey !== 'string' // `pubKey` should be a string
+    typeof value.pubKey !== 'string' || // `pubKey` should be a string
+    value.pubKey === '' // an empty pubKey means the node has no share for the tag
   ) {
     return false;
   }
@@ -284,6 +290,7 @@ export const validateSeed = async (
  * @param params.userInput - The user input to be used for the toprf eval request.
  * @param params.keyDeriver - The key deriver to be used for the toprf eval request.
  * @param params.clientIdentifier - Optional client identifier sent as the `x-web3-client` header.
+ * @param params.shareTag - Optional share tag. When omitted, the request targets the default share.
  *
  * @returns - A promise that resolves with the key pair seed and key share index.
  */
@@ -296,6 +303,7 @@ export const recoverTOPRFSeed = async (params: {
   userInput: Uint8Array;
   keyDeriver?: KeyDeriver;
   clientIdentifier?: string;
+  shareTag: ShareTag;
 }): Promise<{ seed: Uint8Array; keyShareIndex: number }> => {
   const {
     authTokens,
@@ -306,6 +314,7 @@ export const recoverTOPRFSeed = async (params: {
     userInput,
     keyDeriver,
     clientIdentifier,
+    shareTag,
   } = params;
 
   if (authTokens.length < TOPRF_EVAL_THRESHOLD) {
@@ -329,6 +338,7 @@ export const recoverTOPRFSeed = async (params: {
         authConnectionId,
         userId,
         groupedAuthConnectionId,
+        shareTag,
       );
       return sendToprfEvalRequest(endpoint, requestParams, clientIdentifier);
     },

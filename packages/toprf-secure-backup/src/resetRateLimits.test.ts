@@ -5,7 +5,7 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
-import { JsonRpcErrorCodes } from './constants';
+import { JsonRpcErrorCodes, ShareTag } from './constants';
 import { TOPRFError, TOPRFErrorCode } from './errors';
 import { deriveAuthenticationKeyPair } from './keyDerivation';
 import { generateRandomScalar, OPRF } from './oprf';
@@ -81,6 +81,7 @@ describe('resetRateLimits', () => {
     const authKeyPair = deriveAuthenticationKeyPair(seed);
 
     const storeSharesResponse = await storeKeyShares({
+      shareTag: ShareTag.Password,
       nodeEndpointsMap: selectedEndpointsMap,
       authConnectionId,
       userId,
@@ -94,6 +95,7 @@ describe('resetRateLimits', () => {
     expect(storeSharesResponse.error).toBeUndefined();
 
     const result = await resetRateLimits({
+      shareTag: ShareTag.Password,
       authTokens: authTokensData,
       nodeEndpointsMap: selectedEndpointsMap,
       authConnectionId,
@@ -158,6 +160,7 @@ describe('resetRateLimits', () => {
     const authKeyPair = deriveAuthenticationKeyPair(seed);
 
     const storeSharesResponse = await storeKeyShares({
+      shareTag: ShareTag.Password,
       nodeEndpointsMap: selectedEndpointsMap,
       authConnectionId,
       userId,
@@ -172,6 +175,7 @@ describe('resetRateLimits', () => {
 
     await expect(
       resetRateLimits({
+        shareTag: ShareTag.Password,
         authTokens: authTokensData,
         nodeEndpointsMap: {
           ...selectedEndpointsMap,

@@ -1,6 +1,6 @@
 import { toBytes } from '@noble/hashes/utils';
 
-import { TOPRF_EVAL_THRESHOLD, JsonRpcErrorCodes } from './constants';
+import { TOPRF_EVAL_THRESHOLD, JsonRpcErrorCodes, ShareTag } from './constants';
 import { TOPRFErrorCode } from './errors';
 import type { NodeAuthTokens } from './interfaces';
 import type { ToprfEvalJRPCResponse } from './jrpcInterfaces';
@@ -221,6 +221,7 @@ describe('toprfEvalRequest', () => {
 
       await expect(
         recoverTOPRFSeed({
+          shareTag: ShareTag.Password,
           authTokens: insufficientAuthTokens,
           nodeEndpointsMap: { 1: 'endpoint1', 2: 'endpoint2' },
           authConnectionId: 'test-auth-connection-id',
@@ -247,6 +248,7 @@ describe('toprfEvalRequest', () => {
 
       await expect(
         recoverTOPRFSeed({
+          shareTag: ShareTag.Password,
           authTokens,
           nodeEndpointsMap,
           authConnectionId: 'test-auth-connection-id',

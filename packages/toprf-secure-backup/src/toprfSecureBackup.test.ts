@@ -6,7 +6,7 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import * as authenticateRequestModule from './authenticateRequest';
 import * as commitRequestModule from './commitRequest';
-import { EncAccountDataType, FIRST_KEY_INDEX } from './constants';
+import { EncAccountDataType, FIRST_KEY_INDEX, ShareTag } from './constants';
 import { TOPRFError, TOPRFErrorCode } from './errors';
 import * as getPubKeyRequestModule from './getPubKeyRequest';
 import type { KeyPair, NodeDetailsOverride } from './interfaces';
@@ -309,6 +309,7 @@ describe('toprf secret backup', function () {
           result: null,
         });
       await toprfSecureBackup.persistLocalKey({
+        shareTag: ShareTag.Password,
         nodeAuthTokens,
         oprfKey: 1n,
         authPubKey,
@@ -327,6 +328,7 @@ describe('toprf secret backup', function () {
           result: null,
         });
       await toprfSecureBackup.persistLocalKey({
+        shareTag: ShareTag.Password,
         nodeAuthTokens,
         oprfKey: 1n,
         authPubKey,
@@ -360,12 +362,14 @@ describe('toprf secret backup', function () {
         });
 
       await toprfSecureBackup.recoverEncKey({
+        shareTag: ShareTag.Password,
         nodeAuthTokens,
         password: 'password',
         authConnectionId,
         userId,
       });
       await toprfSecureBackup.fetchAuthPubKey({
+        shareTag: ShareTag.Password,
         nodeAuthTokens,
         authConnectionId,
         userId,
@@ -681,6 +685,7 @@ describe('toprf secret backup', function () {
         });
         expect(result.isNewUser).toBe(true);
         const encKey = await toprfSecureBackup.createAndPersistEncKey({
+          shareTag: ShareTag.Password,
           nodeAuthTokens: result.nodeAuthTokens,
           password: generateRandomPassword(),
           authConnectionId,
@@ -699,6 +704,7 @@ describe('toprf secret backup', function () {
 
       await expect(
         toprfSecureBackup.createAndPersistEncKey({
+          shareTag: ShareTag.Password,
           nodeAuthTokens: [],
           password: generateRandomPassword(),
           authConnectionId,
@@ -738,6 +744,7 @@ describe('toprf secret backup', function () {
 
       await expect(
         toprfSecureBackup.createAndPersistEncKey({
+          shareTag: ShareTag.Password,
           nodeAuthTokens: INVALID_NODE_AUTH_TOKENS,
           password: generateRandomPassword(),
           authConnectionId,
@@ -766,6 +773,7 @@ describe('toprf secret backup', function () {
 
           const password = generateRandomPassword();
           const encKey = await toprfSecureBackup.createAndPersistEncKey({
+            shareTag: ShareTag.Password,
             nodeAuthTokens: result.nodeAuthTokens,
             password,
             authConnectionId,
@@ -773,6 +781,7 @@ describe('toprf secret backup', function () {
           });
 
           const recoveredEncKey = await toprfSecureBackup.recoverEncKey({
+            shareTag: ShareTag.Password,
             nodeAuthTokens: result.nodeAuthTokens,
             password,
             authConnectionId,
@@ -817,6 +826,7 @@ describe('toprf secret backup', function () {
 
         const password = generateRandomPassword();
         const encKey = await toprfSecureBackup.createAndPersistEncKey({
+          shareTag: ShareTag.Password,
           nodeAuthTokens: result.nodeAuthTokens,
           password,
           authConnectionId,
@@ -824,6 +834,7 @@ describe('toprf secret backup', function () {
         });
 
         const recoveredKey = await toprfSecureBackup.recoverEncKey({
+          shareTag: ShareTag.Password,
           nodeAuthTokens: result.nodeAuthTokens,
           password,
           authConnectionId,
@@ -861,6 +872,7 @@ describe('toprf secret backup', function () {
 
       const password = generateRandomPassword();
       await toprfSecureBackup.createAndPersistEncKey({
+        shareTag: ShareTag.Password,
         nodeAuthTokens: result.nodeAuthTokens,
         password,
         authConnectionId,
@@ -869,6 +881,7 @@ describe('toprf secret backup', function () {
 
       await expect(
         toprfSecureBackup.recoverEncKey({
+          shareTag: ShareTag.Password,
           nodeAuthTokens: result.nodeAuthTokens,
           password: 'INCORRECT_PASSWORD',
           authConnectionId,
@@ -888,6 +901,7 @@ describe('toprf secret backup', function () {
 
       const correctPassword = generateRandomPassword();
       await toprfSecureBackup.createAndPersistEncKey({
+        shareTag: ShareTag.Password,
         nodeAuthTokens: authResult.nodeAuthTokens,
         password: correctPassword,
         authConnectionId,
@@ -900,6 +914,7 @@ describe('toprf secret backup', function () {
       for (let i = 0; i < 3; i++) {
         await expect(
           toprfSecureBackup.recoverEncKey({
+            shareTag: ShareTag.Password,
             nodeAuthTokens: authResult.nodeAuthTokens,
             password: incorrectPassword,
             authConnectionId,
@@ -911,6 +926,7 @@ describe('toprf secret backup', function () {
       // 4th attempt with incorrect password should trigger rate limiting
       await expect(
         toprfSecureBackup.recoverEncKey({
+          shareTag: ShareTag.Password,
           nodeAuthTokens: authResult.nodeAuthTokens,
           password: incorrectPassword,
           authConnectionId,
@@ -931,6 +947,7 @@ describe('toprf secret backup', function () {
       // 3rd attempt with incorrect password should trigger rate limiting
       await expect(
         toprfSecureBackup.recoverEncKey({
+          shareTag: ShareTag.Password,
           nodeAuthTokens: authResult.nodeAuthTokens,
           password: incorrectPassword,
           authConnectionId,
@@ -952,6 +969,7 @@ describe('toprf secret backup', function () {
 
       // Attempt with the correct password should succeed and reset rate limit
       const recoveredKey = await toprfSecureBackup.recoverEncKey({
+        shareTag: ShareTag.Password,
         nodeAuthTokens: authResult.nodeAuthTokens,
         password: correctPassword,
         authConnectionId,
@@ -965,6 +983,7 @@ describe('toprf secret backup', function () {
       // Subsequent attempt with incorrect password should fail normally again
       await expect(
         toprfSecureBackup.recoverEncKey({
+          shareTag: ShareTag.Password,
           nodeAuthTokens: authResult.nodeAuthTokens,
           password: incorrectPassword,
           authConnectionId,
@@ -993,6 +1012,7 @@ describe('toprf secret backup', function () {
         const originalPassword = generateRandomPassword();
         const originalEncKeyResult =
           await toprfSecureBackup.createAndPersistEncKey({
+            shareTag: ShareTag.Password,
             nodeAuthTokens: result.nodeAuthTokens,
             password: originalPassword,
             authConnectionId,
@@ -1042,6 +1062,7 @@ describe('toprf secret backup', function () {
 
         // Recover the original key to get the keyShareIndex
         const recoveredOriginalKey = await toprfSecureBackup.recoverEncKey({
+          shareTag: ShareTag.Password,
           nodeAuthTokens: result.nodeAuthTokens,
           password: originalPassword,
           authConnectionId,
@@ -1082,6 +1103,7 @@ describe('toprf secret backup', function () {
         expect(newEncKeyResult.encKey).toBeDefined();
 
         const recoveredNewKey = await toprfSecureBackup.recoverEncKey({
+          shareTag: ShareTag.Password,
           nodeAuthTokens: result.nodeAuthTokens,
           password: newPassword,
           authConnectionId,
@@ -1205,6 +1227,7 @@ describe('toprf secret backup', function () {
         const originalPassword = generateRandomPassword();
         const originalEncKeyResult =
           await toprfSecureBackup.createAndPersistEncKey({
+            shareTag: ShareTag.Password,
             nodeAuthTokens: result.nodeAuthTokens,
             password: originalPassword,
             authConnectionId,
@@ -1233,6 +1256,7 @@ describe('toprf secret backup', function () {
 
         // Recover the original key to get the keyShareIndex
         const recoveredOriginalKey = await toprfSecureBackup.recoverEncKey({
+          shareTag: ShareTag.Password,
           nodeAuthTokens: result.nodeAuthTokens,
           password: originalPassword,
           authConnectionId,
@@ -1276,6 +1300,7 @@ describe('toprf secret backup', function () {
         expect(newEncKeyResult.encKey).toBeDefined();
 
         const recoveredNewKey = await toprfSecureBackup.recoverEncKey({
+          shareTag: ShareTag.Password,
           nodeAuthTokens: result.nodeAuthTokens,
           password: newPassword,
           authConnectionId,
@@ -1388,6 +1413,7 @@ describe('toprf secret backup', function () {
       const originalPassword = generateRandomPassword();
       const originalEncKeyResult =
         await toprfSecureBackup.createAndPersistEncKey({
+          shareTag: ShareTag.Password,
           nodeAuthTokens: result.nodeAuthTokens,
           password: originalPassword,
           authConnectionId,
@@ -1403,6 +1429,7 @@ describe('toprf secret backup', function () {
 
       // Recover the original key to get the keyShareIndex
       const recoveredOriginalKey = await toprfSecureBackup.recoverEncKey({
+        shareTag: ShareTag.Password,
         nodeAuthTokens: result.nodeAuthTokens,
         password: originalPassword,
         authConnectionId,
@@ -1444,6 +1471,7 @@ describe('toprf secret backup', function () {
       const originalPassword = generateRandomPassword();
       const originalEncKeyResult =
         await toprfSecureBackup.createAndPersistEncKey({
+          shareTag: ShareTag.Password,
           nodeAuthTokens: result.nodeAuthTokens,
           password: originalPassword,
           authConnectionId,
@@ -1458,6 +1486,7 @@ describe('toprf secret backup', function () {
       });
 
       const recoveredKey = await toprfSecureBackup.recoverEncKey({
+        shareTag: ShareTag.Password,
         nodeAuthTokens: result.nodeAuthTokens,
         password: originalPassword,
         authConnectionId,
@@ -1512,6 +1541,7 @@ describe('toprf secret backup', function () {
       const originalPassword = generateRandomPassword();
       const originalEncKeyResult =
         await toprfSecureBackup.createAndPersistEncKey({
+          shareTag: ShareTag.Password,
           nodeAuthTokens: result.nodeAuthTokens,
           password: originalPassword,
           authConnectionId,
@@ -1548,6 +1578,7 @@ describe('toprf secret backup', function () {
       const originalPassword = generateRandomPassword();
       const originalEncKeyResult =
         await toprfSecureBackup.createAndPersistEncKey({
+          shareTag: ShareTag.Password,
           nodeAuthTokens: result.nodeAuthTokens,
           password: originalPassword,
           authConnectionId,
@@ -1562,6 +1593,7 @@ describe('toprf secret backup', function () {
       });
 
       const recoveredOriginalKey = await toprfSecureBackup.recoverEncKey({
+        shareTag: ShareTag.Password,
         nodeAuthTokens: result.nodeAuthTokens,
         password: originalPassword,
         authConnectionId,
@@ -1601,6 +1633,7 @@ describe('toprf secret backup', function () {
       // verify the key cannot be recovered using the new password
       await expect(
         toprfSecureBackup.recoverEncKey({
+          shareTag: ShareTag.Password,
           nodeAuthTokens: result.nodeAuthTokens,
           password: newPassword,
           authConnectionId,
@@ -1622,6 +1655,7 @@ describe('toprf secret backup', function () {
       const originalPassword = generateRandomPassword();
       const originalEncKeyResult =
         await toprfSecureBackup.createAndPersistEncKey({
+          shareTag: ShareTag.Password,
           nodeAuthTokens: result.nodeAuthTokens,
           password: originalPassword,
           authConnectionId,
@@ -1636,6 +1670,7 @@ describe('toprf secret backup', function () {
       });
 
       const recoveredOriginalKey = await toprfSecureBackup.recoverEncKey({
+        shareTag: ShareTag.Password,
         nodeAuthTokens: result.nodeAuthTokens,
         password: originalPassword,
         authConnectionId,
@@ -1677,6 +1712,7 @@ describe('toprf secret backup', function () {
       const originalPassword = generateRandomPassword();
       const originalEncKeyResult =
         await toprfSecureBackup.createAndPersistEncKey({
+          shareTag: ShareTag.Password,
           nodeAuthTokens: result.nodeAuthTokens,
           password: originalPassword,
           authConnectionId,
@@ -1691,6 +1727,7 @@ describe('toprf secret backup', function () {
       });
 
       const recoveredOriginalKey = await toprfSecureBackup.recoverEncKey({
+        shareTag: ShareTag.Password,
         nodeAuthTokens: result.nodeAuthTokens,
         password: originalPassword,
         authConnectionId,
@@ -1734,6 +1771,7 @@ describe('toprf secret backup', function () {
       const originalPassword = generateRandomPassword();
       const originalEncKeyResult =
         await toprfSecureBackup.createAndPersistEncKey({
+          shareTag: ShareTag.Password,
           nodeAuthTokens: result.nodeAuthTokens,
           password: originalPassword,
           authConnectionId,
@@ -1787,6 +1825,7 @@ describe('toprf secret backup', function () {
         userId,
       });
       const encKeyResult = await toprfSecureBackup.createAndPersistEncKey({
+        shareTag: ShareTag.Password,
         nodeAuthTokens: result.nodeAuthTokens,
         password: generateRandomPassword(),
         authConnectionId,
@@ -1857,6 +1896,7 @@ describe('toprf secret backup', function () {
       });
 
       const encKeyResult = await toprfSecureBackup.createAndPersistEncKey({
+        shareTag: ShareTag.Password,
         nodeAuthTokens: result.nodeAuthTokens,
         password,
         authConnectionId,
@@ -2005,6 +2045,7 @@ describe('toprf secret backup', function () {
         userId,
       });
       const encKeyResult = await toprfSecureBackup.createAndPersistEncKey({
+        shareTag: ShareTag.Password,
         nodeAuthTokens: result.nodeAuthTokens,
         password: generateRandomPassword(),
         authConnectionId,
@@ -2060,6 +2101,7 @@ describe('toprf secret backup', function () {
         userId,
       });
       const encKeyResult = await toprfSecureBackup.createAndPersistEncKey({
+        shareTag: ShareTag.Password,
         nodeAuthTokens: result.nodeAuthTokens,
         password: generateRandomPassword(),
         authConnectionId,
@@ -2172,6 +2214,7 @@ describe('toprf secret backup', function () {
 
         const password = generateRandomPassword();
         const encKeyResult = await toprfSecureBackup.createAndPersistEncKey({
+          shareTag: ShareTag.Password,
           nodeAuthTokens: result.nodeAuthTokens,
           password,
           authConnectionId,
@@ -2179,6 +2222,7 @@ describe('toprf secret backup', function () {
         });
 
         const authPubKey = await toprfSecureBackup.fetchAuthPubKey({
+          shareTag: ShareTag.Password,
           nodeAuthTokens: result.nodeAuthTokens,
           authConnectionId,
           userId,
@@ -2201,6 +2245,7 @@ describe('toprf secret backup', function () {
       userId,
     });
     const encKey = await toprfSecureBackup.createAndPersistEncKey({
+      shareTag: ShareTag.Password,
       nodeAuthTokens: result.nodeAuthTokens,
       password: generateRandomPassword(),
       authConnectionId,
@@ -2214,6 +2259,7 @@ describe('toprf secret backup', function () {
 
     await expect(
       toprfSecureBackup.createAndPersistEncKey({
+        shareTag: ShareTag.Password,
         nodeAuthTokens: result.nodeAuthTokens.slice(0, 2), // only 2 nodes are authenticated
         password: generateRandomPassword(),
         authConnectionId,

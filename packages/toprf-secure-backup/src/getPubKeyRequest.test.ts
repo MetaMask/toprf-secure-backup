@@ -1,6 +1,6 @@
 import type { JsonRpcVersion } from '@metamask/auth-network-utils';
 
-import { JsonRpcErrorCodes } from './constants';
+import { JsonRpcErrorCodes, ShareTag } from './constants';
 import { TOPRFError, TOPRFErrorCode } from './errors';
 import { getPubKey, validatePubKey } from './getPubKeyRequest';
 import type { GetPubKeyResult } from './jrpcInterfaces';
@@ -9,6 +9,7 @@ describe('getPubKey', () => {
   it('should fail with insufficient auth tokens', async function () {
     await expect(
       getPubKey({
+        shareTag: ShareTag.Password,
         authTokens: [],
         nodeEndpointsMap: {},
         authConnectionId: 'torus-test-health',
