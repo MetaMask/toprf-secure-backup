@@ -93,7 +93,7 @@ suite('shareTag e2e (real nodes)', () => {
     expect(recovered.encKey).toStrictEqual(created.encKey);
   });
 
-  it('recovery_secret miss fails threshold pubkey derivation (same as untagged miss)', async () => {
+  it('recovery_secret miss is rejected with InsufficientValidResponses', async () => {
     const userId = generateRandomUserId();
     const password = generateRandomPassword();
     const { toprfSecureBackup, nodeAuthTokens } =
@@ -117,7 +117,8 @@ suite('shareTag e2e (real nodes)', () => {
         shareTag: ShareTag.RecoverySecret,
       }),
     ).rejects.toMatchObject({
-      code: TOPRFErrorCode.CouldNotDeriveThresholdAuthPubKey,
+      // A miss aggregates to InsufficientValidResponses, the same code a fresh-user miss returns for any tag.
+      code: TOPRFErrorCode.InsufficientValidResponses,
     });
   });
 
