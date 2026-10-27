@@ -30,6 +30,15 @@ export enum EncAccountDataType {
   ImportedPrivateKey = 3,
 }
 
+/**
+ * Share tags select which TOPRF share a request operates on.
+ * Omitting the tag is equivalent to `Password`.
+ */
+export enum ShareTag {
+  Password = 'password',
+  RecoverySecret = 'recovery_secret',
+}
+
 export enum JsonRpcErrorCodes {
   ErrorCodeInvalidParams = -32602,
   ErrorCodeInternal = -32603,

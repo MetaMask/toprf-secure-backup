@@ -7,7 +7,7 @@ import {
 import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
-import { JRPC_METHODS } from './constants';
+import { JRPC_METHODS, type ShareTag } from './constants';
 import { TOPRFError } from './errors';
 import type { NodeAuthTokens } from './interfaces';
 import type {
@@ -32,6 +32,7 @@ import {
  * @param authConnectionId - The auth connection name.
  * @param userId - The user id of the user issued by authentication service.
  * @param groupedAuthConnectionId - The grouped auth connection name used for authentication with aggregate (single id) verifier.
+ * @param shareTag - Optional share tag whose rate-limit budget is reset. When omitted, the default share is used.
  * @returns The parameters for the reset rate limit jrpc request.
  */
 const createResetRateLimitRequestParams = (
@@ -40,7 +41,8 @@ const createResetRateLimitRequestParams = (
   signedData: string,
   authConnectionId: string,
   userId: string,
-  groupedAuthConnectionId?: string,
+  groupedAuthConnectionId: string | undefined,
+  shareTag: ShareTag,
 ): ResetRateLimitJRPCRequestParams => {
   return {
     authToken,
@@ -48,6 +50,7 @@ const createResetRateLimitRequestParams = (
     signedData,
     verifier: groupedAuthConnectionId ?? authConnectionId,
     verifierId: userId,
+    shareTag,
   };
 };
 
@@ -116,6 +119,7 @@ export const validateThresholdResetRateLimitResponses = (
  * @param params.nodeEndpointsMap - Map of node index to endpoint to be used for the reset rate limit request.
  * @param params.authPrivKey - The user's authentication private key as bigint for signing the request.
  * @param params.clientIdentifier - Optional client identifier sent as the `x-web3-client` header.
+ * @param params.shareTag - Optional share tag whose rate-limit budget is reset. When omitted, the default share is used.
  *
  * @returns - A promise that resolves when the rate limit is reset successfully.
  */
@@ -127,6 +131,7 @@ export const resetRateLimits = async (params: {
   userId: string;
   authPrivKey: bigint;
   clientIdentifier?: string;
+  shareTag: ShareTag;
 }): Promise<boolean> => {
   const {
     authTokens,
@@ -136,6 +141,7 @@ export const resetRateLimits = async (params: {
     userId,
     authPrivKey,
     clientIdentifier,
+    shareTag,
   } = params;
 
   const endpointsWithAuthTokens = mergeEndpointsWithAuthTokens(
@@ -149,6 +155,7 @@ export const resetRateLimits = async (params: {
         timestamp: Date.now(),
         nodeIndex: authToken.nodeIndex,
         action: 'reset_ratelimit',
+        shareTag,
       });
 
       const jsonData = safeStringify(dataToSign, { cmp: preserveKeyOrder });
@@ -162,6 +169,7 @@ export const resetRateLimits = async (params: {
         authConnectionId,
         userId,
         groupedAuthConnectionId,
+        shareTag,
       );
       return sendResetRateLimitRequest(
         endpoint,

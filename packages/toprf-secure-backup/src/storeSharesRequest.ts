@@ -6,7 +6,7 @@ import {
 } from '@metamask/auth-network-utils';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
-import { JRPC_METHODS } from './constants';
+import { JRPC_METHODS, type ShareTag } from './constants';
 import type { NodeAuthTokens } from './interfaces';
 import type {
   StoreKeySharesJRPCRequestParams,
@@ -28,6 +28,7 @@ export type CreateStoreKeySharesRequestParamsInput = {
   keyShareIndex: number;
   oprfKey: bigint;
   authPubKey: Uint8Array;
+  shareTag: ShareTag;
 };
 
 export type StoreKeySharesRequestParams =
@@ -62,18 +63,23 @@ export const createStoreKeySharesRequestParams = async (
     keyShareIndex,
     oprfKey,
     authPubKey,
+    shareTag,
   } = params;
   const shareImportItems = await generateShareImportItems(
     nodeEndpointsMap,
     authTokens,
     oprfKey,
     keyShareIndex,
+    authPubKey,
+    undefined,
+    shareTag,
   );
   return {
     verifier: groupedAuthConnectionId ?? authConnectionId,
     verifierId: userId,
     pubKey: uint8ArrayToHex(authPubKey),
     shareImportItems,
+    shareTag,
   };
 };
 
@@ -133,6 +139,7 @@ export const storeKeyShares = async (
     oprfKey,
     authPubKey,
     clientIdentifier,
+    shareTag,
   } = params;
   const requestParams = await createStoreKeySharesRequestParams({
     nodeEndpointsMap,
@@ -143,6 +150,7 @@ export const storeKeyShares = async (
     keyShareIndex,
     oprfKey,
     authPubKey,
+    shareTag,
   });
   const proxyNodeEndpointIndex = getProxyCoordinatorNodeIndex(
     authTokens.map((token) => token.nodeIndex),
@@ -174,6 +182,7 @@ export type CreateKeyChangeRequestParamsInput = {
   newOprfKey: bigint;
   newAuthPubKey: Uint8Array;
   oldAuthPrivKey: bigint;
+  shareTag: ShareTag;
 };
 
 export type KeyChangeRequestParams = CreateKeyChangeRequestParamsInput & {
@@ -209,6 +218,7 @@ export const createKeyChangeRequestParams = async (
     authConnectionId,
     groupedAuthConnectionId,
     userId,
+    shareTag,
   } = params;
 
   // Generate share import items with the old auth private key for signing
@@ -217,7 +227,9 @@ export const createKeyChangeRequestParams = async (
     authTokens,
     newOprfKey,
     keyShareIndex,
+    newAuthPubKey,
     oldAuthPrivKey,
+    shareTag,
   );
 
   return {
@@ -225,6 +237,7 @@ export const createKeyChangeRequestParams = async (
     shareImportItems,
     verifier: groupedAuthConnectionId ?? authConnectionId,
     verifierId: userId,
+    shareTag,
   };
 };
 
@@ -259,6 +272,7 @@ export const changeKeyShares = async (
     groupedAuthConnectionId,
     userId,
     clientIdentifier,
+    shareTag,
   } = params;
 
   const requestParams = await createKeyChangeRequestParams({
@@ -271,6 +285,7 @@ export const changeKeyShares = async (
     authConnectionId,
     groupedAuthConnectionId,
     userId,
+    shareTag,
   });
 
   const proxyNodeEndpointIndex = getProxyCoordinatorNodeIndex(
