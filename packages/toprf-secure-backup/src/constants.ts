@@ -28,6 +28,18 @@ export enum EncAccountDataType {
   PrimarySrp = 1,
   ImportedSrp = 2,
   ImportedPrivateKey = 3,
+  WrappedKeys = 4,
+}
+
+/**
+ * Fixed item ids for `EncAccountDataType.WrappedKeys` items. The metadata
+ * service stores these items under the given id and overwrites in place.
+ */
+export enum WrappedKeysItemId {
+  WrappedRecovery = 'wrapped_recovery',
+  WrappedRecoveryPending = 'wrapped_recovery_pending',
+  WrappedSeedless = 'wrapped_seedless',
+  WrappedSeedlessPending = 'wrapped_seedless_pending',
 }
 
 export enum JsonRpcErrorCodes {

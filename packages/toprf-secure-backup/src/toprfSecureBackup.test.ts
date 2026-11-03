@@ -6,7 +6,11 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
 import * as authenticateRequestModule from './authenticateRequest';
 import * as commitRequestModule from './commitRequest';
-import { EncAccountDataType, FIRST_KEY_INDEX } from './constants';
+import {
+  EncAccountDataType,
+  FIRST_KEY_INDEX,
+  WrappedKeysItemId,
+} from './constants';
 import { TOPRFError, TOPRFErrorCode } from './errors';
 import * as getPubKeyRequestModule from './getPubKeyRequest';
 import type { KeyPair, NodeDetailsOverride } from './interfaces';
@@ -1497,6 +1501,79 @@ describe('toprf secret backup', function () {
 
       expect(newEncKeyResult).toBeDefined();
       expect(transformDataItems).toHaveBeenCalledTimes(1);
+    });
+
+    it('should keep the itemId of WrappedKeys items when re-inserting', async function () {
+      const { authConnectionId, userId, idToken, toprfSecureBackup } = setup();
+
+      const result = await toprfSecureBackup.authenticate({
+        idTokens: [idToken],
+        authConnectionId,
+        userId,
+      });
+
+      const originalPassword = generateRandomPassword();
+      const originalEncKeyResult =
+        await toprfSecureBackup.createAndPersistEncKey({
+          nodeAuthTokens: result.nodeAuthTokens,
+          password: originalPassword,
+          authConnectionId,
+          userId,
+        });
+
+      const recoveredKey = await toprfSecureBackup.recoverEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        password: originalPassword,
+        authConnectionId,
+        userId,
+      });
+
+      jest
+        .spyOn(MetadataStore.prototype, 'fetchAllSecretDataItems')
+        .mockResolvedValue([
+          {
+            data: utf8ToBytes('srp'),
+            itemId: 'hashed-item-id',
+            version: 'v2',
+            dataType: EncAccountDataType.PrimarySrp,
+          },
+          {
+            data: utf8ToBytes('wrapped'),
+            itemId: WrappedKeysItemId.WrappedRecovery,
+            version: 'v2',
+            dataType: EncAccountDataType.WrappedKeys,
+          },
+        ]);
+      const batchAddSpy = jest
+        .spyOn(MetadataStore.prototype, 'batchAddSecretData')
+        .mockResolvedValue(undefined);
+
+      await toprfSecureBackup.changeEncKey({
+        nodeAuthTokens: result.nodeAuthTokens,
+        authConnectionId,
+        userId,
+        oldEncKey: originalEncKeyResult.encKey,
+        oldPwEncKey: originalEncKeyResult.pwEncKey,
+        oldAuthKeyPair: originalEncKeyResult.authKeyPair,
+        newPassword: generateRandomPassword(),
+        newKeyShareIndex: recoveredKey.keyShareIndex + 1,
+      });
+
+      const [{ secretData: reinserted }] = batchAddSpy.mock.calls[0];
+      expect(reinserted.slice(1)).toStrictEqual([
+        {
+          data: utf8ToBytes('srp'),
+          dataType: EncAccountDataType.PrimarySrp,
+          version: 'v2',
+        },
+        {
+          data: utf8ToBytes('wrapped'),
+          dataType: EncAccountDataType.WrappedKeys,
+          version: 'v2',
+          itemId: WrappedKeysItemId.WrappedRecovery,
+        },
+      ]);
+      jest.restoreAllMocks();
     });
 
     it('should throw error when trying to change encryption key without existing data', async function () {

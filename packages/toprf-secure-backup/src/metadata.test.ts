@@ -2,7 +2,7 @@ import { randomBytes, utf8ToBytes } from '@noble/hashes/utils';
 import type { TORUS_SAPPHIRE_NETWORK_TYPE } from '@toruslabs/constants';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
-import { EncAccountDataType } from './constants';
+import { EncAccountDataType, WrappedKeysItemId } from './constants';
 import type { KeyPair } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -541,6 +541,69 @@ describe('MetadataStore', () => {
     await metadataStore.releaseMetadataLock(authKeyPair, lockId);
   });
 
+  it('should throw when WrappedKeys item has no itemId', async () => {
+    const metadataStore = await createMetadataStore();
+
+    await expect(
+      metadataStore.addSecretDataItem({
+        secretData: {
+          data: secretData,
+          dataType: EncAccountDataType.WrappedKeys,
+        },
+        encKey,
+        authKeyPair,
+      }),
+    ).rejects.toThrow(
+      'itemId must be a WrappedKeysItemId for WrappedKeys items',
+    );
+  });
+
+  it('should throw when WrappedKeys item has an arbitrary itemId', async () => {
+    const metadataStore = await createMetadataStore();
+
+    await expect(
+      metadataStore.addSecretDataItem({
+        secretData: {
+          data: secretData,
+          itemId: 'arbitrary-item-id',
+          dataType: EncAccountDataType.WrappedKeys,
+        },
+        encKey,
+        authKeyPair,
+      }),
+    ).rejects.toThrow(
+      'itemId must be a WrappedKeysItemId for WrappedKeys items',
+    );
+  });
+
+  it('should send a WrappedKeys item with its WrappedKeysItemId', async () => {
+    const metadataStore = await createMetadataStore();
+    const fetchSpy = jest.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      // eslint-disable-next-line jsdoc/require-jsdoc
+      json: async () => ({ success: true }),
+    } as globalThis.Response);
+
+    await metadataStore.addSecretDataItem({
+      secretData: {
+        data: secretData,
+        itemId: WrappedKeysItemId.WrappedRecovery,
+        dataType: EncAccountDataType.WrappedKeys,
+      },
+      encKey,
+      authKeyPair,
+    });
+
+    const setCall = fetchSpy.mock.calls.find(([url]) =>
+      String(url).endsWith('/enc_account_data/set'),
+    );
+    expect(JSON.parse((setCall?.[1] as RequestInit).body as string)).toMatchObject({
+      itemId: WrappedKeysItemId.WrappedRecovery,
+      dataType: EncAccountDataType.WrappedKeys,
+    });
+    fetchSpy.mockRestore();
+  });
+
   describe('batchAddSecretData', () => {
     it('should be able to store secret data in batch', async () => {
       const metadataStore = await createMetadataStore();
@@ -655,6 +718,77 @@ describe('MetadataStore', () => {
           authKeyPair,
         }),
       ).rejects.toThrow('dataType cannot be set for PW_BACKUP item');
+    });
+
+    it('should throw when WrappedKeys item in batch has no itemId', async () => {
+      const metadataStore = await createMetadataStore();
+
+      await expect(
+        metadataStore.batchAddSecretData({
+          secretData: [
+            {
+              data: utf8ToBytes('DATA_1'),
+              dataType: EncAccountDataType.WrappedKeys,
+            },
+          ],
+          encKey,
+          authKeyPair,
+        }),
+      ).rejects.toThrow(
+        'itemId must be a WrappedKeysItemId for WrappedKeys items',
+      );
+    });
+
+    it('should throw when WrappedKeys item in batch has an arbitrary itemId', async () => {
+      const metadataStore = await createMetadataStore();
+
+      await expect(
+        metadataStore.batchAddSecretData({
+          secretData: [
+            {
+              data: utf8ToBytes('DATA_1'),
+              itemId: 'arbitrary-item-id',
+              dataType: EncAccountDataType.WrappedKeys,
+            },
+          ],
+          encKey,
+          authKeyPair,
+        }),
+      ).rejects.toThrow(
+        'itemId must be a WrappedKeysItemId for WrappedKeys items',
+      );
+    });
+
+    it('should send WrappedKeys items in batch with their WrappedKeysItemId', async () => {
+      const metadataStore = await createMetadataStore();
+      const fetchSpy = jest.spyOn(globalThis, 'fetch').mockResolvedValue({
+        ok: true,
+        // eslint-disable-next-line jsdoc/require-jsdoc
+        json: async () => ({ success: true }),
+      } as globalThis.Response);
+
+      await metadataStore.batchAddSecretData({
+        secretData: [
+          {
+            data: secretData,
+            itemId: WrappedKeysItemId.WrappedSeedless,
+            dataType: EncAccountDataType.WrappedKeys,
+          },
+        ],
+        encKey,
+        authKeyPair,
+      });
+
+      const batchCall = fetchSpy.mock.calls.find(([url]) =>
+        String(url).endsWith('/enc_account_data/batch_set'),
+      );
+      expect(JSON.parse((batchCall?.[1] as RequestInit).body as string).data).toMatchObject([
+        {
+          itemId: WrappedKeysItemId.WrappedSeedless,
+          dataType: EncAccountDataType.WrappedKeys,
+        },
+      ]);
+      fetchSpy.mockRestore();
     });
   });
 

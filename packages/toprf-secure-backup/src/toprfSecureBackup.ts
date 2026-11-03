@@ -9,6 +9,7 @@ import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 import { authenticateUser } from './authenticateRequest';
 import { commitIdToken } from './commitRequest';
 import {
+  EncAccountDataType,
   FIRST_KEY_INDEX,
   MAX_PASSWORD_CHAIN_LENGTH,
   PW_BACKUP_ITEM_ID,
@@ -482,10 +483,12 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       );
       const existingData = transformDataItems
         ? transformDataItems(fetched)
-        : fetched.map(({ data, dataType, version }) => ({
+        : fetched.map(({ data, dataType, version, itemId }) => ({
             data,
             dataType,
             version: dataType === undefined ? 'v1' : version,
+            // the metadata service requires the fixed item id for WrappedKeys
+            ...(dataType === EncAccountDataType.WrappedKeys ? { itemId } : {}),
           }));
 
       // Validate that this is actually a key change scenario
