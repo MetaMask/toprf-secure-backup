@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add optional `clientIdentifier` constructor parameter to `ToprfSecureBackup`. When set, SSS JSON-RPC requests include an `x-web3-client` header (name and version, e.g. `metamask-extension@13.46.1`) for SSS service logging. The header is omitted when `clientIdentifier` is missing or empty. ([#162](https://github.com/MetaMask/toprf-secure-backup/pull/162))
+- Add `EncAccountDataType.WrappedKeys` and the `WrappedKeysItemId` enum for MFA recovery wrapped-keys items stored under fixed item ids. ([#166](https://github.com/MetaMask/toprf-secure-backup/pull/166))
+
+### Changed
+
+- **BREAKING:** Bump minimum Node.js version to `24.22.1` ([#166](https://github.com/MetaMask/toprf-secure-backup/pull/166))
+- `addSecretDataItem` and `batchAddSecretDataItems` throw when a `WrappedKeys` item has no `WrappedKeysItemId` item id, or when a batch contains the same `WrappedKeys` item id more than once. ([#166](https://github.com/MetaMask/toprf-secure-backup/pull/166))
+- `updateSecretDataItem` and `batchUpdateSecretDataItems` throw when targeting a `WrappedKeys` item or setting `WrappedKeys` as the data type. ([#166](https://github.com/MetaMask/toprf-secure-backup/pull/166))
+- `changeEncKey` keeps the `itemId` of `WrappedKeys` items when re-inserting them without a `transformDataItems` callback. ([#166](https://github.com/MetaMask/toprf-secure-backup/pull/166))
 
 ## [1.1.0]
 

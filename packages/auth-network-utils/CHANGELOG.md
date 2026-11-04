@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING:** Bump minimum Node.js version to `24.22.1` ([#166](https://github.com/MetaMask/toprf-secure-backup/pull/166))
+
 ## [0.4.0]
 
 ### Changed

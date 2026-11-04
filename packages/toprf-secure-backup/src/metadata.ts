@@ -5,7 +5,11 @@ import { secp256k1 } from '@noble/curves/secp256k1';
 import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
 import { bytesToHex } from '@noble/hashes/utils';
 
-import { PW_BACKUP_ITEM_ID } from './constants';
+import {
+  EncAccountDataType,
+  PW_BACKUP_ITEM_ID,
+  WrappedKeysItemId,
+} from './constants';
 import type {
   IGetSecretDataRequestBody,
   KeyPair,
@@ -26,6 +30,16 @@ type MetadataStoreOptions = {
   metadataEndpoint: string;
   fetchMetadataAccessCreds: FetchMetadataAccessCreds;
 };
+
+/**
+ * Checks whether the given item id is one of the fixed `WrappedKeysItemId` values.
+ *
+ * @param itemId - The item id to check.
+ * @returns True if the item id is a `WrappedKeysItemId`, false otherwise.
+ */
+function isWrappedKeysItemId(itemId: string | undefined): boolean {
+  return Object.values<string | undefined>(WrappedKeysItemId).includes(itemId);
+}
 
 export type MetadataLock = {
   id: string;
@@ -79,6 +93,21 @@ export class MetadataStoreError extends Error {
     super(message);
     this.name = 'MetadataStoreError';
     Object.setPrototypeOf(this, MetadataStoreError.prototype);
+  }
+}
+
+/**
+ * Throws if the update targets a `WrappedKeys` item or sets `WrappedKeys` as
+ * the data type, which the metadata service does not allow.
+ *
+ * @param updateItem - The item to be updated.
+ */
+function assertNotWrappedKeysUpdate(updateItem: UpdateSecretDataItem): void {
+  if (
+    updateItem.fields.dataType === EncAccountDataType.WrappedKeys ||
+    isWrappedKeysItemId(updateItem.itemId)
+  ) {
+    throw new MetadataStoreError('WrappedKeys items cannot be updated');
   }
 }
 
@@ -331,6 +360,15 @@ export class MetadataStore {
         );
       }
 
+      if (
+        params.secretData.dataType === EncAccountDataType.WrappedKeys &&
+        !isWrappedKeysItemId(params.secretData.itemId)
+      ) {
+        throw new MetadataStoreError(
+          'itemId must be a WrappedKeysItemId for WrappedKeys items',
+        );
+      }
+
       const url = `${params.metadataEndpoint}/enc_account_data/set`;
       const encryptedData = this.#encryptData(
         params.secretData.data,
@@ -405,6 +443,13 @@ export class MetadataStore {
     }
 
     try {
+      const wrappedKeysItemIds = params.secretData
+        .filter(({ dataType }) => dataType === EncAccountDataType.WrappedKeys)
+        .map(({ itemId }) => itemId);
+      if (new Set(wrappedKeysItemIds).size !== wrappedKeysItemIds.length) {
+        throw new MetadataStoreError('Duplicate WrappedKeys itemId in batch');
+      }
+
       const url = `${params.metadataEndpoint}/enc_account_data/batch_set`;
       const encryptedDataArray = params.secretData.map((secret, index) => {
         if (
@@ -423,6 +468,14 @@ export class MetadataStore {
         ) {
           throw new MetadataStoreError(
             'dataType is required for v2 secret data items',
+          );
+        }
+        if (
+          secret.dataType === EncAccountDataType.WrappedKeys &&
+          !isWrappedKeysItemId(secret.itemId)
+        ) {
+          throw new MetadataStoreError(
+            'itemId must be a WrappedKeysItemId for WrappedKeys items',
           );
         }
         return {
@@ -479,6 +532,7 @@ export class MetadataStore {
       if (params.updateItem.itemId === PW_BACKUP_ITEM_ID) {
         throw new MetadataStoreError('PW_BACKUP cannot be updated');
       }
+      assertNotWrappedKeysUpdate(params.updateItem);
 
       const url = `${params.metadataEndpoint}/enc_account_data/update`;
       const payload = await this.#generatePayloadForUpdateSecretDataRequest(
@@ -528,6 +582,7 @@ export class MetadataStore {
         if (item.itemId === PW_BACKUP_ITEM_ID) {
           throw new MetadataStoreError('PW_BACKUP cannot be updated');
         }
+        assertNotWrappedKeysUpdate(item);
       }
 
       const url = `${params.metadataEndpoint}/enc_account_data/batch_update`;
