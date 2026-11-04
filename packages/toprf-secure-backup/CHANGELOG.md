@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add optional `clientIdentifier` constructor parameter to `ToprfSecureBackup`. When set, SSS JSON-RPC requests include an `x-web3-client` header (name and version, e.g. `metamask-extension@13.46.1`) for SSS service logging. The header is omitted when `clientIdentifier` is missing or empty. ([#162](https://github.com/MetaMask/toprf-secure-backup/pull/162))
 - Add `EncAccountDataType.WrappedKeys` and the `WrappedKeysItemId` enum for MFA recovery wrapped-keys items stored under fixed item ids. ([#166](https://github.com/MetaMask/toprf-secure-backup/pull/166))
+- Add `seed` to the `recoverEncKey` result, a copy of the TOPRF seed the keys are derived from, so callers can derive further keys (for example envelope keys) from it. ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
+- Add `acquireMetadataLock` and `releaseMetadataLock` to `ToprfSecureBackup` to hold the metadata lock of a partition across several requests. ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
 
 ### Changed
 
