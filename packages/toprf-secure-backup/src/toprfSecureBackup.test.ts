@@ -1539,7 +1539,7 @@ describe('toprf secret backup', function () {
           },
           {
             data: utf8ToBytes('wrapped'),
-            itemId: WrappedKeysItemId.WrappedRecovery,
+            itemId: WrappedKeysItemId.WrappedRecoveryKeys,
             version: 'v2',
             dataType: EncAccountDataType.WrappedKeys,
           },
@@ -1570,7 +1570,7 @@ describe('toprf secret backup', function () {
           data: utf8ToBytes('wrapped'),
           dataType: EncAccountDataType.WrappedKeys,
           version: 'v2',
-          itemId: WrappedKeysItemId.WrappedRecovery,
+          itemId: WrappedKeysItemId.WrappedRecoveryKeys,
         },
       ]);
       jest.restoreAllMocks();

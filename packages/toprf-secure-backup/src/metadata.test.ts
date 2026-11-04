@@ -587,7 +587,7 @@ describe('MetadataStore', () => {
     await metadataStore.addSecretDataItem({
       secretData: {
         data: secretData,
-        itemId: WrappedKeysItemId.WrappedRecovery,
+        itemId: WrappedKeysItemId.WrappedRecoveryKeys,
         dataType: EncAccountDataType.WrappedKeys,
       },
       encKey,
@@ -595,10 +595,12 @@ describe('MetadataStore', () => {
     });
 
     const setCall = fetchSpy.mock.calls.find(([url]) =>
-      String(url).endsWith('/enc_account_data/set'),
+      (url as string).endsWith('/enc_account_data/set'),
     );
-    expect(JSON.parse((setCall?.[1] as RequestInit).body as string)).toMatchObject({
-      itemId: WrappedKeysItemId.WrappedRecovery,
+    expect(
+      JSON.parse((setCall?.[1] as RequestInit).body as string),
+    ).toMatchObject({
+      itemId: WrappedKeysItemId.WrappedRecoveryKeys,
       dataType: EncAccountDataType.WrappedKeys,
     });
     fetchSpy.mockRestore();
@@ -759,6 +761,29 @@ describe('MetadataStore', () => {
       );
     });
 
+    it('should throw when a batch has duplicate WrappedKeys itemIds', async () => {
+      const metadataStore = await createMetadataStore();
+
+      await expect(
+        metadataStore.batchAddSecretData({
+          secretData: [
+            {
+              data: utf8ToBytes('DATA_1'),
+              itemId: WrappedKeysItemId.WrappedPasswordKeys,
+              dataType: EncAccountDataType.WrappedKeys,
+            },
+            {
+              data: utf8ToBytes('DATA_2'),
+              itemId: WrappedKeysItemId.WrappedPasswordKeys,
+              dataType: EncAccountDataType.WrappedKeys,
+            },
+          ],
+          encKey,
+          authKeyPair,
+        }),
+      ).rejects.toThrow('Duplicate WrappedKeys itemId in batch');
+    });
+
     it('should send WrappedKeys items in batch with their WrappedKeysItemId', async () => {
       const metadataStore = await createMetadataStore();
       const fetchSpy = jest.spyOn(globalThis, 'fetch').mockResolvedValue({
@@ -771,7 +796,7 @@ describe('MetadataStore', () => {
         secretData: [
           {
             data: secretData,
-            itemId: WrappedKeysItemId.WrappedSeedless,
+            itemId: WrappedKeysItemId.WrappedSeedKeys,
             dataType: EncAccountDataType.WrappedKeys,
           },
         ],
@@ -780,11 +805,13 @@ describe('MetadataStore', () => {
       });
 
       const batchCall = fetchSpy.mock.calls.find(([url]) =>
-        String(url).endsWith('/enc_account_data/batch_set'),
+        (url as string).endsWith('/enc_account_data/batch_set'),
       );
-      expect(JSON.parse((batchCall?.[1] as RequestInit).body as string).data).toMatchObject([
+      expect(
+        JSON.parse((batchCall?.[1] as RequestInit).body as string).data,
+      ).toMatchObject([
         {
-          itemId: WrappedKeysItemId.WrappedSeedless,
+          itemId: WrappedKeysItemId.WrappedSeedKeys,
           dataType: EncAccountDataType.WrappedKeys,
         },
       ]);
@@ -867,6 +894,34 @@ describe('MetadataStore', () => {
           authKeyPair,
         }),
       ).rejects.toThrow('PW_BACKUP cannot be updated');
+    });
+
+    it('should reject setting WrappedKeys as the dataType', async () => {
+      const metadataStore = await createMetadataStore();
+
+      await expect(
+        metadataStore.updateSecretDataItem({
+          updateItem: {
+            itemId: 'some-item-id',
+            fields: { dataType: EncAccountDataType.WrappedKeys },
+          },
+          authKeyPair,
+        }),
+      ).rejects.toThrow('WrappedKeys items cannot be updated');
+    });
+
+    it('should reject updating a WrappedKeys item', async () => {
+      const metadataStore = await createMetadataStore();
+
+      await expect(
+        metadataStore.updateSecretDataItem({
+          updateItem: {
+            itemId: WrappedKeysItemId.WrappedRecoveryKeys,
+            fields: { dataType: EncAccountDataType.PrimarySrp },
+          },
+          authKeyPair,
+        }),
+      ).rejects.toThrow('WrappedKeys items cannot be updated');
     });
   });
 
@@ -962,6 +1017,42 @@ describe('MetadataStore', () => {
           authKeyPair,
         }),
       ).rejects.toThrow('PW_BACKUP cannot be updated');
+    });
+
+    it('should reject setting WrappedKeys as the dataType', async () => {
+      const metadataStore = await createMetadataStore();
+
+      await expect(
+        metadataStore.batchUpdateSecretData({
+          updateItems: [
+            {
+              itemId: 'item-1',
+              fields: { dataType: EncAccountDataType.WrappedKeys },
+            },
+          ],
+          authKeyPair,
+        }),
+      ).rejects.toThrow('WrappedKeys items cannot be updated');
+    });
+
+    it('should reject updating a WrappedKeys item', async () => {
+      const metadataStore = await createMetadataStore();
+
+      await expect(
+        metadataStore.batchUpdateSecretData({
+          updateItems: [
+            {
+              itemId: 'item-1',
+              fields: { dataType: EncAccountDataType.PrimarySrp },
+            },
+            {
+              itemId: WrappedKeysItemId.WrappedSeedKeys,
+              fields: { dataType: EncAccountDataType.ImportedSrp },
+            },
+          ],
+          authKeyPair,
+        }),
+      ).rejects.toThrow('WrappedKeys items cannot be updated');
     });
 
     it('should handle HTTP error response', async () => {

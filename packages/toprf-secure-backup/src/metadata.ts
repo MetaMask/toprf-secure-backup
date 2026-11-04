@@ -97,6 +97,21 @@ export class MetadataStoreError extends Error {
 }
 
 /**
+ * Throws if the update targets a `WrappedKeys` item or sets `WrappedKeys` as
+ * the data type, which the metadata service does not allow.
+ *
+ * @param updateItem - The item to be updated.
+ */
+function assertNotWrappedKeysUpdate(updateItem: UpdateSecretDataItem): void {
+  if (
+    updateItem.fields.dataType === EncAccountDataType.WrappedKeys ||
+    isWrappedKeysItemId(updateItem.itemId)
+  ) {
+    throw new MetadataStoreError('WrappedKeys items cannot be updated');
+  }
+}
+
+/**
  * MetadataStore class.
  *
  * This class is used to store and retrieve encrypted account metadata for the
@@ -428,6 +443,13 @@ export class MetadataStore {
     }
 
     try {
+      const wrappedKeysItemIds = params.secretData
+        .filter(({ dataType }) => dataType === EncAccountDataType.WrappedKeys)
+        .map(({ itemId }) => itemId);
+      if (new Set(wrappedKeysItemIds).size !== wrappedKeysItemIds.length) {
+        throw new MetadataStoreError('Duplicate WrappedKeys itemId in batch');
+      }
+
       const url = `${params.metadataEndpoint}/enc_account_data/batch_set`;
       const encryptedDataArray = params.secretData.map((secret, index) => {
         if (
@@ -510,6 +532,7 @@ export class MetadataStore {
       if (params.updateItem.itemId === PW_BACKUP_ITEM_ID) {
         throw new MetadataStoreError('PW_BACKUP cannot be updated');
       }
+      assertNotWrappedKeysUpdate(params.updateItem);
 
       const url = `${params.metadataEndpoint}/enc_account_data/update`;
       const payload = await this.#generatePayloadForUpdateSecretDataRequest(
@@ -559,6 +582,7 @@ export class MetadataStore {
         if (item.itemId === PW_BACKUP_ITEM_ID) {
           throw new MetadataStoreError('PW_BACKUP cannot be updated');
         }
+        assertNotWrappedKeysUpdate(item);
       }
 
       const url = `${params.metadataEndpoint}/enc_account_data/batch_update`;

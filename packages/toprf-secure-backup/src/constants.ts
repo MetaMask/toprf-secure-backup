@@ -36,10 +36,9 @@ export enum EncAccountDataType {
  * service stores these items under the given id and overwrites in place.
  */
 export enum WrappedKeysItemId {
-  WrappedRecovery = 'wrapped_recovery',
-  WrappedRecoveryPending = 'wrapped_recovery_pending',
-  WrappedSeedless = 'wrapped_seedless',
-  WrappedSeedlessPending = 'wrapped_seedless_pending',
+  WrappedRecoveryKeys = 'wrapped_recovery_keys',
+  WrappedPasswordKeys = 'wrapped_password_keys',
+  WrappedSeedKeys = 'wrapped_seed_keys',
 }
 
 export enum JsonRpcErrorCodes {
