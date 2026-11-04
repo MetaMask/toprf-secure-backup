@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **BREAKING:** Bump minimum Node.js version to `24.22.1` ([#166](https://github.com/MetaMask/toprf-secure-backup/pull/166))
 - `addSecretDataItem` and `batchAddSecretDataItems` throw when a `WrappedKeys` item has no `WrappedKeysItemId` item id, or when a batch contains the same `WrappedKeys` item id more than once. ([#166](https://github.com/MetaMask/toprf-secure-backup/pull/166))
 - `updateSecretDataItem` and `batchUpdateSecretDataItems` throw when targeting a `WrappedKeys` item or setting `WrappedKeys` as the data type. ([#166](https://github.com/MetaMask/toprf-secure-backup/pull/166))
 - `changeEncKey` keeps the `itemId` of `WrappedKeys` items when re-inserting them without a `transformDataItems` callback. ([#166](https://github.com/MetaMask/toprf-secure-backup/pull/166))
