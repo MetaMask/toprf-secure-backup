@@ -863,6 +863,11 @@ export type IMetadataLockRequestBody = {
    * The lock id to be released.
    */
   id?: string | undefined;
+
+  /**
+   * The version of the metadata store
+   */
+  version?: number;
 };
 
 /**
