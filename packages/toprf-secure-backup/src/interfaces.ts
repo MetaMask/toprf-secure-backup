@@ -350,6 +350,11 @@ export type RecoverEncryptionKeyParams = {
  * rateLimitResetResult - A promise that resolves when the rate limit is reset.
  */
 export type RecoverEncryptionKeyResult = {
+  /**
+   * The TOPRF seed the keys are derived from. The caller owns this copy and
+   * should zero it once it is no longer needed.
+   */
+  seed: Uint8Array;
   authKeyPair: KeyPair;
   encKey: Uint8Array;
   pwEncKey: Uint8Array;
@@ -570,6 +575,22 @@ export type IToprfSecureBackup = {
   batchUpdateSecretDataItems: (
     params: BatchUpdateSecretDataItemParams,
   ) => Promise<void>;
+
+  /**
+   * Acquires the metadata lock on the partition of the given auth key pair.
+   *
+   * @param authKeyPair - The authentication key pair of the partition.
+   * @returns A promise that resolves with the lock id.
+   */
+  acquireMetadataLock: (authKeyPair: KeyPair) => Promise<string>;
+
+  /**
+   * Releases a metadata lock acquired with `acquireMetadataLock`.
+   *
+   * @param authKeyPair - The authentication key pair of the partition.
+   * @param lockId - The lock id returned by `acquireMetadataLock`.
+   */
+  releaseMetadataLock: (authKeyPair: KeyPair, lockId: string) => Promise<void>;
 
   /**
    * This function fetches all secret data items associated with the given

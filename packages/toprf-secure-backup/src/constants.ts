@@ -28,6 +28,16 @@ export enum EncAccountDataType {
   PrimarySrp = 1,
   ImportedSrp = 2,
   ImportedPrivateKey = 3,
+  /**
+   * A key envelope (pbek/rbek) wrapping a vault key set. Stored in its own
+   * partition with a content-hash item id; `itemId` must not be set.
+   */
+  KeyEnvelope = 4,
+  /**
+   * An envelope control record. Stored in its own partition with a
+   * content-hash item id; `itemId` must not be set.
+   */
+  EnvelopeControl = 5,
 }
 
 export enum JsonRpcErrorCodes {
