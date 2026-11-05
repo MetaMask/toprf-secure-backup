@@ -123,7 +123,7 @@ function assertNotEnvelopeDataTypeUpdate(
   }
 }
 
-const METADATA_VERSION = 1 ;
+const METADATA_VERSION = 1;
 
 /**
  * MetadataStore class.
@@ -918,7 +918,7 @@ export class MetadataStore {
       signature,
       key,
       id: lockId,
-      version: METADATA_VERSION
+      version: METADATA_VERSION,
     };
 
     return payloadForLockRequest;
