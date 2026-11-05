@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `addSecretDataItem` and `batchAddSecretDataItems` throw when a `KeyEnvelope` or `EnvelopeControl` item has an `itemId`. ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
 - `updateSecretDataItem` and `batchUpdateSecretDataItems` throw when setting `KeyEnvelope` or `EnvelopeControl` as the data type. ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
+- **Breaking**: Require Node.js `^24.22.1` (previously `^18.18 || >=20`). ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
 
 ## [1.1.0]
 
