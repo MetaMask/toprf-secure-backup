@@ -189,6 +189,45 @@ describe('MetadataStore', () => {
     expect(lockStatus).toBe(MetadataLockStatus.SUCCESS);
   });
 
+  it('should send only the signed timestamp in lock request data', async () => {
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(async (...args: unknown[]) => {
+        const [url] = args as [string];
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          /**
+           * @returns json object
+           */
+          json: async () =>
+            Promise.resolve(
+              url.endsWith('/acquireLock')
+                ? { status: MetadataLockStatus.SUCCESS, id: 'LOCK_ID' }
+                : { status: MetadataLockStatus.SUCCESS },
+            ),
+          // eslint-disable-next-line no-restricted-globals
+        } as Response);
+      });
+
+    const metadataStore = await createMetadataStore();
+    const lockId = await metadataStore.acquireMetadataLock(authKeyPair);
+    await metadataStore.releaseMetadataLock(authKeyPair, lockId);
+
+    const bodies = fetchSpy.mock.calls
+      .filter(([url]) => /\/(acquire|release)Lock$/u.test(url as string))
+      .map(([, init]) => JSON.parse((init as RequestInit).body as string));
+    expect(bodies).toHaveLength(2);
+    for (const body of bodies) {
+      expect(body.data).toStrictEqual({ timestamp: expect.any(Number) });
+      expect(body.version).toBeUndefined();
+    }
+    expect(bodies[1].id).toBe('LOCK_ID');
+
+    fetchSpy.mockRestore();
+  });
+
   it('should throw an error if lockId is missing in the response', async () => {
     const fetchSpy = jest
       .spyOn(global, 'fetch')

@@ -847,27 +847,24 @@ export type IMetadataLockRequestBody = {
    */
   key: string;
   /**
-   * The Unix timestamp when the request payload is created along with the signature.
-   *
+   * The signed lock request data.
    */
   data: {
+    /**
+     * The Unix timestamp when the request payload is created along with the signature.
+     */
     timestamp: number;
   };
   /**
-   * The signature produced by signing the payload (without pubKey field) using the user's private key.
+   * The signature produced by signing `data` using the user's private key.
    *
-   * Sample signature: sign(keccak256(feature, authToken, timestamp))
+   * Sample signature: sign(keccak256(timestamp))
    */
   signature: string;
   /**
    * The lock id to be released.
    */
   id?: string | undefined;
-
-  /**
-   * The version of the metadata store
-   */
-  version?: number;
 };
 
 /**
