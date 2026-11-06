@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [24.x]
+        node-version: [24.22.1]
     outputs:
       child-workspace-package-names: ${{ steps.workspace-package-names.outputs.child-workspace-package-names }}
     steps:
@@ -17,7 +17,7 @@ jobs:
         uses: MetaMask/action-checkout-and-setup@392abd40aa6a0600a3c0ef4af75851662587e6ec # v1.4.0
         with:
           is-high-risk-environment: false
-          cache-node-modules: ${{ matrix.node-version == '24.x' }}
+          cache-node-modules: ${{ matrix.node-version == '24.22.1' }}
       - name: Fetch workspace package names
         id: workspace-package-names
         run: |
@@ -30,7 +30,7 @@ jobs:
     needs: prepare
     strategy:
       matrix:
-        node-version: [24.x]
+        node-version: [24.22.1]
     steps:
       - name: Checkout and setup environment
         uses: MetaMask/action-checkout-and-setup@392abd40aa6a0600a3c0ef4af75851662587e6ec # v1.4.0
@@ -51,7 +51,7 @@ jobs:
     needs: prepare
     strategy:
       matrix:
-        node-version: [24.x]
+        node-version: [24.22.1]
         package-name: ${{ fromJson(needs.prepare.outputs.child-workspace-package-names) }}
     steps:
       - name: Checkout and setup environment
@@ -73,7 +73,7 @@ jobs:
     needs: prepare
     strategy:
       matrix:
-        node-version: [24.x]
+        node-version: [24.22.1]
     steps:
       - name: Checkout and setup environment
         uses: MetaMask/action-checkout-and-setup@392abd40aa6a0600a3c0ef4af75851662587e6ec # v1.4.0
@@ -94,7 +94,7 @@ jobs:
     needs: prepare
     strategy:
       matrix:
-        node-version: [24.x]
+        node-version: [24.22.1]
         package-name: ${{ fromJson(needs.prepare.outputs.child-workspace-package-names) }}
     steps:
       - name: Checkout and setup environment
