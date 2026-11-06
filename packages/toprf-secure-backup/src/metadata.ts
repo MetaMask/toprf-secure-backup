@@ -5,13 +5,19 @@ import { secp256k1 } from '@noble/curves/secp256k1';
 import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
 import { bytesToHex } from '@noble/hashes/utils';
 
-import { EncAccountDataType, PW_BACKUP_ITEM_ID } from './constants';
+import {
+  EncAccountDataType,
+  METADATA_LOCK_CLIENT_VERSION,
+  METADATA_SET_ENVELOPE_MANAGED_ACTION,
+  PW_BACKUP_ITEM_ID,
+} from './constants';
 import type {
   IGetSecretDataRequestBody,
   KeyPair,
   IAddSecretDataRequestBody,
   IBatchAddSecretDataRequestBody,
   IMetadataLockRequestBody,
+  ISetEnvelopeManagedRequestBody,
   NodeAuthToken,
   BaseAddSecretDataItemParams,
   FetchMetadataAccessCreds,
@@ -333,6 +339,16 @@ export class MetadataStore {
     }
 
     return lockStatus;
+  }
+
+  /**
+   * Marks the partition of the given auth key pair as envelope-managed.
+   * The flag cannot be unset. The call is idempotent.
+   *
+   * @param authKeyPair - The authentication key pair of the partition.
+   */
+  async setEnvelopeManaged(authKeyPair: KeyPair): Promise<void> {
+    await this.#setEnvelopeManaged(this.#metadataEndpoint, authKeyPair);
   }
 
   /**
@@ -709,7 +725,9 @@ export class MetadataStore {
 
       if (!response.ok) {
         const responseBody = await response.json();
-        throw new Error(`HTTP error message: ${responseBody.error}`);
+        throw new Error(
+          `HTTP error message: ${responseBody.error}${responseBody.code ? ` (code: ${responseBody.code})` : ''}`,
+        );
       }
 
       const jsonData = await response.json();
@@ -753,7 +771,9 @@ export class MetadataStore {
 
       if (!response.ok) {
         const responseBody = await response.json();
-        throw new Error(`HTTP error message: ${responseBody.error}`);
+        throw new Error(
+          `HTTP error message: ${responseBody.error}${responseBody.code ? ` (code: ${responseBody.code})` : ''}`,
+        );
       }
 
       const jsonData = await response.json();
@@ -764,6 +784,79 @@ export class MetadataStore {
         `failed to release metadata lock: ${errorMessage}`,
       );
     }
+  }
+
+  /**
+   * Flags the partition of the given auth key pair as envelope-managed.
+   *
+   * @param metadataEndpoint - The metadata server endpoint.
+   * @param authKeyPair - The authentication key pair of the partition.
+   */
+  async #setEnvelopeManaged(
+    metadataEndpoint: string,
+    authKeyPair: KeyPair,
+  ): Promise<void> {
+    try {
+      const payload =
+        await this.#generatePayloadForSetEnvelopeManagedRequest(authKeyPair);
+
+      const url = `${metadataEndpoint}/enc_account_data/set_envelope_managed`;
+      const response = await fetch(url, {
+        headers: {
+          // eslint-disable-next-line @typescript-eslint/naming-convention
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const responseBody = await response.json();
+        throw new Error(
+          `HTTP error message: ${responseBody.error}${responseBody.code ? ` (code: ${responseBody.code})` : ''}`,
+        );
+      }
+
+      const jsonData = await response.json();
+      if (!jsonData.success) {
+        throw new Error('server did not confirm the envelope-managed flag');
+      }
+    } catch (error) {
+      const errorMessage = (error as Error).message || 'Unknown error';
+      throw new MetadataStoreError(
+        `failed to set envelope managed: ${errorMessage}`,
+      );
+    }
+  }
+
+  /**
+   * Generate the payload for the set envelope managed request and get payload signature.
+   *
+   * @param authKeyPair - The authentication key pair of the partition to flag.
+   * @returns The payload for the set envelope managed request.
+   */
+  async #generatePayloadForSetEnvelopeManagedRequest(
+    authKeyPair: KeyPair,
+  ): Promise<ISetEnvelopeManagedRequestBody> {
+    const timestamp = Date.now().toString();
+    const feature = this.#feature;
+    const { metadataAccessToken } = await this.#fetchMetadataAccessCreds();
+
+    const sigPayload = {
+      feature,
+      timestamp,
+      action: METADATA_SET_ENVELOPE_MANAGED_ACTION,
+      authToken: metadataAccessToken,
+    };
+
+    const { pk, sk } = authKeyPair;
+    const signature = this.#generatePayloadSignature(sigPayload, sk);
+
+    return {
+      ...sigPayload,
+      signature,
+      pubKey: bytesToHex(pk),
+    };
   }
 
   /**
@@ -901,7 +994,10 @@ export class MetadataStore {
     lockId?: string,
   ): IMetadataLockRequestBody {
     const { pk, sk } = authKeyPair;
-    const data = { timestamp: Date.now() };
+    const data = {
+      timestamp: Date.now(),
+      version: METADATA_LOCK_CLIENT_VERSION,
+    };
     // metadata server expects der encoded signature for lock requests
     const shouldDerEncoded = true;
     const signature = this.#generatePayloadSignature(
