@@ -189,6 +189,45 @@ describe('MetadataStore', () => {
     expect(lockStatus).toBe(MetadataLockStatus.SUCCESS);
   });
 
+  it('should send only the signed timestamp in lock request data', async () => {
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(async (...args: unknown[]) => {
+        const [url] = args as [string];
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          /**
+           * @returns json object
+           */
+          json: async () =>
+            Promise.resolve(
+              url.endsWith('/acquireLock')
+                ? { status: MetadataLockStatus.SUCCESS, id: 'LOCK_ID' }
+                : { status: MetadataLockStatus.SUCCESS },
+            ),
+          // eslint-disable-next-line no-restricted-globals
+        } as Response);
+      });
+
+    const metadataStore = await createMetadataStore();
+    const lockId = await metadataStore.acquireMetadataLock(authKeyPair);
+    await metadataStore.releaseMetadataLock(authKeyPair, lockId);
+
+    const bodies = fetchSpy.mock.calls
+      .filter(([url]) => /\/(acquire|release)Lock$/u.test(url as string))
+      .map(([, init]) => JSON.parse((init as RequestInit).body as string));
+    expect(bodies).toHaveLength(2);
+    for (const body of bodies) {
+      expect(body.data).toStrictEqual({ timestamp: expect.any(Number) });
+      expect(body.version).toBeUndefined();
+    }
+    expect(bodies[1].id).toBe('LOCK_ID');
+
+    fetchSpy.mockRestore();
+  });
+
   it('should throw an error if lockId is missing in the response', async () => {
     const fetchSpy = jest
       .spyOn(global, 'fetch')
@@ -499,6 +538,62 @@ describe('MetadataStore', () => {
     ).rejects.toThrow('dataType cannot be set for PW_BACKUP item');
   });
 
+  it.each([EncAccountDataType.KeyEnvelope, EncAccountDataType.EnvelopeControl])(
+    'should reject an itemId for envelope data type %s inserts',
+    async (dataType) => {
+      const metadataStore = await createMetadataStore();
+
+      await expect(
+        metadataStore.addSecretDataItem({
+          secretData: { data: secretData, itemId: 'fixed-id', dataType },
+          encKey,
+          authKeyPair,
+        }),
+      ).rejects.toThrow('itemId cannot be set for envelope items');
+    },
+  );
+
+  it('should store an envelope item without itemId and send its dataType', async () => {
+    const metadataStore = await createMetadataStore();
+    const realFetch = global.fetch;
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(async (...args: unknown[]) => {
+        const [url, init] = args as [string, RequestInit?];
+        if (!url.endsWith('/enc_account_data/set')) {
+          return realFetch(url, init);
+        }
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          /**
+           * @returns json object
+           */
+          json: async () => Promise.resolve({ success: true }),
+          // eslint-disable-next-line no-restricted-globals
+        } as Response);
+      });
+
+    await metadataStore.addSecretDataItem({
+      secretData: {
+        data: secretData,
+        dataType: EncAccountDataType.KeyEnvelope,
+      },
+      encKey,
+      authKeyPair,
+    });
+
+    const setCall = fetchSpy.mock.calls.find(([url]) =>
+      (url as string).endsWith('/enc_account_data/set'),
+    );
+    const body = JSON.parse((setCall?.[1] as RequestInit).body as string);
+    expect(body.itemId).toBeUndefined();
+    expect(body.dataType).toBe(EncAccountDataType.KeyEnvelope);
+
+    fetchSpy.mockRestore();
+  });
+
   it('should require dataType for v2 secret data items', async () => {
     const metadataStore = await createMetadataStore();
 
@@ -656,6 +751,24 @@ describe('MetadataStore', () => {
         }),
       ).rejects.toThrow('dataType cannot be set for PW_BACKUP item');
     });
+
+    it('should reject an itemId for envelope items in batch inserts', async () => {
+      const metadataStore = await createMetadataStore();
+
+      await expect(
+        metadataStore.batchAddSecretData({
+          secretData: [
+            {
+              data: utf8ToBytes('DATA_1'),
+              itemId: 'fixed-id',
+              dataType: EncAccountDataType.EnvelopeControl,
+            },
+          ],
+          encKey,
+          authKeyPair,
+        }),
+      ).rejects.toThrow('itemId cannot be set for envelope items');
+    });
   });
 
   describe('updateSecretDataItem', () => {
@@ -733,6 +846,20 @@ describe('MetadataStore', () => {
           authKeyPair,
         }),
       ).rejects.toThrow('PW_BACKUP cannot be updated');
+    });
+
+    it('should reject setting an envelope data type', async () => {
+      const metadataStore = await createMetadataStore();
+
+      await expect(
+        metadataStore.updateSecretDataItem({
+          updateItem: {
+            itemId: 'item-1',
+            fields: { dataType: EncAccountDataType.EnvelopeControl },
+          },
+          authKeyPair,
+        }),
+      ).rejects.toThrow('dataType cannot be set to an envelope type');
     });
   });
 
@@ -828,6 +955,22 @@ describe('MetadataStore', () => {
           authKeyPair,
         }),
       ).rejects.toThrow('PW_BACKUP cannot be updated');
+    });
+
+    it('should reject setting an envelope data type in batch', async () => {
+      const metadataStore = await createMetadataStore();
+
+      await expect(
+        metadataStore.batchUpdateSecretData({
+          updateItems: [
+            {
+              itemId: 'item-1',
+              fields: { dataType: EncAccountDataType.KeyEnvelope },
+            },
+          ],
+          authKeyPair,
+        }),
+      ).rejects.toThrow('dataType cannot be set to an envelope type');
     });
 
     it('should handle HTTP error response', async () => {

@@ -39,6 +39,17 @@ export type KeyPair = {
 };
 
 /**
+ * The keys derived from a TOPRF seed for one envelope partition.
+ *
+ * authKeyPair - The key pair that signs requests to the partition.
+ * wrapKey - The AES-256 key that encrypts the envelope items of the partition.
+ */
+export type EnvelopeKeys = {
+  authKeyPair: KeyPair;
+  wrapKey: Uint8Array;
+};
+
+/**
  * Optional override for node details.
  */
 export type NodeDetailsOverride = {
@@ -143,6 +154,7 @@ export type CreateLocalKeyParams = {
  * authKeyPair - The authentication key pair which is used to authenticate the user.
  *
  * encKey - The encryption key which is used to encrypt the secret data.
+ * envelopeKeys - The keys of the envelope partition derived from the seed.
  */
 export type CreateLocalKeyResult = {
   oprfKey: bigint;
@@ -150,6 +162,7 @@ export type CreateLocalKeyResult = {
   authKeyPair: KeyPair;
   encKey: Uint8Array;
   pwEncKey: Uint8Array;
+  envelopeKeys: EnvelopeKeys;
 };
 
 /**
@@ -353,6 +366,8 @@ export type RecoverEncryptionKeyResult = {
   authKeyPair: KeyPair;
   encKey: Uint8Array;
   pwEncKey: Uint8Array;
+  /** The keys of the envelope partition derived from the seed. */
+  envelopeKeys: EnvelopeKeys;
   keyShareIndex: number;
   rateLimitResetResult: Promise<void>;
 };
@@ -570,6 +585,22 @@ export type IToprfSecureBackup = {
   batchUpdateSecretDataItems: (
     params: BatchUpdateSecretDataItemParams,
   ) => Promise<void>;
+
+  /**
+   * Acquires the metadata lock on the partition of the given auth key pair.
+   *
+   * @param authKeyPair - The authentication key pair of the partition.
+   * @returns A promise that resolves with the lock id.
+   */
+  acquireMetadataLock: (authKeyPair: KeyPair) => Promise<string>;
+
+  /**
+   * Releases a metadata lock acquired with `acquireMetadataLock`.
+   *
+   * @param authKeyPair - The authentication key pair of the partition.
+   * @param lockId - The lock id returned by `acquireMetadataLock`.
+   */
+  releaseMetadataLock: (authKeyPair: KeyPair, lockId: string) => Promise<void>;
 
   /**
    * This function fetches all secret data items associated with the given
@@ -826,16 +857,18 @@ export type IMetadataLockRequestBody = {
    */
   key: string;
   /**
-   * The Unix timestamp when the request payload is created along with the signature.
-   *
+   * The signed lock request data.
    */
   data: {
+    /**
+     * The Unix timestamp when the request payload is created along with the signature.
+     */
     timestamp: number;
   };
   /**
-   * The signature produced by signing the payload (without pubKey field) using the user's private key.
+   * The signature produced by signing `data` using the user's private key.
    *
-   * Sample signature: sign(keccak256(feature, authToken, timestamp))
+   * Sample signature: sign(keccak256(timestamp))
    */
   signature: string;
   /**

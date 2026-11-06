@@ -47,6 +47,7 @@ import type {
 import {
   deriveAuthenticationKeyPair,
   deriveEncryptionKey,
+  deriveEnvelopeKeys,
   derivePwEncKey,
 } from './keyDerivation';
 import { MetadataStore } from './metadata';
@@ -217,6 +218,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         authKeyPair,
         encKey,
         pwEncKey,
+        envelopeKeys: deriveEnvelopeKeys(seed),
       };
     } finally {
       // Clean up sensitive intermediate data
@@ -394,6 +396,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         authKeyPair,
         encKey,
         pwEncKey,
+        envelopeKeys: deriveEnvelopeKeys(seed),
         keyShareIndex,
         rateLimitResetResult,
       };
@@ -667,6 +670,31 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         }
       }
     }
+  }
+
+  /**
+   * Acquires the metadata lock on the partition of the given auth key pair.
+   *
+   * @param authKeyPair - The authentication key pair of the partition.
+   * @returns The lock id, to pass to {@link releaseMetadataLock}.
+   */
+  async acquireMetadataLock(authKeyPair: KeyPair): Promise<string> {
+    const metadataStore = await this.#createMetadataStore();
+    return metadataStore.acquireMetadataLock(authKeyPair);
+  }
+
+  /**
+   * Releases a metadata lock acquired with {@link acquireMetadataLock}.
+   *
+   * @param authKeyPair - The authentication key pair of the partition.
+   * @param lockId - The lock id returned by {@link acquireMetadataLock}.
+   */
+  async releaseMetadataLock(
+    authKeyPair: KeyPair,
+    lockId: string,
+  ): Promise<void> {
+    const metadataStore = await this.#createMetadataStore();
+    await metadataStore.releaseMetadataLock(authKeyPair, lockId);
   }
 
   /**

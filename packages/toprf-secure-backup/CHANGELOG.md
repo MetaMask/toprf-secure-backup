@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add optional `clientIdentifier` constructor parameter to `ToprfSecureBackup`. When set, SSS JSON-RPC requests include an `x-web3-client` header (name and version, e.g. `metamask-extension@13.46.1`) for SSS service logging. The header is omitted when `clientIdentifier` is missing or empty. ([#162](https://github.com/MetaMask/toprf-secure-backup/pull/162))
+- Add `EncAccountDataType.KeyEnvelope` (`4`) and `EnvelopeControl` (`5`), whose items use content-hash item ids. ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
+- Add `envelopeKeys` (`authKeyPair` and `wrapKey` of the key-envelope partition, derived from the TOPRF seed) to the `createLocalKey` and `recoverEncKey` results, and export the `EnvelopeKeys` type ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
+- Add `acquireMetadataLock` and `releaseMetadataLock` to hold a partition's metadata lock across multiple requests. ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
+
+### Changed
+
+- **Breaking**: Require Node.js `^24.22.1` (previously `^18.18 || >=20`). ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
+- `addSecretDataItem` and `batchAddSecretDataItems` throw if a `KeyEnvelope` or `EnvelopeControl` item has an `itemId`. ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
+- `updateSecretDataItem` and `batchUpdateSecretDataItems` throw if `dataType` is set to `KeyEnvelope` or `EnvelopeControl`. ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
 
 ## [1.1.0]
 

@@ -10,7 +10,8 @@ import { EncAccountDataType, FIRST_KEY_INDEX } from './constants';
 import { TOPRFError, TOPRFErrorCode } from './errors';
 import * as getPubKeyRequestModule from './getPubKeyRequest';
 import type { KeyPair, NodeDetailsOverride } from './interfaces';
-import { MetadataStore } from './metadata';
+import { deriveEnvelopeKeys } from './keyDerivation';
+import { MetadataLockStatus, MetadataStore } from './metadata';
 import type { KeyDeriver } from './oprf';
 import * as resetRateLimitsModule from './resetRateLimits';
 import * as storeSharesRequestModule from './storeSharesRequest';
@@ -380,6 +381,63 @@ describe('toprf secret backup', function () {
       expect(pubKeySpy).toHaveBeenCalledWith(
         expect.objectContaining({ clientIdentifier }),
       );
+    });
+
+    it('returns envelope keys derived from the TOPRF seed and no seed from recoverEncKey', async function () {
+      const { authConnectionId, userId, toprfSecureBackup } = setup({
+        nodeDetailsOverride,
+      });
+      const seed = new Uint8Array(32).fill(7);
+      jest
+        .spyOn(toprfEvalRequestModule, 'recoverTOPRFSeed')
+        .mockResolvedValue({ seed, keyShareIndex: 1 });
+      jest
+        .spyOn(resetRateLimitsModule, 'resetRateLimits')
+        .mockResolvedValue(true);
+
+      const result = await toprfSecureBackup.recoverEncKey({
+        nodeAuthTokens,
+        password: 'password',
+        authConnectionId,
+        userId,
+      });
+
+      expect(result).not.toHaveProperty('seed');
+      expect(result.envelopeKeys).toStrictEqual(
+        deriveEnvelopeKeys(new Uint8Array(32).fill(7)),
+      );
+      // the SDK zeroes its own copy
+      expect(seed).toStrictEqual(new Uint8Array(32));
+    });
+
+    it('returns envelope keys derived from the seed from createLocalKey', async function () {
+      const { toprfSecureBackup } = setup({ nodeDetailsOverride });
+
+      const result = await toprfSecureBackup.createLocalKey({
+        password: 'password',
+      });
+
+      expect(result.envelopeKeys).toStrictEqual(
+        deriveEnvelopeKeys(result.seed),
+      );
+    });
+
+    it('acquires and releases the metadata lock of a partition', async function () {
+      const { toprfSecureBackup } = setup({ nodeDetailsOverride });
+      const authKeyPair = { sk: 1n, pk: new Uint8Array(65).fill(1) };
+      const acquireSpy = jest
+        .spyOn(MetadataStore.prototype, 'acquireMetadataLock')
+        .mockResolvedValue('lock-id');
+      const releaseSpy = jest
+        .spyOn(MetadataStore.prototype, 'releaseMetadataLock')
+        .mockResolvedValue(MetadataLockStatus.SUCCESS);
+
+      const lockId = await toprfSecureBackup.acquireMetadataLock(authKeyPair);
+      await toprfSecureBackup.releaseMetadataLock(authKeyPair, lockId);
+
+      expect(lockId).toBe('lock-id');
+      expect(acquireSpy).toHaveBeenCalledWith(authKeyPair);
+      expect(releaseSpy).toHaveBeenCalledWith(authKeyPair, 'lock-id');
     });
   });
 

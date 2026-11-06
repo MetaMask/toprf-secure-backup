@@ -5,7 +5,7 @@ import { secp256k1 } from '@noble/curves/secp256k1';
 import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
 import { bytesToHex } from '@noble/hashes/utils';
 
-import { PW_BACKUP_ITEM_ID } from './constants';
+import { EncAccountDataType, PW_BACKUP_ITEM_ID } from './constants';
 import type {
   IGetSecretDataRequestBody,
   KeyPair,
@@ -79,6 +79,47 @@ export class MetadataStoreError extends Error {
     super(message);
     this.name = 'MetadataStoreError';
     Object.setPrototypeOf(this, MetadataStoreError.prototype);
+  }
+}
+
+/**
+ * Checks whether the data type is one of the envelope data types, whose
+ * items use content-hash item ids.
+ *
+ * @param dataType - The data type to check.
+ * @returns True if the data type is `KeyEnvelope` or `EnvelopeControl`.
+ */
+function isEnvelopeDataType(dataType?: EncAccountDataType): boolean {
+  return (
+    dataType === EncAccountDataType.KeyEnvelope ||
+    dataType === EncAccountDataType.EnvelopeControl
+  );
+}
+
+/**
+ * Throws if an envelope item is given an item id.
+ *
+ * @param secretData - The item to be stored.
+ */
+function assertNoEnvelopeItemId(secretData: SecretDataItemInput): void {
+  if (
+    isEnvelopeDataType(secretData.dataType) &&
+    secretData.itemId !== undefined
+  ) {
+    throw new MetadataStoreError('itemId cannot be set for envelope items');
+  }
+}
+
+/**
+ * Throws if an update sets an envelope data type.
+ *
+ * @param fields - The fields to be updated.
+ */
+function assertNotEnvelopeDataTypeUpdate(
+  fields: UpdateSecretDataItemFields,
+): void {
+  if (isEnvelopeDataType(fields.dataType)) {
+    throw new MetadataStoreError('dataType cannot be set to an envelope type');
   }
 }
 
@@ -330,6 +371,7 @@ export class MetadataStore {
           'dataType is required for v2 secret data items',
         );
       }
+      assertNoEnvelopeItemId(params.secretData);
 
       const url = `${params.metadataEndpoint}/enc_account_data/set`;
       const encryptedData = this.#encryptData(
@@ -425,6 +467,7 @@ export class MetadataStore {
             'dataType is required for v2 secret data items',
           );
         }
+        assertNoEnvelopeItemId(secret);
         return {
           data: this.#encryptData(secret.data, encKeys[index]),
           itemId: secret.itemId,
@@ -479,6 +522,7 @@ export class MetadataStore {
       if (params.updateItem.itemId === PW_BACKUP_ITEM_ID) {
         throw new MetadataStoreError('PW_BACKUP cannot be updated');
       }
+      assertNotEnvelopeDataTypeUpdate(params.updateItem.fields);
 
       const url = `${params.metadataEndpoint}/enc_account_data/update`;
       const payload = await this.#generatePayloadForUpdateSecretDataRequest(
@@ -528,6 +572,7 @@ export class MetadataStore {
         if (item.itemId === PW_BACKUP_ITEM_ID) {
           throw new MetadataStoreError('PW_BACKUP cannot be updated');
         }
+        assertNotEnvelopeDataTypeUpdate(item.fields);
       }
 
       const url = `${params.metadataEndpoint}/enc_account_data/batch_update`;
