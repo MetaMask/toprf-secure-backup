@@ -696,6 +696,18 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
   }
 
   /**
+   * Marks the partition of the given auth key pair as envelope-managed.
+   * The flag cannot be unset. The call is idempotent. It must be made while no
+   * metadata lock is held on the partition, since the server refuses it otherwise.
+   *
+   * @param authKeyPair - The authentication key pair of the partition.
+   */
+  async setEnvelopeManaged(authKeyPair: KeyPair): Promise<void> {
+    const metadataStore = await this.#createMetadataStore();
+    await metadataStore.setEnvelopeManaged(authKeyPair);
+  }
+
+  /**
    * This function fetches all secret data items associated with the given
    * auth pub key, decrypts, and returns them.
    *

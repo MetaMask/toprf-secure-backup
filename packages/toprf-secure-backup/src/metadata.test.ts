@@ -1,8 +1,15 @@
-import { randomBytes, utf8ToBytes } from '@noble/hashes/utils';
+import { safeStringify } from '@metamask/auth-network-utils';
+import { secp256k1 } from '@noble/curves/secp256k1';
+import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
+import { hexToBytes, randomBytes, utf8ToBytes } from '@noble/hashes/utils';
 import type { TORUS_SAPPHIRE_NETWORK_TYPE } from '@toruslabs/constants';
 import { NodeDetailManager } from '@toruslabs/fetch-node-details';
 
-import { EncAccountDataType } from './constants';
+import {
+  EncAccountDataType,
+  METADATA_LOCK_CLIENT_VERSION,
+  METADATA_SET_ENVELOPE_MANAGED_ACTION,
+} from './constants';
 import type { KeyPair } from './interfaces';
 import {
   deriveAuthenticationKeyPair,
@@ -189,7 +196,7 @@ describe('MetadataStore', () => {
     expect(lockStatus).toBe(MetadataLockStatus.SUCCESS);
   });
 
-  it('should send only the signed timestamp in lock request data', async () => {
+  it('should send the signed timestamp and client version in lock request data', async () => {
     const fetchSpy = jest
       .spyOn(global, 'fetch')
       .mockImplementation(async (...args: unknown[]) => {
@@ -220,10 +227,122 @@ describe('MetadataStore', () => {
       .map(([, init]) => JSON.parse((init as RequestInit).body as string));
     expect(bodies).toHaveLength(2);
     for (const body of bodies) {
-      expect(body.data).toStrictEqual({ timestamp: expect.any(Number) });
+      expect(body.data).toStrictEqual({
+        timestamp: expect.any(Number),
+        version: METADATA_LOCK_CLIENT_VERSION,
+      });
       expect(body.version).toBeUndefined();
+
+      // signature must verify over the signed data (DER, keccak256 of the JSON)
+      const hash = keccak256(safeStringify(body.data));
+      const signature = secp256k1.Signature.fromDER(body.signature);
+      expect(secp256k1.verify(signature, hash, hexToBytes(body.key))).toBe(
+        true,
+      );
     }
     expect(bodies[1].id).toBe('LOCK_ID');
+
+    fetchSpy.mockRestore();
+  });
+
+  it('should include the error code when lock acquisition is refused for an envelope-managed partition', async () => {
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(async () => {
+        return Promise.resolve({
+          ok: false,
+          status: 403,
+          statusText: 'Forbidden',
+          /**
+           * @returns json object
+           */
+          json: async () =>
+            Promise.resolve({
+              error:
+                'Partition is envelope-managed; lock requires client version >= 1',
+              code: 'ENVELOPE_CLIENT_REQUIRED',
+              success: false,
+            }),
+          // eslint-disable-next-line no-restricted-globals
+        } as Response);
+      });
+
+    const metadataStore = await createMetadataStore();
+
+    await expect(
+      metadataStore.acquireMetadataLock(authKeyPair),
+    ).rejects.toThrow('(code: ENVELOPE_CLIENT_REQUIRED)');
+
+    fetchSpy.mockRestore();
+  });
+
+  it('should send a signed setEnvelopeManaged request without a lock id', async () => {
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(async () => {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          /**
+           * @returns json object
+           */
+          json: async () => Promise.resolve({ success: true }),
+          // eslint-disable-next-line no-restricted-globals
+        } as Response);
+      });
+
+    const metadataStore = await createMetadataStore();
+    await metadataStore.setEnvelopeManaged(authKeyPair);
+
+    const call = fetchSpy.mock.calls.find(([url]) =>
+      (url as string).endsWith('/enc_account_data/set_envelope_managed'),
+    );
+    expect(call).toBeDefined();
+    const [, init] = call as [string, RequestInit];
+
+    const body = JSON.parse(init.body as string);
+    expect(body.id).toBeUndefined();
+    expect(body.data).toBeUndefined();
+    expect(body).toStrictEqual({
+      feature: expect.any(String),
+      timestamp: expect.any(String),
+      action: METADATA_SET_ENVELOPE_MANAGED_ACTION,
+      authToken: expect.any(String),
+      signature: expect.any(String),
+      pubKey: expect.any(String),
+    });
+
+    // signature covers every field except signature and pubKey (compact r||s)
+    const { signature, pubKey, ...sigPayload } = body;
+    const hash = keccak256(safeStringify(sigPayload));
+    const compactSig = secp256k1.Signature.fromCompact(signature);
+    expect(secp256k1.verify(compactSig, hash, hexToBytes(pubKey))).toBe(true);
+
+    fetchSpy.mockRestore();
+  });
+
+  it('should throw when the server does not confirm setEnvelopeManaged', async () => {
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(async () => {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          /**
+           * @returns json object
+           */
+          json: async () => Promise.resolve({ success: false }),
+          // eslint-disable-next-line no-restricted-globals
+        } as Response);
+      });
+
+    const metadataStore = await createMetadataStore();
+
+    await expect(metadataStore.setEnvelopeManaged(authKeyPair)).rejects.toThrow(
+      'failed to set envelope managed',
+    );
 
     fetchSpy.mockRestore();
   });

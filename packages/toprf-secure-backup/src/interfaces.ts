@@ -593,6 +593,15 @@ export type IToprfSecureBackup = {
   releaseMetadataLock: (authKeyPair: KeyPair, lockId: string) => Promise<void>;
 
   /**
+   * Marks the partition of the given auth key pair as envelope-managed.
+   * The flag cannot be unset. The call is idempotent. It must be made while no
+   * metadata lock is held on the partition, since the server refuses it otherwise.
+   *
+   * @param authKeyPair - The authentication key pair of the partition.
+   */
+  setEnvelopeManaged: (authKeyPair: KeyPair) => Promise<void>;
+
+  /**
    * This function fetches all secret data items associated with the given
    * auth pub key, decrypts, and returns them.
    *
@@ -854,17 +863,52 @@ export type IMetadataLockRequestBody = {
      * The Unix timestamp when the request payload is created along with the signature.
      */
     timestamp: number;
+    /**
+     * The client protocol version. Covered by the signature. Required on
+     * envelope-managed partitions, where it must be at least the server's minimum.
+     */
+    version: number;
   };
   /**
    * The signature produced by signing `data` using the user's private key.
    *
-   * Sample signature: sign(keccak256(timestamp))
+   * Sample signature: sign(keccak256(timestamp, version))
    */
   signature: string;
   /**
    * The lock id to be released.
    */
   id?: string | undefined;
+};
+
+/**
+ * Payload structure for flagging a partition as envelope-managed.
+ */
+export type ISetEnvelopeManagedRequestBody = {
+  /**
+   * The feature identifier.
+   */
+  feature: string;
+  /**
+   * The public key (hex) of the partition to flag.
+   */
+  pubKey: string;
+  /**
+   * The signature over every other body field, produced with the partition's auth key.
+   */
+  signature: string;
+  /**
+   * The Unix timestamp (as a string) when the request was created.
+   */
+  timestamp: string;
+  /**
+   * Binds the signature to this endpoint, so a signed payload for another route cannot be replayed here.
+   */
+  action: string;
+  /**
+   * The metadata access token.
+   */
+  authToken: string;
 };
 
 /**

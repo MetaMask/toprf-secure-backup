@@ -13,12 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `EncAccountDataType.KeyEnvelope` (`4`) and `EnvelopeControl` (`5`), whose items use content-hash item ids. ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
 - Add `seed` (the TOPRF seed) to the `recoverEncKey` result so callers can derive additional keys. ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
 - Add `acquireMetadataLock` and `releaseMetadataLock` to hold a partition's metadata lock across multiple requests. ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
+- Add `setEnvelopeManaged` to flag a partition as envelope-managed.
 
 ### Changed
 
 - **Breaking**: Require Node.js `^24.22.1` (previously `^18.18 || >=20`). ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
 - `addSecretDataItem` and `batchAddSecretDataItems` throw if a `KeyEnvelope` or `EnvelopeControl` item has an `itemId`. ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
 - `updateSecretDataItem` and `batchUpdateSecretDataItems` throw if `dataType` is set to `KeyEnvelope` or `EnvelopeControl`. ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
+- Metadata lock requests now include a signed `data.version`, which envelope-managed partitions require. Lock errors include the server error code when one is returned.
 
 ## [1.1.0]
 

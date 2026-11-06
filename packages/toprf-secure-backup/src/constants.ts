@@ -17,6 +17,17 @@ export const MAX_PASSWORD_CHAIN_LENGTH = 10;
 export const PW_BACKUP_ITEM_ID = 'PW_BACKUP';
 
 /**
+ * Client protocol version sent (and signed) in metadata lock requests.
+ * Envelope-managed partitions require a version at or above the server's minimum.
+ */
+export const METADATA_LOCK_CLIENT_VERSION = 1;
+
+/**
+ * Action bound into the signed payload of a `setEnvelopeManaged` request.
+ */
+export const METADATA_SET_ENVELOPE_MANAGED_ACTION = 'setEnvelopeManaged';
+
+/**
  * Optional SSS JSON-RPC request header used by the SSS service for client logging.
  */
 export const WEB3_CLIENT_HEADER = 'x-web3-client';
