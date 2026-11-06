@@ -47,6 +47,7 @@ import type {
 import {
   deriveAuthenticationKeyPair,
   deriveEncryptionKey,
+  deriveEnvelopeKeys,
   derivePwEncKey,
 } from './keyDerivation';
 import { MetadataStore } from './metadata';
@@ -217,6 +218,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         authKeyPair,
         encKey,
         pwEncKey,
+        envelopeKeys: deriveEnvelopeKeys(seed),
       };
     } finally {
       // Clean up sensitive intermediate data
@@ -391,10 +393,10 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       });
 
       return {
-        seed: seed.slice(),
         authKeyPair,
         encKey,
         pwEncKey,
+        envelopeKeys: deriveEnvelopeKeys(seed),
         keyShareIndex,
         rateLimitResetResult,
       };

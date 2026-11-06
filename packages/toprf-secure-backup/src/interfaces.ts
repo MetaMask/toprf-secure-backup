@@ -39,6 +39,17 @@ export type KeyPair = {
 };
 
 /**
+ * The keys derived from a TOPRF seed for one envelope partition.
+ *
+ * authKeyPair - The key pair that signs requests to the partition.
+ * wrapKey - The AES-256 key that encrypts the envelope items of the partition.
+ */
+export type EnvelopeKeys = {
+  authKeyPair: KeyPair;
+  wrapKey: Uint8Array;
+};
+
+/**
  * Optional override for node details.
  */
 export type NodeDetailsOverride = {
@@ -143,6 +154,7 @@ export type CreateLocalKeyParams = {
  * authKeyPair - The authentication key pair which is used to authenticate the user.
  *
  * encKey - The encryption key which is used to encrypt the secret data.
+ * envelopeKeys - The keys of the envelope partition derived from the seed.
  */
 export type CreateLocalKeyResult = {
   oprfKey: bigint;
@@ -150,6 +162,7 @@ export type CreateLocalKeyResult = {
   authKeyPair: KeyPair;
   encKey: Uint8Array;
   pwEncKey: Uint8Array;
+  envelopeKeys: EnvelopeKeys;
 };
 
 /**
@@ -350,14 +363,11 @@ export type RecoverEncryptionKeyParams = {
  * rateLimitResetResult - A promise that resolves when the rate limit is reset.
  */
 export type RecoverEncryptionKeyResult = {
-  /**
-   * The TOPRF seed the keys are derived from. The caller owns this copy and
-   * should zero it once it is no longer needed.
-   */
-  seed: Uint8Array;
   authKeyPair: KeyPair;
   encKey: Uint8Array;
   pwEncKey: Uint8Array;
+  /** The keys of the envelope partition derived from the seed. */
+  envelopeKeys: EnvelopeKeys;
   keyShareIndex: number;
   rateLimitResetResult: Promise<void>;
 };

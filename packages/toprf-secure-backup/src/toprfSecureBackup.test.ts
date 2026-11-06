@@ -10,6 +10,7 @@ import { EncAccountDataType, FIRST_KEY_INDEX } from './constants';
 import { TOPRFError, TOPRFErrorCode } from './errors';
 import * as getPubKeyRequestModule from './getPubKeyRequest';
 import type { KeyPair, NodeDetailsOverride } from './interfaces';
+import { deriveEnvelopeKeys } from './keyDerivation';
 import { MetadataLockStatus, MetadataStore } from './metadata';
 import type { KeyDeriver } from './oprf';
 import * as resetRateLimitsModule from './resetRateLimits';
@@ -382,7 +383,7 @@ describe('toprf secret backup', function () {
       );
     });
 
-    it('returns a copy of the TOPRF seed from recoverEncKey', async function () {
+    it('returns envelope keys derived from the TOPRF seed and no seed from recoverEncKey', async function () {
       const { authConnectionId, userId, toprfSecureBackup } = setup({
         nodeDetailsOverride,
       });
@@ -401,9 +402,24 @@ describe('toprf secret backup', function () {
         userId,
       });
 
-      expect(result.seed).toStrictEqual(new Uint8Array(32).fill(7));
+      expect(result).not.toHaveProperty('seed');
+      expect(result.envelopeKeys).toStrictEqual(
+        deriveEnvelopeKeys(new Uint8Array(32).fill(7)),
+      );
       // the SDK zeroes its own copy
       expect(seed).toStrictEqual(new Uint8Array(32));
+    });
+
+    it('returns envelope keys derived from the seed from createLocalKey', async function () {
+      const { toprfSecureBackup } = setup({ nodeDetailsOverride });
+
+      const result = await toprfSecureBackup.createLocalKey({
+        password: 'password',
+      });
+
+      expect(result.envelopeKeys).toStrictEqual(
+        deriveEnvelopeKeys(result.seed),
+      );
     });
 
     it('acquires and releases the metadata lock of a partition', async function () {
