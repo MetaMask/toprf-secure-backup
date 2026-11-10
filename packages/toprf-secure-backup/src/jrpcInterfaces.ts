@@ -58,7 +58,7 @@ export type AuthJRPCResponse = JRPCResponse<AuthRequestResult>;
 
 export type BaseShareImportItem = {
   encryptedAuthToken: string;
-  encryptedShare: string;
+  boundEncryptedShare: string;
   keyShareIndex: number;
   nodeIndex: number;
   sssEndpoint: string;

@@ -1,4 +1,7 @@
-import type { JSONRPCError } from '@metamask/auth-network-utils';
+import type { EciesHex, JSONRPCError } from '@metamask/auth-network-utils';
+import { encParamsHexToBuf } from '@metamask/auth-network-utils';
+import { secp256k1 } from '@noble/curves/secp256k1';
+import { decrypt } from '@toruslabs/eccrypto';
 
 import { JsonRpcErrorCodes } from './constants';
 import { TOPRFError, TOPRFErrorCode } from './errors';
@@ -8,6 +11,7 @@ import {
   checkAuthTokenErrors,
   getMaxRateLimitError,
   extractRateLimitErrorFromResults,
+  generateShareImportItems,
   getTOPRFError,
   parseJsonRpcError,
 } from './utils';
@@ -473,5 +477,72 @@ describe('checkAuthTokenErrors', () => {
     const nonTOPRFError = new Error('Test error');
     const error2 = getTOPRFError(nonTOPRFError);
     expect(error2).toBe(nonTOPRFError);
+  });
+});
+
+describe('generateShareImportItems', () => {
+  const nodePrivKey = secp256k1.utils.randomPrivateKey();
+  const nodeEndpointsMap = { 1: 'n1', 2: 'n2', 3: 'n3', 4: 'n4', 5: 'n5' };
+  const authTokens = [
+    {
+      authToken: Buffer.from('token').toString('base64'),
+      nodeIndex: 1,
+      nodePubKey: Buffer.from(
+        secp256k1.getPublicKey(nodePrivKey, false),
+      ).toString('hex'),
+    },
+  ];
+
+  /**
+   * Decrypts an encrypted share with the node key.
+   *
+   * @param encryptedShare - The encrypted share from a share import item.
+   * @returns The parsed plaintext.
+   */
+  const decryptShare = async (encryptedShare: string): Promise<unknown> => {
+    const { data, metadata } = JSON.parse(encryptedShare) as {
+      data: string;
+      metadata: Omit<EciesHex, 'ciphertext'>;
+    };
+    const plaintext = await decrypt(Buffer.from(nodePrivKey), {
+      ...encParamsHexToBuf(metadata),
+      ciphertext: Buffer.from(data, 'hex'),
+    });
+    return JSON.parse(Buffer.from(plaintext).toString());
+  };
+
+  it('should encrypt each share together with its owner', async () => {
+    const [item] = await generateShareImportItems(
+      nodeEndpointsMap,
+      authTokens,
+      123n,
+      1,
+      'my-verifier',
+      'user@example.com',
+    );
+    expect(item).not.toHaveProperty('encryptedShare');
+    expect(await decryptShare(item.boundEncryptedShare)).toStrictEqual({
+      share: expect.any(String),
+      verifier: 'my-verifier',
+      verifier_id: 'user@example.com',
+    });
+  });
+
+  it('should encrypt each key change share together with its owner', async () => {
+    const [item] = await generateShareImportItems<'keyChange'>(
+      nodeEndpointsMap,
+      authTokens,
+      123n,
+      2,
+      'my-verifier',
+      'user@example.com',
+      456n,
+    );
+    expect(item).not.toHaveProperty('encryptedShare');
+    expect(await decryptShare(item.boundEncryptedShare)).toStrictEqual({
+      share: expect.any(String),
+      verifier: 'my-verifier',
+      verifier_id: 'user@example.com',
+    });
   });
 });
