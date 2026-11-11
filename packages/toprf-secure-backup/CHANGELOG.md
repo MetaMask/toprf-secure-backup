@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Breaking**: Require Node.js `^24.22.1` (previously `^18.18 || >=20`). ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
+- **Breaking**: `generateShareImportItems`, `createNewUserShareImportItems` and `createKeyChangeShareImportItems` take `verifier` and `verifierId` after `keyShareIndex`, and encrypt each share together with them, so a copied encrypted share cannot be imported under another identity. The share is sent as `boundEncryptedShare` instead of `encryptedShare`, so SSS nodes that cannot check the owner reject the import instead of storing a corrupt share. ([#169](https://github.com/MetaMask/toprf-secure-backup/pull/169))
 - `addSecretDataItem` and `batchAddSecretDataItems` throw if a `KeyEnvelope` or `EnvelopeControl` item has an `itemId`. ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
 - `updateSecretDataItem` and `batchUpdateSecretDataItems` throw if `dataType` is set to `KeyEnvelope` or `EnvelopeControl`. ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
 

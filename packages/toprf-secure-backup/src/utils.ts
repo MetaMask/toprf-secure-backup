@@ -290,6 +290,8 @@ export const createKeyChangeProof = (
  * @param nodeEndpointsMap - Map of node indexes to endpoints
  * @param authTokens - Auth tokens for each node
  * @param keyShareIndex - Key index for the shares
+ * @param verifier - Verifier that owns the shares
+ * @param verifierId - Verifier ID that owns the shares
  * @returns Share import items for standard flow
  */
 export const createNewUserShareImportItems = async (
@@ -297,6 +299,8 @@ export const createNewUserShareImportItems = async (
   nodeEndpointsMap: Record<number, string>,
   authTokens: NodeAuthTokens,
   keyShareIndex: number,
+  verifier: string,
+  verifierId: string,
 ): Promise<ShareImportItem[]> => {
   return Promise.all(
     authTokens.map(async (tokenData) => {
@@ -307,9 +311,15 @@ export const createNewUserShareImportItems = async (
       const share = shares[keyShare];
       const shareJson = share.toJSON() as Record<string, string>;
 
-      // Encrypt the share
+      // Encrypt the share with its owner, so it cannot be imported under another identity
       const encryptedShare = await encryptData(
-        Buffer.from(shareJson.share, 'hex'),
+        Buffer.from(
+          JSON.stringify({
+            share: shareJson.share,
+            verifier,
+            verifier_id: verifierId,
+          }),
+        ),
         Buffer.from(nodePubKey, 'hex'),
       );
 
@@ -321,7 +331,7 @@ export const createNewUserShareImportItems = async (
 
       // Return the standard share import item
       return {
-        encryptedShare: JSON.stringify(encryptedShare),
+        boundEncryptedShare: JSON.stringify(encryptedShare),
         encryptedAuthToken: JSON.stringify(encryptedAuthToken),
         keyShareIndex,
         nodeIndex,
@@ -338,6 +348,8 @@ export const createNewUserShareImportItems = async (
  * @param nodeEndpointsMap - Map of node indexes to endpoints
  * @param authTokens - Auth tokens for each node
  * @param keyShareIndex - Key index for the shares
+ * @param verifier - Verifier that owns the shares
+ * @param verifierId - Verifier ID that owns the shares
  * @param oldAuthPrivKey - Old private key for signing
  * @returns Share import items for key change flow
  */
@@ -346,6 +358,8 @@ export const createKeyChangeShareImportItems = async (
   nodeEndpointsMap: Record<number, string>,
   authTokens: NodeAuthTokens,
   keyShareIndex: number,
+  verifier: string,
+  verifierId: string,
   oldAuthPrivKey: bigint,
 ): Promise<ShareImportItem<'keyChange'>[]> => {
   return Promise.all(
@@ -366,9 +380,15 @@ export const createKeyChangeShareImportItems = async (
         oldAuthPrivKey,
       );
 
-      // Encrypt the share
+      // Encrypt the share with its owner, so it cannot be imported under another identity
       const encryptedShare = await encryptData(
-        Buffer.from(shareJson.share, 'hex'),
+        Buffer.from(
+          JSON.stringify({
+            share: shareJson.share,
+            verifier,
+            verifier_id: verifierId,
+          }),
+        ),
         Buffer.from(nodePubKey, 'hex'),
       );
 
@@ -380,7 +400,7 @@ export const createKeyChangeShareImportItems = async (
 
       // Return the key change share import item
       return {
-        encryptedShare: JSON.stringify(encryptedShare),
+        boundEncryptedShare: JSON.stringify(encryptedShare),
         encryptedAuthToken: JSON.stringify(encryptedAuthToken),
         keyShareIndex,
         nodeIndex,
@@ -398,6 +418,8 @@ export const createKeyChangeShareImportItems = async (
  * @param authTokens - The auth tokens issued by the nodes on authenticating the user.
  * @param privKey - The private key to be used for the share import items.
  * @param keyShareIndex - The key share index to be used for the share import items.
+ * @param verifier - The verifier that owns the shares.
+ * @param verifierId - The verifier ID that owns the shares.
  * @param args - Additional arguments based on ShareType.
  * When ShareType is 'keyChange', this must include the old auth private key for signing.
  *
@@ -412,6 +434,8 @@ export const generateShareImportItems = async <
   authTokens: NodeAuthTokens,
   privKey: bigint,
   keyShareIndex: number,
+  verifier: string,
+  verifierId: string,
   ...args: ShareType extends 'keyChange' ? [oldAuthPrivKey: bigint] : []
 ): Promise<ShareImportItem<ShareType>[]> => {
   // First prepare the shares for all nodes
@@ -426,6 +450,8 @@ export const generateShareImportItems = async <
       nodeEndpointsMap,
       authTokens,
       keyShareIndex,
+      verifier,
+      verifierId,
       oldAuthPrivKey,
     ) as unknown as ShareImportItem<ShareType>[];
   }
@@ -435,6 +461,8 @@ export const generateShareImportItems = async <
     nodeEndpointsMap,
     authTokens,
     keyShareIndex,
+    verifier,
+    verifierId,
   ) as unknown as ShareImportItem<ShareType>[];
 };
 

@@ -63,14 +63,17 @@ export const createStoreKeySharesRequestParams = async (
     oprfKey,
     authPubKey,
   } = params;
+  const verifier = groupedAuthConnectionId ?? authConnectionId;
   const shareImportItems = await generateShareImportItems(
     nodeEndpointsMap,
     authTokens,
     oprfKey,
     keyShareIndex,
+    verifier,
+    userId,
   );
   return {
-    verifier: groupedAuthConnectionId ?? authConnectionId,
+    verifier,
     verifierId: userId,
     pubKey: uint8ArrayToHex(authPubKey),
     shareImportItems,
@@ -211,19 +214,22 @@ export const createKeyChangeRequestParams = async (
     userId,
   } = params;
 
+  const verifier = groupedAuthConnectionId ?? authConnectionId;
   // Generate share import items with the old auth private key for signing
   const shareImportItems = await generateShareImportItems<'keyChange'>(
     nodeEndpointsMap,
     authTokens,
     newOprfKey,
     keyShareIndex,
+    verifier,
+    userId,
     oldAuthPrivKey,
   );
 
   return {
     pubKey: uint8ArrayToHex(newAuthPubKey),
     shareImportItems,
-    verifier: groupedAuthConnectionId ?? authConnectionId,
+    verifier,
     verifierId: userId,
   };
 };

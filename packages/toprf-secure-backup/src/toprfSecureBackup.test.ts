@@ -25,8 +25,6 @@ import {
   sleep,
 } from '../tests/testHelpers';
 
-const EXISTING_USER_ID = 'test-verifier-id-existing-user';
-
 const keyDeriver = {
   // Disable eslint-plugin-jsdoc because this is a test file.
   // eslint-disable-next-line jsdoc/require-jsdoc
@@ -113,12 +111,21 @@ describe('toprf secret backup', function () {
     });
 
     it('should return isNewUser as false for existing user', async function () {
-      const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
-        userId: EXISTING_USER_ID,
+      const { authConnectionId, userId, idToken, toprfSecureBackup } = setup();
+      const { nodeAuthTokens } = await toprfSecureBackup.authenticate({
+        idTokens: [idToken],
+        authConnectionId,
+        userId,
+      });
+      await toprfSecureBackup.createAndPersistEncKey({
+        nodeAuthTokens,
+        password: generateRandomPassword(),
+        authConnectionId,
+        userId,
       });
 
       const result = await toprfSecureBackup.authenticate({
-        idTokens: [idToken],
+        idTokens: [generateIdToken(userId, 'ES256')],
         authConnectionId,
         userId,
       });
