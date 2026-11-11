@@ -52,11 +52,12 @@ export function generateRandomPassword(): string {
 
 /**
  * Generates a random user id for testing purposes.
+ * TOPRF nodes only accept `@example.com` identities from test verifiers.
  *
  * @returns A random user id.
  */
 export function generateRandomUserId(): string {
-  return Math.random().toString(36).slice(2, 10);
+  return `${Math.random().toString(36).slice(2, 10)}@example.com`;
 }
 
 /**

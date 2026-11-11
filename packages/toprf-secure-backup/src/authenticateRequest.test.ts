@@ -26,7 +26,7 @@ describe('authenticate request', function () {
     const pubKey = secp256k1.ProjectivePoint.fromPrivateKey(privKey);
 
     const authConnectionId = 'torus-test-health';
-    const userId = 'test-user-id';
+    const userId = 'test-user-id@example.com';
     const idToken = generateIdToken(userId, 'ES256');
     const sessionPubKeyX = pubKey.x.toString(16);
     const sessionPubKeyY = pubKey.y.toString(16);
