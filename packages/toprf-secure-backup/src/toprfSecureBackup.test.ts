@@ -25,8 +25,6 @@ import {
   sleep,
 } from '../tests/testHelpers';
 
-const EXISTING_USER_ID = 'test-verifier-id-existing-user';
-
 const keyDeriver = {
   // Disable eslint-plugin-jsdoc because this is a test file.
   // eslint-disable-next-line jsdoc/require-jsdoc
@@ -113,12 +111,29 @@ describe('toprf secret backup', function () {
     });
 
     it('should return isNewUser as false for existing user', async function () {
-      const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
-        userId: EXISTING_USER_ID,
+      const { authConnectionId, userId, idToken, toprfSecureBackup } = setup();
+
+      // Create the user first so the second authenticate sees an existing user.
+      const initialResult = await toprfSecureBackup.authenticate({
+        idTokens: [idToken],
+        authConnectionId,
+        userId,
+      });
+      expect(initialResult.isNewUser).toBe(true);
+      await toprfSecureBackup.createAndPersistEncKey({
+        nodeAuthTokens: initialResult.nodeAuthTokens,
+        password: generateRandomPassword(),
+        authConnectionId,
+        userId,
       });
 
+      // The nodes reject a reused idToken ("Duplicate token found"). Tokens are
+      // minted per second (iat), so wait a second to get a distinct token.
+      await sleep(1000);
+      const secondIdToken = generateIdToken(userId, 'ES256');
+
       const result = await toprfSecureBackup.authenticate({
-        idTokens: [idToken],
+        idTokens: [secondIdToken],
         authConnectionId,
         userId,
       });
