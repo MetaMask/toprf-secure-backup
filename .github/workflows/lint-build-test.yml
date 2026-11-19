@@ -103,6 +103,8 @@ jobs:
           is-high-risk-environment: false
       - run: yarn test:scripts
       - run: yarn workspace ${{ matrix.package-name }} run test
+        env:
+          TEST_JWT_PRIVATE_KEY: ${{ secrets.TEST_JWT_PRIVATE_KEY }}
       - name: Require clean working directory
         shell: bash
         run: |
