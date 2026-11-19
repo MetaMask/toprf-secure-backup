@@ -56,7 +56,7 @@ export function generateRandomPassword(): string {
  * @returns A random user id.
  */
 export function generateRandomUserId(): string {
-  return Math.random().toString(36).slice(2, 10);
+  return `${Math.random().toString(36).slice(2, 10)}@example.com`;
 }
 
 /**

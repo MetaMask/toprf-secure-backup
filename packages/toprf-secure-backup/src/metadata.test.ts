@@ -30,7 +30,7 @@ async function getNodeEndpointsMap(
   const { torusNodeSSSEndpoints, torusIndexes } =
     await nodeDetailManager.getNodeDetails({
       verifier: 'auth-connection-id',
-      verifierId: 'user-id',
+      verifierId: 'user-id@example.com',
     });
   if (!torusNodeSSSEndpoints || !torusIndexes) {
     throw new Error('Failed to get node details');
@@ -59,7 +59,7 @@ async function createMetadataStore(nodeEndpointsMap?: {
   let nodeEndpoints = nodeEndpointsMap;
   nodeEndpoints ??= await getNodeEndpointsMap();
   const node1MetadataEndpoint = nodeEndpoints['1'];
-  const userId = 'test-user';
+  const userId = 'test-user@example.com';
   const fetchMetadataAccessCreds = generateMetadataAccessToken(userId);
 
   return new MetadataStore({

@@ -224,7 +224,7 @@ describe('toprfEvalRequest', () => {
           authTokens: insufficientAuthTokens,
           nodeEndpointsMap: { 1: 'endpoint1', 2: 'endpoint2' },
           authConnectionId: 'test-auth-connection-id',
-          userId: 'test-user-id',
+          userId: 'test-user-id@example.com',
           userInput: toBytes('test-password'),
         }),
       ).rejects.toThrow('At least 3 auth tokens are required');
@@ -250,7 +250,7 @@ describe('toprfEvalRequest', () => {
           authTokens,
           nodeEndpointsMap,
           authConnectionId: 'test-auth-connection-id',
-          userId: 'test-user-id',
+          userId: 'test-user-id@example.com',
           userInput: toBytes('test-password'),
         }),
       ).rejects.toThrow('Endpoint not found for node index 4');
