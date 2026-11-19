@@ -570,19 +570,21 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * @param params.secretData - Array of items to store, each with data and optional itemId/dataType.
    * @param params.encKey - The encryption key to be used to encrypt the secret data before storing it.
    * @param params.authKeyPair - The authentication key to be used to provide valid signature for storing the secret data.
+   * @param params.lockId - Optional id of a metadata lock already held by the caller. When provided, no new lock is acquired and the lock is not released.
    */
   async batchAddSecretDataItems(
     params: BatchAddSecretDataItemParams,
   ): Promise<void> {
     const metadataStore = await this.#createMetadataStore();
 
+    const externalLockId = params.lockId;
     let metadataLockId: string | undefined;
 
     try {
-      // acquire metadata lock
-      metadataLockId = await metadataStore.acquireMetadataLock(
-        params.authKeyPair,
-      );
+      // acquire metadata lock unless the caller already holds one
+      metadataLockId =
+        externalLockId ??
+        (await metadataStore.acquireMetadataLock(params.authKeyPair));
 
       await metadataStore.batchAddSecretData({
         encKey: params.encKey,
@@ -595,8 +597,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         })),
       });
     } finally {
-      // release metadata lock
-      if (metadataLockId) {
+      // release metadata lock only if it was acquired here
+      if (metadataLockId && !externalLockId) {
         try {
           await metadataStore.releaseMetadataLock(
             params.authKeyPair,

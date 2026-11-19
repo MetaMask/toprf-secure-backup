@@ -1985,6 +1985,59 @@ describe('toprf secret backup', function () {
       expect(v1Items[0].createdAt).toBeDefined();
     });
 
+    it('should acquire and release the metadata lock when no lockId is provided', async function () {
+      const acquireSpy = jest.spyOn(
+        MetadataStore.prototype,
+        'acquireMetadataLock',
+      );
+      const releaseSpy = jest.spyOn(
+        MetadataStore.prototype,
+        'releaseMetadataLock',
+      );
+
+      await toprfSecureBackup.batchAddSecretDataItems({
+        secretData: secretDataArray,
+        encKey,
+        authKeyPair,
+      });
+
+      expect(acquireSpy).toHaveBeenCalledTimes(1);
+      expect(releaseSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should use the provided lockId without acquiring or releasing the metadata lock', async function () {
+      const lockId = await toprfSecureBackup.acquireMetadataLock(authKeyPair);
+
+      const acquireSpy = jest.spyOn(
+        MetadataStore.prototype,
+        'acquireMetadataLock',
+      );
+      const releaseSpy = jest.spyOn(
+        MetadataStore.prototype,
+        'releaseMetadataLock',
+      );
+
+      await toprfSecureBackup.batchAddSecretDataItems({
+        secretData: secretDataArray,
+        encKey,
+        authKeyPair,
+        lockId,
+      });
+
+      expect(acquireSpy).not.toHaveBeenCalled();
+      expect(releaseSpy).not.toHaveBeenCalled();
+
+      const fetchedSecretData = await toprfSecureBackup.fetchAllSecretDataItems(
+        {
+          decKey: encKey,
+          authKeyPair,
+        },
+      );
+      expect(fetchedSecretData).toHaveLength(secretDataArray.length);
+
+      await toprfSecureBackup.releaseMetadataLock(authKeyPair, lockId);
+    });
+
     it('should throw an error when failed to acquire metadata lock', async function () {
       jest
         .spyOn(MetadataStore.prototype, 'acquireMetadataLock')
