@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Release `2.0.0` of `@metamask/toprf-secure-backup`; all changes are listed under `[2.0.0]` ([#171](https://github.com/MetaMask/toprf-secure-backup/pull/171))
+
 ## [2.0.0]
 
 ### Added
