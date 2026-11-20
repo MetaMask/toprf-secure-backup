@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0]
+
 ### Added
 
 - Add optional `clientIdentifier` constructor parameter to `ToprfSecureBackup`. When set, SSS JSON-RPC requests include an `x-web3-client` header (name and version, e.g. `metamask-extension@13.46.1`) for SSS service logging. The header is omitted when `clientIdentifier` is missing or empty. ([#162](https://github.com/MetaMask/toprf-secure-backup/pull/162))
@@ -17,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Release `2.0.0` of `@metamask/toprf-secure-backup`. ([#173](https://github.com/MetaMask/toprf-secure-backup/pull/173))
 - **Breaking**: Require Node.js `^24.22.1` (previously `^18.18 || >=20`). ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
 - `addSecretDataItem` and `batchAddSecretDataItems` throw if a `KeyEnvelope` or `EnvelopeControl` item has an `itemId`. ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
 - `updateSecretDataItem` and `batchUpdateSecretDataItems` throw if `dataType` is set to `KeyEnvelope` or `EnvelopeControl`. ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
@@ -176,7 +179,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Add `fetchAuthPubKey` function to fetch current auth public key associated with user's password, helps to check if user password is changed.
   - Add `recoverPassword` function to recover a older password corresponding to provided target auth public key, user can use this function only if they have access to latest password. This function is useful for password syncing across devices.
 
-[Unreleased]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@1.1.0...HEAD
+[Unreleased]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@2.0.0...HEAD
+[2.0.0]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@1.1.0...@metamask/toprf-secure-backup@2.0.0
 [1.1.0]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@1.0.0...@metamask/toprf-secure-backup@1.1.0
 [1.0.0]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@0.11.0...@metamask/toprf-secure-backup@1.0.0
 [0.11.0]: https://github.com/MetaMask/toprf-secure-backup/compare/@metamask/toprf-secure-backup@0.10.1...@metamask/toprf-secure-backup@0.11.0
