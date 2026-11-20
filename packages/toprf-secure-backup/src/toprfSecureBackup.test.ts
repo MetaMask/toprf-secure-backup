@@ -456,6 +456,126 @@ describe('toprf secret backup', function () {
     });
   });
 
+  describe('persistLocalKey retried with the same key', function () {
+    const nodeDetailsOverride: NodeDetailsOverride = {
+      indexes: [1, 2, 3, 4, 5],
+      pubKeys: [1, 2, 3, 4, 5].map((i) => ({ X: `${i}`, Y: `${i}` })),
+      endpoints: [1, 2, 3, 4, 5].map(
+        (i) => `https://node-${i}.example/sss/jrpc`,
+      ),
+    };
+    const nodeAuthTokens = [1, 2, 3, 4, 5].map((nodeIndex) => ({
+      authToken: 'token',
+      nodeIndex,
+      nodePubKey: 'pk',
+    }));
+    const authKeyPair: KeyPair = {
+      sk: 7n,
+      pk: new Uint8Array(33).fill(1),
+    };
+    const storeResponse = { id: 10, jsonrpc: '2.0' as const, result: null };
+
+    /**
+     * Persists `authKeyPair`'s key while the nodes report the given majority key.
+     *
+     * @param majorityKey - The key held by a majority of nodes, or the error fetching it throws.
+     * @param extra - Extra persist parameters.
+     * @param extra.oldAuthKeyPair - The old key pair for a key change.
+     * @param extra.keyShareIndex - The key share index to persist.
+     * @returns The store and key change spies.
+     */
+    const persist = async (
+      majorityKey:
+        | Awaited<ReturnType<typeof getPubKeyRequestModule.getPubKey>>
+        | Error,
+      extra: { oldAuthKeyPair?: KeyPair; keyShareIndex?: number } = {},
+    ): Promise<{ storeSpy: jest.SpyInstance; changeSpy: jest.SpyInstance }> => {
+      const { authConnectionId, userId, toprfSecureBackup } = setup({
+        nodeDetailsOverride,
+      });
+      jest
+        .spyOn(getPubKeyRequestModule, 'getPubKey')
+        .mockImplementation(async () => {
+          if (majorityKey instanceof Error) {
+            throw majorityKey;
+          }
+          return majorityKey;
+        });
+      const storeSpy = jest
+        .spyOn(storeSharesRequestModule, 'storeKeyShares')
+        .mockResolvedValue(storeResponse);
+      const changeSpy = jest
+        .spyOn(storeSharesRequestModule, 'changeKeyShares')
+        .mockResolvedValue(storeResponse);
+      await toprfSecureBackup.persistLocalKey({
+        nodeAuthTokens,
+        oprfKey: 1n,
+        authPubKey: authKeyPair.pk,
+        authKeyPair,
+        authConnectionId,
+        userId,
+        ...extra,
+      });
+      return { storeSpy, changeSpy };
+    };
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('completes a key that an earlier attempt left on a majority of nodes', async function () {
+      const { storeSpy, changeSpy } = await persist({
+        authPubKey: authKeyPair.pk,
+        keyIndex: 2,
+      });
+      expect(storeSpy).not.toHaveBeenCalled();
+      expect(changeSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          keyShareIndex: 2,
+          newOprfKey: 1n,
+          newAuthPubKey: authKeyPair.pk,
+          oldAuthPrivKey: authKeyPair.sk,
+        }),
+      );
+    });
+
+    it('stores the key as new when no key is held by a majority of nodes', async function () {
+      const { storeSpy, changeSpy } = await persist(
+        TOPRFError.couldNotDeriveThresholdAuthPubKey(),
+      );
+      expect(changeSpy).not.toHaveBeenCalled();
+      expect(storeSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ keyShareIndex: FIRST_KEY_INDEX }),
+      );
+    });
+
+    it('changes from the old key when a majority of nodes still hold it', async function () {
+      const oldAuthKeyPair: KeyPair = {
+        sk: 3n,
+        pk: new Uint8Array(33).fill(2),
+      };
+      const { storeSpy, changeSpy } = await persist(
+        { authPubKey: oldAuthKeyPair.pk, keyIndex: 1 },
+        { oldAuthKeyPair, keyShareIndex: 2 },
+      );
+      expect(storeSpy).not.toHaveBeenCalled();
+      expect(changeSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          keyShareIndex: 2,
+          oldAuthPrivKey: oldAuthKeyPair.sk,
+        }),
+      );
+    });
+
+    it('fails without storing when the key held by the nodes cannot be fetched', async function () {
+      await expect(
+        persist(TOPRFError.insufficientValidResponses('down')),
+      ).rejects.toThrow(/down/u);
+      expect(storeSharesRequestModule.storeKeyShares).not.toHaveBeenCalled();
+      expect(storeSharesRequestModule.changeKeyShares).not.toHaveBeenCalled();
+    });
+  });
+
   describe('#getNodeDetails configurations', function () {
     const MOCK_INDEXES_5 = [1, 2, 3, 4, 5];
     const MOCK_PUBKEYS_5: INodePub[] = [

@@ -9,6 +9,11 @@ export const JRPC_METHODS = {
 
 export const COMMIT_RESPONSE_THRESHOLD = 4;
 export const AUTHENTICATION_THRESHOLD = 4;
+/**
+ * The number of nodes, a majority of the 5 nodes, that must report the same key state for it to
+ * count. A partially failed key registration can leave the nodes disagreeing.
+ */
+export const KEY_STATE_MAJORITY_THRESHOLD = 3;
 export const TOPRF_EVAL_THRESHOLD = 3;
 export const GET_PUB_KEY_THRESHOLD = 3;
 export const GENERATE_SHARE_THRESHOLD = 3;

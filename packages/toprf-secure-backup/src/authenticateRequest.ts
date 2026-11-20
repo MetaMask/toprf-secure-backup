@@ -5,7 +5,11 @@ import {
 } from '@metamask/auth-network-utils';
 import { generateJsonRPCObject } from '@toruslabs/http-helpers';
 
-import { AUTHENTICATION_THRESHOLD, JRPC_METHODS } from './constants';
+import {
+  AUTHENTICATION_THRESHOLD,
+  JRPC_METHODS,
+  KEY_STATE_MAJORITY_THRESHOLD,
+} from './constants';
 import { TOPRFError, TOPRFErrorCode } from './errors';
 import type {
   AuthJRPCRequest,
@@ -129,12 +133,17 @@ export const createAuthResponseHandler = (
           const { pubKey, keyIndex } = res.result as AuthRequestResult;
           return { pubKey, keyIndex };
         });
+        // A partially failed key registration can leave a key on some nodes only, so the key
+        // state is decided by a majority of nodes instead of by every responding node.
         const thresholdPubData = thresholdSame(
           pubData,
-          AUTHENTICATION_THRESHOLD,
+          KEY_STATE_MAJORITY_THRESHOLD,
         );
 
         if (!thresholdPubData) {
+          if (!allSettled) {
+            return undefined; // The remaining nodes may still form a majority
+          }
           throw TOPRFError.invalidAuthenticateResults(
             `Authentication threshold met, but pubKey/keyIndex data inconsistent: ${JSON.stringify(pubData)}`,
           );

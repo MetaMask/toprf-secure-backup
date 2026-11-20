@@ -287,6 +287,46 @@ describe('createAuthResponseHandler', () => {
     );
   });
 
+  it('should decide the key state by a majority of nodes after a partially failed registration', async () => {
+    const keyOnThreeNodes = [
+      ...Array.from({ length: 3 }, (_, i) =>
+        mockAuthResponse(i, '04partialPubKey'),
+      ),
+      ...Array.from({ length: 2 }, (_, i) => mockAuthResponse(i + 3, '', 0)),
+    ];
+    expect(
+      (await createAuthResponseHandler(keyOnThreeNodes, true)())?.isNewUser,
+    ).toBe(false);
+
+    const keyOnTwoNodes = [
+      ...Array.from({ length: 2 }, (_, i) =>
+        mockAuthResponse(i, '04leftoverPubKey'),
+      ),
+      ...Array.from({ length: 3 }, (_, i) => mockAuthResponse(i + 2, '', 0)),
+    ];
+    expect(
+      (await createAuthResponseHandler(keyOnTwoNodes, true)())?.isNewUser,
+    ).toBe(true);
+  });
+
+  it('should wait for the remaining nodes while no key state has a majority', async () => {
+    const results = [
+      mockAuthResponse(0, '04partialPubKey'),
+      mockAuthResponse(1, '04partialPubKey'),
+      mockAuthResponse(2, '', 0),
+      mockAuthResponse(3, '', 0),
+      undefined as any,
+    ];
+    const handler = createAuthResponseHandler(results, false);
+
+    expect(await handler()).toBeUndefined();
+    await jest.advanceTimersByTimeAsync(bufferWaitTime + 50);
+    expect(await handler()).toBeUndefined();
+    await expect(createAuthResponseHandler(results, true)()).rejects.toThrow(
+      /pubKey\/keyIndex data inconsistent/u,
+    );
+  });
+
   it('should track thresholdMetTime correctly across calls', async () => {
     const resultsMeetThreshold = Array.from({ length: threshold }, (_, i) =>
       mockAuthResponse(i),

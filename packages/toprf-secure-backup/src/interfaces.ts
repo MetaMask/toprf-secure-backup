@@ -183,6 +183,11 @@ export type CreateLocalKeyResult = {
  * keyShareIndex - Optional key share index to be persisted.
  *
  * oldAuthKeyPair - Optional authentication key pair to be used for key change flow.
+ *
+ * authKeyPair - Optional authentication key pair of the key being persisted, whose public key is
+ * `authPubKey`. When provided, persisting the same key again after an attempt that left it on a
+ * majority of nodes, but fewer than required, completes it instead of failing. Retries must reuse
+ * the same `oprfKey` for this to apply.
  */
 export type PersistLocalKeyParams = {
   nodeAuthTokens: NodeAuthTokens;
@@ -193,6 +198,7 @@ export type PersistLocalKeyParams = {
   groupedAuthConnectionId?: string;
   keyShareIndex?: number;
   oldAuthKeyPair?: KeyPair;
+  authKeyPair?: KeyPair;
 };
 
 /**

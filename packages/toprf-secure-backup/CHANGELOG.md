@@ -14,8 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `envelopeKeys` (`authKeyPair` and `wrapKey` of the key-envelope partition, derived from the TOPRF seed) to the `createLocalKey` and `recoverEncKey` results, and export the `EnvelopeKeys` type ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
 - Add `acquireMetadataLock` and `releaseMetadataLock` to hold a partition's metadata lock across multiple requests. ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
 - Add optional `lockId` to `batchAddSecretDataItems` params. When set, the caller's existing metadata lock is reused and not released by the method. ([#172](https://github.com/MetaMask/toprf-secure-backup/pull/172))
+- Add optional `authKeyPair` to `persistLocalKey` params. When set, persisting the same `oprfKey` again after an attempt that left the key on a majority of nodes, but fewer than required, completes it as a key change signed with that key instead of failing. `changeEncKey` sets it when `pregeneratedOprfKey` is passed.
 
 ### Changed
+
+- `authenticate` decides `isNewUser` by the key state a majority of nodes report, instead of requiring every responding node to agree, so a partially failed key registration no longer makes it throw.
+- Key shares are derived from the key, so every node receives the same share each time the same key is persisted, and a retry that commits on only some nodes leaves shares that still combine.
 
 - **Breaking**: Require Node.js `^24.22.1` (previously `^18.18 || >=20`). ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
 - `addSecretDataItem` and `batchAddSecretDataItems` throw if a `KeyEnvelope` or `EnvelopeControl` item has an `itemId`. ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))

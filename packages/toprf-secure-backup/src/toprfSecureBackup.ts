@@ -13,7 +13,7 @@ import {
   MAX_PASSWORD_CHAIN_LENGTH,
   PW_BACKUP_ITEM_ID,
 } from './constants';
-import { TOPRFError } from './errors';
+import { TOPRFError, TOPRFErrorCode } from './errors';
 import { getPubKey } from './getPubKeyRequest';
 import type {
   AuthenticateParams,
@@ -36,6 +36,7 @@ import type {
   RecoverPwEncKeyParams,
   KeyPair,
   RecoverPwEncKeyResult,
+  NodeAuthTokens,
   NodeDetailsOverride,
   FetchMetadataAccessCreds,
   UpdateSecretDataItemParams,
@@ -56,7 +57,7 @@ import { OPRF, generateRandomScalar } from './oprf';
 import { resetRateLimits } from './resetRateLimits';
 import { storeKeyShares, changeKeyShares } from './storeSharesRequest';
 import { recoverTOPRFSeed } from './toprfEvalRequest';
-import { createNodeEndpointsMap } from './utils';
+import { createNodeEndpointsMap, getTOPRFError } from './utils';
 
 /**
  * ToprfSecureBackup - The main class for the tOPRF Secure Backup service.
@@ -241,6 +242,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
    * @param params.userId - The user id of the user issued by authentication service.
    * @param params.keyShareIndex - The key share index to be persisted. Required only during key change, defaults to FIRST_KEY_INDEX for first-time storage.
    * @param params.oldAuthKeyPair - The old authentication key pair of the user. Required only during key change, not needed for first-time storage.
+   * @param params.authKeyPair - Optional authentication key pair of the key being persisted. When provided, a retry with the
+   * same `oprfKey` after an attempt that left the key on a majority of nodes, but fewer than required, completes it.
    */
   async persistLocalKey(params: PersistLocalKeyParams): Promise<void> {
     const {
@@ -252,6 +255,7 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       userId,
       keyShareIndex = FIRST_KEY_INDEX,
       oldAuthKeyPair,
+      authKeyPair,
     } = params;
     const { nodeEndpointsMap } = await this.#getNodeDetails();
 
@@ -262,6 +266,34 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       },
       {},
     );
+
+    if (authKeyPair) {
+      const majorityKey = await this.#fetchMajorityKey({
+        nodeAuthTokens,
+        nodeEndpointsMap,
+        authConnectionId,
+        groupedAuthConnectionId,
+        userId,
+      });
+      if (majorityKey && equalBytes(majorityKey.authPubKey, authPubKey)) {
+        // An earlier attempt left this key on a majority of nodes, so the nodes now require a
+        // key change. Changing the key to itself, signed with its own key pair, gives the
+        // remaining nodes their shares.
+        await changeKeyShares({
+          nodeEndpointsMap: selectedEndpointsMap,
+          authConnectionId,
+          groupedAuthConnectionId,
+          userId,
+          authTokens: nodeAuthTokens,
+          keyShareIndex: majorityKey.keyIndex,
+          newOprfKey: oprfKey,
+          newAuthPubKey: authPubKey,
+          oldAuthPrivKey: authKeyPair.sk,
+          clientIdentifier: this.#clientIdentifier,
+        });
+        return;
+      }
+    }
 
     if (oldAuthKeyPair) {
       await changeKeyShares({
@@ -518,6 +550,8 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
         userId,
         keyShareIndex: newKeyShareIndex,
         oldAuthKeyPair,
+        // Only a pregenerated key can be the same key as in an earlier attempt.
+        authKeyPair: pregeneratedOprfKey ? authKeyPair : undefined,
       });
 
       return { authKeyPair, encKey, pwEncKey };
@@ -880,6 +914,46 @@ export class ToprfSecureBackup implements IToprfSecureBackup {
       nodeIndexes: finalIndexes,
       nodePubkeys: finalPubKeys,
     };
+  }
+
+  /**
+   * Fetches the key held by a majority of nodes.
+   *
+   * @param params - The parameters for fetching the key.
+   * @param params.nodeAuthTokens - The tokens issued by the nodes on authenticating the user.
+   * @param params.nodeEndpointsMap - The node endpoints map.
+   * @param params.authConnectionId - The auth connection name used for authentication.
+   * @param params.groupedAuthConnectionId - An optional grouped auth connection name used for authentication with aggregate (single id) verifier.
+   * @param params.userId - The user id of the user.
+   *
+   * @returns The auth pub key and key index held by a majority of nodes, or null if no key is.
+   */
+  async #fetchMajorityKey(params: {
+    nodeAuthTokens: NodeAuthTokens;
+    nodeEndpointsMap: Record<number, string>;
+    authConnectionId: string;
+    groupedAuthConnectionId?: string;
+    userId: string;
+  }): Promise<FetchAuthPubKeyResult | null> {
+    try {
+      return await getPubKey({
+        authTokens: params.nodeAuthTokens,
+        nodeEndpointsMap: params.nodeEndpointsMap,
+        authConnectionId: params.authConnectionId,
+        groupedAuthConnectionId: params.groupedAuthConnectionId,
+        userId: params.userId,
+        clientIdentifier: this.#clientIdentifier,
+      });
+    } catch (error) {
+      const toprfError = getTOPRFError(error as Error);
+      if (
+        toprfError instanceof TOPRFError &&
+        toprfError.code === TOPRFErrorCode.CouldNotDeriveThresholdAuthPubKey
+      ) {
+        return null;
+      }
+      throw toprfError;
+    }
   }
 
   /**
