@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `EncAccountDataType.KeyEnvelope` (`4`) and `EnvelopeControl` (`5`), whose items use content-hash item ids. ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
 - Add `envelopeKeys` (`authKeyPair` and `wrapKey` of the key-envelope partition, derived from the TOPRF seed) to the `createLocalKey` and `recoverEncKey` results, and export the `EnvelopeKeys` type ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
 - Add `acquireMetadataLock` and `releaseMetadataLock` to hold a partition's metadata lock across multiple requests. ([#167](https://github.com/MetaMask/toprf-secure-backup/pull/167))
+- Add optional `lockId` to `batchAddSecretDataItems` params. When set, the caller's existing metadata lock is reused and not released by the method. ([#172](https://github.com/MetaMask/toprf-secure-backup/pull/172))
 
 ### Changed
 

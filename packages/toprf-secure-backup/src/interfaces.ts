@@ -249,6 +249,12 @@ export type BaseAddSecretDataItemParams<
    * The authentication key to be used to provide valid signature for storing the secret data.
    */
   authKeyPair: KeyPair;
+
+  /**
+   * Optional id of a metadata lock already held by the caller.
+   * When provided, no new lock is acquired and the lock is not released.
+   */
+  lockId?: string;
 };
 
 /**

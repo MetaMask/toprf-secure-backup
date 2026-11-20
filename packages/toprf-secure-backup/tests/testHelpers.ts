@@ -1,10 +1,33 @@
 import { sign } from 'jsonwebtoken';
 import type { Algorithm as JwtAlgorithm } from 'jsonwebtoken';
 
-const jwtPrivateKey = `-----BEGIN PRIVATE KEY-----\nMEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCCD7oLrcKae+jVZPGx52Cb/lKhdKxpXjl9eGNa1MlY57A==\n-----END PRIVATE KEY-----`;
+/**
+ * Gets the test JWT private key from the `TEST_JWT_PRIVATE_KEY` environment variable.
+ *
+ * Secret stores often flatten the PEM onto one line with escaped newlines, and
+ * values pasted by hand may include quotes, so this normalizes those cases.
+ *
+ * @returns The test JWT private key in PEM format.
+ */
+function getJwtPrivateKey(): string {
+  // eslint-disable-next-line n/no-process-env
+  const raw = process.env.TEST_JWT_PRIVATE_KEY;
+  if (!raw) {
+    throw new Error(
+      'TEST_JWT_PRIVATE_KEY environment variable is required to generate test ID tokens',
+    );
+  }
 
-// TODO: Replace with the dynamic values
-// Test Private key to be used for generating the auth token
+  const key = raw
+    .trim()
+    .replace(/^["']|["']$/gu, '')
+    .trim()
+    .replace(/\\n/gu, '\n');
+  return key.includes('-----BEGIN')
+    ? key
+    : `-----BEGIN PRIVATE KEY-----\n${key}\n-----END PRIVATE KEY-----`;
+}
+
 // Test audience to be used for generating the auth token
 
 /**
@@ -37,7 +60,7 @@ export const generateIdToken = (
     algorithm: alg,
   };
 
-  return sign(payload, jwtPrivateKey, algo);
+  return sign(payload, getJwtPrivateKey(), algo);
 };
 
 /**
@@ -56,7 +79,7 @@ export function generateRandomPassword(): string {
  * @returns A random user id.
  */
 export function generateRandomUserId(): string {
-  return Math.random().toString(36).slice(2, 10);
+  return `${Math.random().toString(36).slice(2, 10)}@example.com`;
 }
 
 /**

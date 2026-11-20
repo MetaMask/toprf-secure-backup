@@ -25,8 +25,6 @@ import {
   sleep,
 } from '../tests/testHelpers';
 
-const EXISTING_USER_ID = 'test-verifier-id-existing-user';
-
 const keyDeriver = {
   // Disable eslint-plugin-jsdoc because this is a test file.
   // eslint-disable-next-line jsdoc/require-jsdoc
@@ -113,12 +111,29 @@ describe('toprf secret backup', function () {
     });
 
     it('should return isNewUser as false for existing user', async function () {
-      const { authConnectionId, userId, idToken, toprfSecureBackup } = setup({
-        userId: EXISTING_USER_ID,
+      const { authConnectionId, userId, idToken, toprfSecureBackup } = setup();
+
+      // Create the user first so the second authenticate sees an existing user.
+      const initialResult = await toprfSecureBackup.authenticate({
+        idTokens: [idToken],
+        authConnectionId,
+        userId,
+      });
+      expect(initialResult.isNewUser).toBe(true);
+      await toprfSecureBackup.createAndPersistEncKey({
+        nodeAuthTokens: initialResult.nodeAuthTokens,
+        password: generateRandomPassword(),
+        authConnectionId,
+        userId,
       });
 
+      // The nodes reject a reused idToken ("Duplicate token found"). Tokens are
+      // minted per second (iat), so wait a second to get a distinct token.
+      await sleep(1000);
+      const secondIdToken = generateIdToken(userId, 'ES256');
+
       const result = await toprfSecureBackup.authenticate({
-        idTokens: [idToken],
+        idTokens: [secondIdToken],
         authConnectionId,
         userId,
       });
@@ -1983,6 +1998,59 @@ describe('toprf secret backup', function () {
       expect(v1Items).toHaveLength(1);
       expect(v1Items[0].version).toBe('v1');
       expect(v1Items[0].createdAt).toBeDefined();
+    });
+
+    it('should acquire and release the metadata lock when no lockId is provided', async function () {
+      const acquireSpy = jest.spyOn(
+        MetadataStore.prototype,
+        'acquireMetadataLock',
+      );
+      const releaseSpy = jest.spyOn(
+        MetadataStore.prototype,
+        'releaseMetadataLock',
+      );
+
+      await toprfSecureBackup.batchAddSecretDataItems({
+        secretData: secretDataArray,
+        encKey,
+        authKeyPair,
+      });
+
+      expect(acquireSpy).toHaveBeenCalledTimes(1);
+      expect(releaseSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should use the provided lockId without acquiring or releasing the metadata lock', async function () {
+      const lockId = await toprfSecureBackup.acquireMetadataLock(authKeyPair);
+
+      const acquireSpy = jest.spyOn(
+        MetadataStore.prototype,
+        'acquireMetadataLock',
+      );
+      const releaseSpy = jest.spyOn(
+        MetadataStore.prototype,
+        'releaseMetadataLock',
+      );
+
+      await toprfSecureBackup.batchAddSecretDataItems({
+        secretData: secretDataArray,
+        encKey,
+        authKeyPair,
+        lockId,
+      });
+
+      expect(acquireSpy).not.toHaveBeenCalled();
+      expect(releaseSpy).not.toHaveBeenCalled();
+
+      const fetchedSecretData = await toprfSecureBackup.fetchAllSecretDataItems(
+        {
+          decKey: encKey,
+          authKeyPair,
+        },
+      );
+      expect(fetchedSecretData).toHaveLength(secretDataArray.length);
+
+      await toprfSecureBackup.releaseMetadataLock(authKeyPair, lockId);
     });
 
     it('should throw an error when failed to acquire metadata lock', async function () {
