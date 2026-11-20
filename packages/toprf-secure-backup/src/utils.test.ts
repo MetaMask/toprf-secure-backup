@@ -1,8 +1,14 @@
 import type { JSONRPCError } from '@metamask/auth-network-utils';
+import {
+  kCombinations,
+  lagrangeInterpolationForScalars,
+} from '@metamask/auth-network-utils';
+import { secp256k1 } from '@noble/curves/secp256k1';
 
 import { JsonRpcErrorCodes } from './constants';
 import { TOPRFError, TOPRFErrorCode } from './errors';
 import type { ToprfEvalJRPCResponse } from './jrpcInterfaces';
+import { generateRandomScalar } from './oprf';
 import {
   checkRateLimitErrors,
   checkAuthTokenErrors,
@@ -10,7 +16,61 @@ import {
   extractRateLimitErrorFromResults,
   getTOPRFError,
   parseJsonRpcError,
+  prepareNodeShares,
 } from './utils';
+
+describe('prepareNodeShares', () => {
+  const nodeEndpointsMap = { 1: 'a', 2: 'b', 3: 'c', 4: 'd', 5: 'e' };
+  /**
+   * Splits the key for all nodes.
+   *
+   * @param key - The key to split.
+   * @returns The share values in node order.
+   */
+  const shareValues = (key: bigint): string[] =>
+    Object.values(prepareNodeShares(nodeEndpointsMap, key).shares).map(
+      (share) => share.share.toString(16),
+    );
+
+  it('gives each node the same share every time the same key is split', () => {
+    const key = generateRandomScalar();
+    expect(shareValues(key)).toStrictEqual(shareValues(key));
+    expect(shareValues(key)).not.toStrictEqual(
+      shareValues(generateRandomScalar()),
+    );
+  });
+
+  it('gives each node the same share whichever nodes the key is split for', () => {
+    const key = generateRandomScalar();
+    const fromAllNodes = prepareNodeShares(nodeEndpointsMap, key).shares;
+    const fromSomeNodes = prepareNodeShares(
+      { 2: 'b', 4: 'd', 5: 'e' },
+      key,
+    ).shares;
+    for (const [index, share] of Object.entries(fromSomeNodes)) {
+      expect(share.share.toString(16)).toBe(
+        fromAllNodes[index].share.toString(16),
+      );
+    }
+  });
+
+  it('recovers the key from any 3 shares', () => {
+    const key = generateRandomScalar();
+    const shares = Object.values(
+      prepareNodeShares(nodeEndpointsMap, key).shares,
+    );
+    for (const combination of kCombinations(shares.length, 3)) {
+      const selected = combination.map((i) => shares[i]);
+      expect(
+        lagrangeInterpolationForScalars(
+          secp256k1.CURVE.n,
+          selected.map((share) => BigInt(`0x${share.share.toString(16)}`)),
+          selected.map((share) => BigInt(`0x${share.shareIndex.toString(16)}`)),
+        ),
+      ).toBe(key);
+    }
+  });
+});
 
 describe('checkRateLimitErrors', () => {
   it('should return undefined for an empty array', () => {

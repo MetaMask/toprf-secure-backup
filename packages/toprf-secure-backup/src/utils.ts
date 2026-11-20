@@ -6,18 +6,21 @@ import type {
   JSONRPCError,
 } from '@metamask/auth-network-utils';
 import {
+  Polynomial,
   SomeError,
   encParamsHexToBuf,
   encryptedParamsBufToHex,
   filterErrorResponses,
-  generateRandomPolynomial,
   getSecp256K1Curve,
   isJSONRPCError,
   toCamelCaseKeys,
   toSnakeCaseKeys,
 } from '@metamask/auth-network-utils';
 import { secp256k1 as secp256k1Noble } from '@noble/curves/secp256k1';
+import { hmac } from '@noble/hashes/hmac';
+import { sha256 } from '@noble/hashes/sha2';
 import { keccak_256 as keccak256 } from '@noble/hashes/sha3';
+import { utf8ToBytes } from '@noble/hashes/utils';
 import { decrypt, encrypt } from '@toruslabs/eccrypto';
 import { post } from '@toruslabs/http-helpers';
 import BN from 'bn.js';
@@ -149,6 +152,43 @@ export const decryptAuthToken = async (
   return Buffer.from(decryptedAuthToken).toString('base64');
 };
 
+const SHARE_COEFFICIENT_DOMAIN = 'toprf-secure-backup/share-coefficient';
+
+/**
+ * Derives the higher-degree coefficients of the sharing polynomial from the private key.
+ * Every attempt to store the same key then sends each node the same share, so shares left
+ * on some nodes by a partially failed attempt still combine with the shares of a retry.
+ * The coefficients are keyed by the secret, so fewer than threshold shares reveal nothing
+ * about it without breaking HMAC-SHA256.
+ *
+ * @param ecCurve - The elliptic curve to be used for the secret sharing.
+ * @param privKey - The private key to be used for secret sharing.
+ * @param degree - The degree of the sharing polynomial.
+ *
+ * @returns The coefficients of degree 1 to `degree`.
+ */
+const deriveShareCoefficients = (
+  ecCurve: EC.ec,
+  privKey: BN,
+  degree: number,
+): BN[] => {
+  const keyBytes = privKey.toArrayLike(Buffer, 'be', 32);
+  const coefficients: BN[] = [];
+  for (let counter = 1; coefficients.length < degree; counter++) {
+    const digest = hmac(
+      sha256,
+      keyBytes,
+      utf8ToBytes(`${SHARE_COEFFICIENT_DOMAIN}:${counter}`),
+    );
+    const coefficient = new BN(digest).umod(ecCurve.n as BN);
+    if (!coefficient.isZero()) {
+      coefficients.push(coefficient);
+    }
+  }
+  keyBytes.fill(0);
+  return coefficients;
+};
+
 /**
  * Generates len(nodeIndexes) number of shares for a given private key with a given threshold.
  *
@@ -167,7 +207,10 @@ const generateShares = (
 ): ShareMap => {
   const nodeIndexesBn = nodeIndexes.map((index) => new BN(index));
   const degree = threshold - 1;
-  const poly = generateRandomPolynomial(ecCurve, degree, privKey);
+  const poly = new Polynomial(
+    [privKey, ...deriveShareCoefficients(ecCurve, privKey, degree)],
+    ecCurve,
+  );
   return poly.generateShares(nodeIndexesBn);
 };
 
