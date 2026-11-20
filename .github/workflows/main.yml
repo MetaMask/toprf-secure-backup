@@ -34,6 +34,8 @@ jobs:
     name: Lint, build, and test
     needs: check-workflows
     uses: ./.github/workflows/lint-build-test.yml
+    secrets:
+      TEST_JWT_PRIVATE_KEY: ${{ secrets.TEST_JWT_PRIVATE_KEY }}
 
   is-release:
     name: Determine whether this is a release merge commit
