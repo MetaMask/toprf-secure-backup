@@ -34,8 +34,8 @@ export enum EncAccountDataType {
    */
   KeyEnvelope = 4,
   /**
-   * An envelope control record. Stored in its own partition with a
-   * content-hash item id; `itemId` must not be set.
+   * An envelope control record. Stored in the vault partition alongside secret
+   * items with a content-hash item id; `itemId` must not be set.
    */
   EnvelopeControl = 5,
 }
