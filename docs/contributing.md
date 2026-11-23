@@ -122,10 +122,11 @@ If you want to test changes to a package where it would be unwieldy or impossibl
 
 #### Publishing preview builds as a MetaMask contributor
 
-If you're a member of the MetaMask organization, you can create preview builds based on a pull request by following these steps:
+If you're a member of the MetaMask organization, you can create preview builds based on a pull request or branch by following these steps:
 
-1. Post a comment on the pull request with the text `@metamaskbot publish-preview`. This starts the `publish-preview` GitHub action, which will create preview builds for all packages in the monorepo.
-2. After a few minutes, the action should complete and you will see a new comment that lists the newly published packages along with their versions.
+1. Go to the [Publish a preview build](https://github.com/MetaMask/toprf-secure-backup/actions/workflows/publish-preview.yml) workflow in GitHub Actions and click **Run workflow** (keeping the workflow branch set to `main`).
+2. Enter either the pull request number or a branch name in this repository. By default, only packages changed compared to the base branch are published; you can uncheck **Only publish packages changed compared to the base branch** or specify a comma-separated list of packages instead.
+3. After a few minutes, the action will complete and add the list of published packages and versions to the workflow summary (and post a comment on the pull request if you provided a pull request number).
 
    Note two things about each package:
 
@@ -134,7 +135,7 @@ If you're a member of the MetaMask organization, you can create preview builds b
 
 Now you can [use these preview builds in your project](#using-preview-builds).
 
-If you make more changes to a package, follow step 2 again, making sure to update the reference to the package in your project's `package.json` to use the newly published preview version.
+If you make more changes to a package, re-run the workflow and update the reference to the package in your project's `package.json` to use the newly published preview version.
 
 #### Publishing preview builds as an independent contributor
 
