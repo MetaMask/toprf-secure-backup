@@ -1,58 +1,49 @@
 name: Publish a preview build
 
 on:
-  issue_comment:
-    types: created
+  workflow_dispatch:
+    inputs:
+      pull-request:
+        description: 'Pull request number to publish a preview build for. Mutually exclusive with "branch".'
+        required: false
+        type: number
+      branch:
+        description: 'Branch in this repository to publish a preview build for. Mutually exclusive with "pull-request".'
+        required: false
+        type: string
+        default: ''
+      packages:
+        description: 'Comma-separated list of packages to publish, e.g., "@metamask/toprf-secure-backup, auth-network-utils". Mutually exclusive with "only-changed-packages". Leave empty to publish all packages.'
+        required: false
+        type: string
+        default: ''
+      only-changed-packages:
+        description: 'Only publish packages changed compared to the base branch. Mutually exclusive with "packages".'
+        required: false
+        type: boolean
+        default: true
+      dry-run:
+        description: 'Perform a dry run.'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
 
 jobs:
-  is-fork-pull-request:
-    name: Determine whether this issue comment was on a pull request from a fork
-    if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '@metamaskbot publish-preview') }}
-    runs-on: ubuntu-latest
-    outputs:
-      IS_FORK: ${{ steps.is-fork.outputs.IS_FORK }}
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - name: Determine whether this PR is from a fork
-        id: is-fork
-        run: echo "IS_FORK=$(gh pr view --json isCrossRepository --jq '.isCrossRepository' "${PR_NUMBER}" )" >> "$GITHUB_OUTPUT"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.issue.number }}
-
   publish-preview:
-    name: Publish build preview
-    needs: is-fork-pull-request
+    name: Publish preview
     permissions:
+      contents: read
+      id-token: write
       pull-requests: write
-    # This ensures we don't publish on forks. We can't trust forks with this token.
-    if: ${{ needs.is-fork-pull-request.outputs.IS_FORK == 'false' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - name: Check out pull request
-        run: gh pr checkout "${PR_NUMBER}"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.issue.number }}
-      - name: Checkout and setup environment
-        uses: MetaMask/action-checkout-and-setup@392abd40aa6a0600a3c0ef4af75851662587e6ec # v1.4.0
-        with:
-          is-high-risk-environment: true
-      - name: Get commit SHA
-        id: commit-sha
-        run: echo "COMMIT_SHA=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
-      - run: yarn prepare-preview-builds @metamask-previews ${{ steps.commit-sha.outputs.COMMIT_SHA }}
-      - run: yarn build
-      - name: Publish preview build
-        run: yarn publish-previews
-        env:
-          YARN_NPM_AUTH_TOKEN: ${{ secrets.PUBLISH_PREVIEW_NPM_TOKEN }}
-      - name: Generate preview build message
-        run: yarn ts-node scripts/generate-preview-build-message.ts
-      - name: Post build preview in comment
-        run: gh pr comment "${PR_NUMBER}" --body-file preview-build-message.txt
-        env:
-          COMMIT_SHA: ${{ steps.commit-sha.outputs.COMMIT_SHA }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.issue.number }}
+    uses: MetaMask/github-tools/.github/workflows/publish-preview-oidc.yml@a4c45d2f30cf1d30b0ee43303bb8ea6441cb54c2 # v1.27.0
+    with:
+      pull-request: ${{ fromJSON(inputs.pull-request || '0') }}
+      branch: ${{ inputs.branch }}
+      packages: ${{ inputs.packages }}
+      only-changed-packages: ${{ inputs.only-changed-packages }}
+      dry-run: ${{ inputs.dry-run }}
+      environment: default-branch
+      docs-url: 'https://github.com/MetaMask/toprf-secure-backup/blob/main/docs/contributing.md#using-preview-builds'
