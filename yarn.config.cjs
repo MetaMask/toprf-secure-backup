@@ -224,8 +224,8 @@ module.exports = defineConfig({
         expectWorkspaceField(workspace, 'packageManager', 'yarn@4.17.1');
       }
 
-      // All packages must specify a minimum Node.js version of 24.22.1.
-      expectWorkspaceField(workspace, 'engines.node', '^24.22.1');
+      // All packages must specify the supported Node.js versions: 24.22.0 and later 24.x, or 26.x.
+      expectWorkspaceField(workspace, 'engines.node', '^24.22.0 || ^26');
 
       // All non-root public packages should be published to the NPM registry;
       // all non-root private packages should not.
